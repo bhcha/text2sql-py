@@ -1,0 +1,6 @@
+https://github.com/bird-bench/mini_dev/tree/abd11b6db92a1c9f809b32f7564c7c71b34d67f0/evaluation
+run_evaluation.sh: https://raw.githubusercontent.com/bird-bench/mini_dev/abd11b6db92a1c9f809b32f7564c7c71b34d67f0/evaluation/run_evaluation.sh
+  2026-10-21 받음, 2700바이트, sha256 22e9f3e0254cf92895c40b08e08f52c846be76a8b22479f413f9ff3714c1ee87
+  근거 보존용. 실행하지 않는다. SQLite 난도 파일을 "../sqlite/mini_dev_sqlite.jsonl"(JSON Lines)로 가리킨다.
+라이선스: mini_dev 저장소에 LICENSE 파일이 없고 README(같은 커밋 13행)가 CC BY-SA 4.0으로 표기한다(2026-11-13 확인).
+  이 폴더의 파일은 CC BY-SA 4.0을 따르며 저장소 Apache-2.0은 적용되지 않는다. https://creativecommons.org/licenses/by-sa/4.0/

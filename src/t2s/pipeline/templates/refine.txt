@@ -1,0 +1,35 @@
+You are fixing a SQLite query that was written to answer a question about the database described below. When the query was run, the problem reported under [SQLite error] came up. Rewrite the query so that it answers the question correctly.
+
+You may reason one step at a time before you answer. Check the rewritten query against the question and the schema before you finish. Give the final query inside a fenced code block that starts with ```sql. If your answer has more than one such block, only the last one is used.
+
+[Guidelines]
+- Return only the columns the question asks for. Leave out extra columns and extra computed values.
+- Put only the tables that are needed in FROM and JOIN.
+- When the answer depends on a largest or smallest value, join the tables first, then take MAX or MIN over the joined rows.
+- When the sample rows or the column profile show that a column holds NULL, prefer a join or an explicit IS NOT NULL condition so that NULL does not reach the result.
+- When the result is sorted with ORDER BY and the question wants distinct values, group by the sorted column first.
+
+[Question]
+-- {question}
+
+[Extra knowledge]
+{knowledge}
+
+[Database schema]
+{schema}
+
+[Foreign keys]
+{foreign_keys}
+
+[Query to fix]
+```sql
+{sql}
+```
+
+[SQLite error]
+{sqlite_error}
+
+[Exception class]
+{exception_class}
+
+Write the corrected query now.

@@ -1,0 +1,111 @@
+{
+  "format": "t2s-fetch/1",
+  "archive": {
+    "url": "https://bird-bench.oss-cn-beijing.aliyuncs.com/minidev.zip",
+    "path": "data/bird-minidev/download/minidev.zip",
+    "sha256": "cc48ba16838204e4e214512030cb572eeb5f7bcdd999bae4b9b6ff12ec13b92f",
+    "size": 800943648
+  },
+  "extract_root": "data/bird-minidev/extracted",
+  "databases": [
+    {
+      "db_id": "california_schools",
+      "member": "minidev/MINIDEV/dev_databases/california_schools/california_schools.sqlite",
+      "sha256": "c0903eec662e63068fd1d14403d3d6c1d473287fc10c4356333ea58f878db983",
+      "size": 11116544
+    },
+    {
+      "db_id": "card_games",
+      "member": "minidev/MINIDEV/dev_databases/card_games/card_games.sqlite",
+      "sha256": "c98bdb57fe7474da798b407785544b9af0daaad5d61fd21e2a73309493bc1227",
+      "size": 261820416
+    },
+    {
+      "db_id": "codebase_community",
+      "member": "minidev/MINIDEV/dev_databases/codebase_community/codebase_community.sqlite",
+      "sha256": "92101be6d2a9f6adceea59d38f6d1c556087f9eea1432432a21268cb1348036d",
+      "size": 481419264
+    },
+    {
+      "db_id": "debit_card_specializing",
+      "member": "minidev/MINIDEV/dev_databases/debit_card_specializing/debit_card_specializing.sqlite",
+      "sha256": "b3d149ad05746dbbe5116e229e17e18f09c39db43cf117d9ef3441753608b691",
+      "size": 34635776
+    },
+    {
+      "db_id": "european_football_2",
+      "member": "minidev/MINIDEV/dev_databases/european_football_2/european_football_2.sqlite",
+      "sha256": "f72f5c9b990371417288a67b27a02e601ef904d45525c2c9f7931fb01001c536",
+      "size": 597754880
+    },
+    {
+      "db_id": "financial",
+      "member": "minidev/MINIDEV/dev_databases/financial/financial.sqlite",
+      "sha256": "d15d89cdb068a202b6f2b99342af44dffc1d52545b39ceaf62efdc0ba570101e",
+      "size": 71294976
+    },
+    {
+      "db_id": "formula_1",
+      "member": "minidev/MINIDEV/dev_databases/formula_1/formula_1.sqlite",
+      "sha256": "79770caf966707e35516fa566e24b40ae515c74ec1ec4631235245645b87b24d",
+      "size": 22360064
+    },
+    {
+      "db_id": "student_club",
+      "member": "minidev/MINIDEV/dev_databases/student_club/student_club.sqlite",
+      "sha256": "eb89bcfe97eefa386a27904ec5aa15159811a7eac894ec659a36e48fa9f76b77",
+      "size": 2641920
+    },
+    {
+      "db_id": "superhero",
+      "member": "minidev/MINIDEV/dev_databases/superhero/superhero.sqlite",
+      "sha256": "75e94a2c3236ee3bb2c01fb97a1c4b4c1c269bcefd4eab1d04be323d2d0825b1",
+      "size": 237568
+    },
+    {
+      "db_id": "thrombosis_prediction",
+      "member": "minidev/MINIDEV/dev_databases/thrombosis_prediction/thrombosis_prediction.sqlite",
+      "sha256": "87583183c3dc472fba04de702965560a9d7c0a548836613f242317e0eeb83f00",
+      "size": 7327744
+    },
+    {
+      "db_id": "toxicology",
+      "member": "minidev/MINIDEV/dev_databases/toxicology/toxicology.sqlite",
+      "sha256": "35ef27ae6bdfda530e125ed369666ac0abb8bc8c0bcc0ad09407f547ecb61a93",
+      "size": 2678784
+    }
+  ],
+  "answers": {
+    "questions": {
+      "member": "minidev/MINIDEV/mini_dev_sqlite.json",
+      "path": "gold/bird-minidev/mini_dev_sqlite.json",
+      "sha256": "4ba5fa8de55856222f484d380d2ba872b380bf79d825de70478e2120cb0fc43b",
+      "size": 278486
+    },
+    "sql": {
+      "member": "minidev/MINIDEV/mini_dev_sqlite_gold.sql",
+      "path": "gold/bird-minidev/mini_dev_sqlite_gold.sql",
+      "sha256": "6fb891aa8e1d948499de3295a24dd18d783d7ac04971908cbe2533436901af81",
+      "size": 104975
+    }
+  },
+  "questions_public": {
+    "path": "data/bird-minidev/questions.public.json",
+    "sha256": "5c743ab3553edea5c0bee2635ab4260c0a86105073a06ce096b8c70b3fa7abc0",
+    "size": 101922,
+    "count": 500
+  },
+  "model": {
+    "url_base": "https://huggingface.co/Xenova/all-mpnet-base-v2/resolve/e086c5e0b3a57b0ce46dd6d9c0662948860b35f3/",
+    "path": "data/models/Xenova/all-mpnet-base-v2",
+    "sha256": {
+      "config.json": "a783505a4e839b61700aa61d249d381d00addfb9cf3221359e2d30a6da6c6499",
+      "tokenizer.json": "d00dad6f80b7eab804479a58634a58a50966366627f847e47848bac52873995d",
+      "tokenizer_config.json": "3ea32220c2e21af4f0be95e2a43bdc8ac693f8c35c2255127ef680689b469461",
+      "special_tokens_map.json": "15a9b70f6a5defe4feac823a82e6412e5d5bfd8eab09d8dbcf5ac241f14a7756",
+      "onnx/model.onnx": "a488b290590d86da3b81c502b242343ca8312e83cfc618b2cd1ae50c09d8f669"
+    }
+  },
+  "evaluator": "bird-minidev-abd11b6",
+  "license_note": "BIRD Mini-Dev 자료는 CC BY-SA 4.0 (https://github.com/bird-bench/mini_dev). 측정 라벨의 cc48ba16은 이 zip의 sha256이다."
+}

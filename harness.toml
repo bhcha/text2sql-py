@@ -1,0 +1,46 @@
+[defaults]
+dataset = "bird-minidev"
+profile = "session"
+
+[paths]
+data = "data"
+runs = "runs"
+embedding_model = "data/models/Xenova/all-mpnet-base-v2"
+
+[datasets.bird-minidev]
+kind = "bird-minidev"
+root = "data/bird-minidev/extracted/minidev/MINIDEV"
+databases = "dev_databases"
+questions = "data/bird-minidev/questions.public.json"
+archive_sha256 = "cc48ba16838204e4e214512030cb572eeb5f7bcdd999bae4b9b6ff12ec13b92f"
+
+# 사용자 DB는 /connect 가 var/state.json 에 등록한다. 여기에 영구히 두려면:
+# [datasets.shop]
+# kind = "single"
+# [datasets.shop.sources.shop]
+# kind = "sqlite"
+# path = "/절대/경로/shop.sqlite"
+
+[profiles.p3-ref]
+backend = "codex-cli"
+model = "gpt-5.6-terra"
+reasoning_effort = "medium"
+timeout_seconds = 150
+item_timeout_seconds = 1530
+
+[profiles.p3-claude]
+backend = "claude-code"
+model = "claude-opus-5-5"
+reasoning_effort = "medium"
+timeout_seconds = 150
+item_timeout_seconds = 1530
+
+[profiles.session]
+backend = "auto"
+
+[pipeline]
+example_rows = 3
+keyword_attempts = 3
+exec_timeout_seconds = 120
+refine_rounds = 3
+refine_template = "builtin"

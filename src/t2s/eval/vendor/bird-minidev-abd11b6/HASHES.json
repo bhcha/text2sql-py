@@ -1,0 +1,11 @@
+{
+  "commit": "abd11b6db92a1c9f809b32f7564c7c71b34d67f0",
+  "sha256": {
+    "evaluation_ex.py": "da1bbcd4530be83692d7c650c814ea9704bb710d0c953eb75d02ccb38233cf89",
+    "evaluation_utils.py": "f6943d249caac5aeaef9bce21d43dbf29dcef85a0c965a76df032a9542f308bf"
+  },
+  "reference_sha256": {
+    "run_evaluation.sh": "22e9f3e0254cf92895c40b08e08f52c846be76a8b22479f413f9ff3714c1ee87"
+  },
+  "reference_note": "reference_sha256의 파일은 채점에 쓰지 않는 근거 보존용 원문이다(실행하지 않는다). run_evaluation.sh는 2026-10-21 고정 커밋 raw 주소에서 받았고 SQLite 난도 파일을 \"../sqlite/mini_dev_sqlite.jsonl\"로 가리킨다."
+}

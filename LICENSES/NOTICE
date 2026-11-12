@@ -1,0 +1,37 @@
+text2sql-py 고지
+
+Copyright 2026 bhcha
+이 저장소의 코드는 Apache License 2.0으로 배포한다(전문: 루트 LICENSE).
+아래 제3자 구성 요소는 각자의 라이선스를 따른다.
+
+이 저장소에는 아래 오픈소스의 코드를 복사해 고친 부분(1, 2)과 고치지 않고 담은 부분(3)이 들어 있다.
+
+1. CHESS
+   https://github.com/ShayanTalaei/CHESS
+   커밋 3d6e835f858d26885d21d4bc0215aeecf855efbe
+   라이선스 Apache License 2.0 (사본: LICENSES/Apache-2.0-CHESS.txt)
+   CHESS 저장소에는 NOTICE 파일이 없다.
+
+2. DAMO-ConvAI
+   https://github.com/AlibabaResearch/DAMO-ConvAI
+   커밋 faf754671f5b850e1b4d1ff870db37a6a2480df6
+   라이선스 MIT, Copyright (c) 2022 Alibaba Research (사본: LICENSES/MIT-DAMO-ConvAI.txt)
+
+복사해 고친 파일에는 파일 머리말에 출처 저장소, 커밋, 원본 파일과 줄, 바꾼 것을 적는다
+(Apache License 2.0 제4조 (b)의 "고친 파일에 바꿨다는 표시"에 따른 것이다).
+
+MAC-SQL(https://github.com/wbbeyourself/MAC-SQL, 커밋 31a9df5e0d520be4769be57a4b9022e5e34a14f4)은
+위 커밋의 저장소에 라이선스 표기가 없다. 그래서 코드와 문장을 복사하지 않고 동작만 다시 구현했다.
+
+3. BIRD mini_dev 공식 채점기
+   https://github.com/bird-bench/mini_dev/tree/abd11b6db92a1c9f809b32f7564c7c71b34d67f0/evaluation
+   커밋 abd11b6db92a1c9f809b32f7564c7c71b34d67f0
+   evaluation_ex.py·evaluation_utils.py를 고치지 않고 src/t2s/eval/vendor/bird-minidev-abd11b6/에 담았다
+   (sha256은 같은 폴더 HASHES.json). run_evaluation.sh는 근거 보존용이고 실행하지 않는다.
+   mini_dev 저장소에는 LICENSE 파일이 없고 README(같은 커밋 13행)가 저장소를 CC BY-SA 4.0으로 표기한다
+   (https://creativecommons.org/licenses/by-sa/4.0/). 그래서 이 두 파일은 CC BY-SA 4.0을 따르는 별도 구성 요소로 본다.
+   Apache-2.0은 이 두 파일에 적용되지 않는다. BIRD 자료 자체도 CC BY-SA 4.0으로 배포되며 이 저장소에는 담지 않는다.
+
+파일별 자세한 출처는 docs/provenance.md에 있다.
+
+이 저장소 자체의 라이선스는 Apache License 2.0이다(2026-11-13 지정).

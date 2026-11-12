@@ -1,0 +1,10 @@
+{
+  "ts-pure-fix.json": {
+    "source": "text2sql-harness benchmarks/baselines/pure-fix.json",
+    "ts_commit": "ea43e08ebd07b0e04219c0c60aa878d807c8fd01",
+    "sha256": "213a134772652df5bb52ddb16873ed7ea2b627a850cf102b1bd8aff9d44513db",
+    "run_id": "20261107-p3-notused",
+    "ex": "263/500",
+    "note": "바이트 그대로 복사했다. 정답 SQL과 모델 SQL 원문은 없고 위치별 판정(ex_match)과 최종 SQL의 sha256만 있다. 덮어쓰지 않는다."
+  }
+}

@@ -1,0 +1,4710 @@
+{
+  "pack": "pure-fix",
+  "run_id": "20261107-p3-notused",
+  "run_dir": "benchmarks/runs/pure-fix/20261107-p3-notused",
+  "set_at": "2026-11-07T05:37:52+00:00",
+  "run_manifest_digest": {
+    "sha256": "75a1fe697dc9b111ee20dd278fce965cb21793b432b3614b81b23da46219fee7",
+    "benchmark": "BIRD Mini-Dev",
+    "split": "dev SQLite SELECT-only",
+    "run_id": "20261107-p3-notused",
+    "denominator": 500,
+    "sample": false,
+    "metric": "EX",
+    "data": {
+      "archive_sha256": "cc48ba16838204e4e214512030cb572eeb5f7bcdd999bae4b9b6ff12ec13b92f",
+      "questions_sha256": "4ba5fa8de55856222f484d380d2ba872b380bf79d825de70478e2120cb0fc43b",
+      "gold_sha256": "6fb891aa8e1d948499de3295a24dd18d783d7ac04971908cbe2533436901af81",
+      "lock": "benchmarks/bird-minidev/questions.lock.json",
+      "lock_sha256": "82c83a01f133da964948117d12f23a74f5346b3c563438d1b8a6aa617e0ef88e"
+    },
+    "evaluator": {
+      "commit": "abd11b6db92a1c9f809b32f7564c7c71b34d67f0",
+      "files_sha256": {
+        "evaluation_ex.py": "da1bbcd4530be83692d7c650c814ea9704bb710d0c953eb75d02ccb38233cf89",
+        "evaluation_utils.py": "f6943d249caac5aeaef9bce21d43dbf29dcef85a0c965a76df032a9542f308bf"
+      },
+      "vendor_dir": "benchmarks/vendor/bird-minidev-abd11b6"
+    },
+    "evidence_policy": "not_used",
+    "engine_input_policy": "질문 문장만 넘긴다(evidence를 받을 수 있는 팩이지만 넘기지 않음). 정답 SQL·question_id는 넘기지 않는다.",
+    "pack": {
+      "id": "pure-fix",
+      "name": "퓨어 트랙 P3: pure-profile + 생성 SQL을 실행해 오류·0행·NULL이면 MAC-SQL Refiner 템플릿으로 고치기(원본 MAX_ROUND 흐름, 최대 3번)",
+      "kind": "생성 LLM · Codex CLI 구독 경유 · pure-profile(예시 행 3개 + 값 검색 + 열 프로파일) 위에 실행 피드백 수정(MAC-SQL Refiner, 최대 3번) 하나만 더한 것 · 문항당 2~5회 호출",
+      "extends": "pure-profile",
+      "engine_commit": "faf754671f5b850e1b4d1ff870db37a6a2480df6",
+      "stages_version": "1.1.0",
+      "pack_json_sha256": "84b27641e5e43a60dd792c895138ed78af637d499af6a1c9da4b7da021e5cd86",
+      "pack_code_sha256": {
+        "engines/pure-fix/pack/attach.ts": "e35b44e604a7c950ab297aaf1e872f8d4e2aabdf324ab69476a67d8de2d71597",
+        "engines/pure-fix/pack/embed.ts": "aabea464cfc187fdd6ba44580f40be1e3f3dd0f5625d8ec3f6bb5b16f1d5d4bd",
+        "engines/pure-fix/pack/exec-worker.ts": "84164bb4c4d6da53e6561ecfa2ad1ae744066872c1319d970b80f6988a300d77",
+        "engines/pure-fix/pack/exec.ts": "c577b60ea2b46c8a56b3fbf0fc3aa06d054f03685a5b6cd118b28092c99edaa8",
+        "engines/pure-fix/pack/extract.ts": "8bc381f3abdc4951e981c3285644c931a426384f5b19bf296efed5ab28d707ad",
+        "engines/pure-fix/pack/fix.ts": "9e5f8613e3d68d8d2b3153981ae7ca31b135a3515febcb5f50bef3871af74e6b",
+        "engines/pure-fix/pack/index-copies.ts": "b5cc21d5848d0fa10ba07fa03961f5bcfe41c7761cd0ebb56b7beab559b629a3",
+        "engines/pure-fix/pack/index.ts": "6808f19fbf1acc6f1e90604a91fa69eca89042835fd0ce4897d51f857af7bf78",
+        "engines/pure-fix/pack/keywords.ts": "074c16c0c6b0e5bffe583458ccceae76ace9dd7679ce1217ace85af8d7159a6f",
+        "engines/pure-fix/pack/llm.ts": "243c35c4d352298f60e0c2b2f15dd0c07737226339f201d0ff134697f4c6b7a0",
+        "engines/pure-fix/pack/parsers.ts": "907fe8adea444a927e64725505ae8cfd13a3958d594283f32f33495005d862a9",
+        "engines/pure-fix/pack/profile-copies.ts": "08ad56cddf43f749abf7b7104c3e99151711e964f4638ae86fcdadfa97c79c06",
+        "engines/pure-fix/pack/profile-line.ts": "49d329017a5d09d5acbd426cd3fc6df1fb241ce39a0184b610b073d619ab3f8a",
+        "engines/pure-fix/pack/profile.ts": "310e81ff4837986a7a00967c3ba4663bce32f3c1781fb33c71a202ce130f1075",
+        "engines/pure-fix/pack/prompt.ts": "bd462d60da5a579470c9032d0e0e2b4195f9418c90989d49d2e33b93308460ac",
+        "engines/pure-fix/pack/pyrepr.ts": "f399b787826e551f73a684cd40628bd5a9c7125ee7e1fa370846d9447d1d632b",
+        "engines/pure-fix/pack/run.ts": "cbda1d6192073063f92935fb13a8caa1c7f2aebf741b8544394987fb50158561",
+        "engines/pure-fix/pack/schema.ts": "3bc0d8ca2be27c97df9de3054102992c3e41a85c55dd31a78bba0b7465ea8aa8",
+        "engines/pure-fix/pack/sqlscan.ts": "7071b8bf83902bd6de86d084f806fdc5b73e420c681a5a8397a315bcceaec1a0",
+        "engines/pure-fix/pack/templates/refiner_template.txt": "a44d45a291ac87a8a4f2f130fea244a5a7ba342d47380951d9bbe066f1a72b65",
+        "engines/pure-fix/pack/templates/template_extract_keywords.txt": "4ffe8fdcb1d9c8b07ab27c15c2fd53195406b87541d3b43ee7fd0889c8eeba17",
+        "engines/pure-fix/pack/values.ts": "e9d5c0776f4d881ea2e60d98c957a5eef453368b3f9cc691d2eb419d995eaf01"
+      },
+      "runtime_command": [
+        "node",
+        "--disable-warning=ExperimentalWarning",
+        "engines/pure-fix/pack/run.ts"
+      ],
+      "runtime_timeout": 1530
+    },
+    "measurement": "local",
+    "run_at": "2026-11-07T04:58:03+00:00",
+    "elapsed_seconds": 2019.81,
+    "workers": 4,
+    "keep_trace": false,
+    "python": null,
+    "node": "22.22.1",
+    "git": {
+      "head": "671d58bb754a893c271bfd3ecdd5555c92cf3a58",
+      "engines_or_benchkit_dirty": false
+    },
+    "status_counts": {
+      "generated": 500,
+      "no_sql": 0,
+      "exception": 0,
+      "unsupported": 0,
+      "env_failure": 0
+    },
+    "records": {
+      "file": "records.jsonl",
+      "sha256": "b226f2546cee86b32c76e6918762e6b81d1203985ccc870a75fbafb018d05417",
+      "count": 500,
+      "status_counts": {
+        "generated": 500,
+        "no_sql": 0,
+        "exception": 0,
+        "unsupported": 0,
+        "env_failure": 0
+      }
+    },
+    "replay": null
+  },
+  "summary": {
+    "label": "BIRD Mini-Dev / SQLite / cc48ba16 / 500문제 / EX / evidence not_used / 로컬 측정 / gpt-5.6-terra·추론 medium·codex-cli / 1회 실행",
+    "sample": false,
+    "denominator": 500,
+    "ex_total": {
+      "correct": 263,
+      "denominator": 500,
+      "percent": 52.6
+    },
+    "by_difficulty": {
+      "simple": {
+        "correct": 99,
+        "total": 148,
+        "percent": 66.89
+      },
+      "moderate": {
+        "correct": 132,
+        "total": 250,
+        "percent": 52.8
+      },
+      "challenging": {
+        "correct": 32,
+        "total": 102,
+        "percent": 31.37
+      }
+    },
+    "by_db": {
+      "debit_card_specializing": {
+        "correct": 14,
+        "total": 30,
+        "percent": 46.67
+      },
+      "student_club": {
+        "correct": 31,
+        "total": 48,
+        "percent": 64.58
+      },
+      "thrombosis_prediction": {
+        "correct": 10,
+        "total": 50,
+        "percent": 20
+      },
+      "european_football_2": {
+        "correct": 30,
+        "total": 51,
+        "percent": 58.82
+      },
+      "formula_1": {
+        "correct": 30,
+        "total": 66,
+        "percent": 45.45
+      },
+      "superhero": {
+        "correct": 41,
+        "total": 52,
+        "percent": 78.85
+      },
+      "codebase_community": {
+        "correct": 33,
+        "total": 49,
+        "percent": 67.35
+      },
+      "card_games": {
+        "correct": 23,
+        "total": 52,
+        "percent": 44.23
+      },
+      "toxicology": {
+        "correct": 25,
+        "total": 40,
+        "percent": 62.5
+      },
+      "california_schools": {
+        "correct": 10,
+        "total": 30,
+        "percent": 33.33
+      },
+      "financial": {
+        "correct": 16,
+        "total": 32,
+        "percent": 50
+      }
+    },
+    "status_counts": {
+      "generated": 500,
+      "no_sql": 0,
+      "exception": 0,
+      "unsupported": 0,
+      "env_failure": 0
+    },
+    "correct_by_status": {
+      "generated": 263,
+      "no_sql": 0,
+      "exception": 0,
+      "unsupported": 0,
+      "env_failure": 0
+    },
+    "cross_check": true,
+    "data_unchanged": true,
+    "integrity": {
+      "records_sha256": "b226f2546cee86b32c76e6918762e6b81d1203985ccc870a75fbafb018d05417",
+      "ex_sha256": "234629aaaf5f2f3cdeb1bc917ad9a418df926e28a3c747715492930137b420bd",
+      "run_manifest_sha256": "75a1fe697dc9b111ee20dd278fce965cb21793b432b3614b81b23da46219fee7",
+      "predictions_sha256": "a4f77df85b47e86294a00adecf16307f3ef6fec9e55eca6bfd996ad2cecc5d72"
+    }
+  },
+  "rows": [
+    {
+      "position": 0,
+      "question_id": 1471,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bb8e7b254bfef7741aacf7000ac17e7b07218479d714f2348e3239cc96fd22f7"
+    },
+    {
+      "position": 1,
+      "question_id": 1472,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5f11cfdf5c07ba38f87e4d7b395bce7c457d7bbd137c83ff068fb83511aa1582"
+    },
+    {
+      "position": 2,
+      "question_id": 1473,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "94fca641510eee87b28686a9649509ffa02641819f84b8ac7888d65dd99f7a39"
+    },
+    {
+      "position": 3,
+      "question_id": 1476,
+      "db_id": "debit_card_specializing",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "597d3c1ba32ba5be57423e7f86288d0ac2f03560ccb763d7c7d17cf27130b929"
+    },
+    {
+      "position": 4,
+      "question_id": 1479,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d97227a11d27548b831ccb2890fc8b9186633facacf30c89bf29fa4e6c77ad37"
+    },
+    {
+      "position": 5,
+      "question_id": 1480,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "53881f377b3ac0f721d75e497d16daabcc813f8c0eb7d0f6ed108230d4934117"
+    },
+    {
+      "position": 6,
+      "question_id": 1481,
+      "db_id": "debit_card_specializing",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "291f6f48a60e1c0a214f9b86641df739a25759a08c8ba3d66923a6d3c1e8b798"
+    },
+    {
+      "position": 7,
+      "question_id": 1482,
+      "db_id": "debit_card_specializing",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d8f551165bca2a9fc2d20c9b90be89c655a1a5c297d123a26ae4ef435c037105"
+    },
+    {
+      "position": 8,
+      "question_id": 1483,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c140bdf6dcac7314b03804736cd22657bbb70c7c8da61ccb7d32db4fc7a46842"
+    },
+    {
+      "position": 9,
+      "question_id": 1484,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "1d7470f9bdb532e4a452a36152a44458c7d42d3bc62da05465d74d569c1566c6"
+    },
+    {
+      "position": 10,
+      "question_id": 1486,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2a39c196c07ed418572392aca30f734d296579333ebb8e25c74644bde64ef097"
+    },
+    {
+      "position": 11,
+      "question_id": 1490,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "02df338fea29e4df498c4fdf495e9b1c38f038f2d4fc2925fc78d3f5e8b1ddd5"
+    },
+    {
+      "position": 12,
+      "question_id": 1493,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "cfbc0f49883d8a244efed1b6b547f83f627f3aea05f31b4ca6c3940cf3068d37"
+    },
+    {
+      "position": 13,
+      "question_id": 1498,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "19eb1ff85a5c0da97291e58a3131494bf5b820da0f8c7ea1964daa634975b678"
+    },
+    {
+      "position": 14,
+      "question_id": 1500,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "5220d76bcc94caa7f6ce28c2bc5b5e5e9d1d65c5caaa2a648b87147a7befe28b"
+    },
+    {
+      "position": 15,
+      "question_id": 1501,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "49b9339810a5db539755b2c102f6069839b63fc2e4cff07bc6989737fb95a27c"
+    },
+    {
+      "position": 16,
+      "question_id": 1505,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "0883254d004ff8c65349ce15b36b00add6363d8328aff4fbba28fe76359dfbb4"
+    },
+    {
+      "position": 17,
+      "question_id": 1506,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "027c3c732700814f2a9912540fede57d6eff226c757d04025148e3d6a7a621af"
+    },
+    {
+      "position": 18,
+      "question_id": 1507,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c864c6ccbabf18aa6aef863fa0f51daa7303ff92f2480114923dabd92362eeab"
+    },
+    {
+      "position": 19,
+      "question_id": 1509,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "60a1ada761841f2f75b4a5f6fbd34ab2ca27fdd9eeb5b772c6646990c4db6730"
+    },
+    {
+      "position": 20,
+      "question_id": 1514,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "4966c0fba957de7d8e420633630a6fd3897b9920d88d35756d4114cf35fbe86f"
+    },
+    {
+      "position": 21,
+      "question_id": 1515,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a25467a7a9eed13bb721c54d53f5d26df68b90f2a34b720d2d9938415010ee09"
+    },
+    {
+      "position": 22,
+      "question_id": 1521,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9a9c91841c6307a7caa6c848e1935254140c116926ef8f4a86d65a252a1d14d9"
+    },
+    {
+      "position": 23,
+      "question_id": 1524,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "75976eac6c7a3c4aa9c94f4746d2ed224a06caecfadf6519240d1b613bd918a2"
+    },
+    {
+      "position": 24,
+      "question_id": 1525,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "5ea9225f57d6e80c6440aba5765c826c85da7af51c046758f35a312171dafdf9"
+    },
+    {
+      "position": 25,
+      "question_id": 1526,
+      "db_id": "debit_card_specializing",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "10bd6b510defdc895f93376da8339973271365ca754b5acd3d42cc3f34c2d8b7"
+    },
+    {
+      "position": 26,
+      "question_id": 1528,
+      "db_id": "debit_card_specializing",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d9c54fdbfc4c65fe7cdba41ac3dcbe6c44f76245b17c675dd13ffca292a94d3a"
+    },
+    {
+      "position": 27,
+      "question_id": 1529,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a9879b16fa4e4d1bb496572ebb0cffde3098ec152b801114573a971918f88a0a"
+    },
+    {
+      "position": 28,
+      "question_id": 1531,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "75bd9473138b28e06f936685799a48e22883d565668a3ea5b91e00fb0cdada59"
+    },
+    {
+      "position": 29,
+      "question_id": 1533,
+      "db_id": "debit_card_specializing",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6ecde94adb2ceff29f75cba097be2ceb196223b8d64c58d458b371cc89942286"
+    },
+    {
+      "position": 30,
+      "question_id": 1312,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "cbad1862fc818635ec3b1c24befc9e3b415315149e5b60bdded0c1cc115c531c"
+    },
+    {
+      "position": 31,
+      "question_id": 1317,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "872931ca9f799d3c0f21e3ae8d3b3339b6b7be96fa51f1f4f6825fda63d7c014"
+    },
+    {
+      "position": 32,
+      "question_id": 1322,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "cbe01a0c1799baef22196359f726d1d7a7641e810b73825c2401cdafd3d58673"
+    },
+    {
+      "position": 33,
+      "question_id": 1323,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "cffd89ecfe531593947bea0c8dd0e34fb990685dcf5c77f385309a0bcbaa083a"
+    },
+    {
+      "position": 34,
+      "question_id": 1331,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "467022dc75b821343a94bbf4dede26c74f636c805a3fe689e8fc46e64a469509"
+    },
+    {
+      "position": 35,
+      "question_id": 1334,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "5f09dacf0e878a0223f3cc0c63ad0e4934a3935b4ad26c11342eeb04f123674a"
+    },
+    {
+      "position": 36,
+      "question_id": 1338,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "62f2a958b6ea6dbdd9977f43bf4afb39fa4a1c0351a2523cfdf79ed8a0b32b78"
+    },
+    {
+      "position": 37,
+      "question_id": 1339,
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c4ed24cf195667201f8027fc29d6646009f2a2e0a9040a1e519428137363ce34"
+    },
+    {
+      "position": 38,
+      "question_id": 1340,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "738b2f99ba15fb1cacb7a52ce5c0dfc6cc7b233cbdf6993e1816c6b6280b92ff"
+    },
+    {
+      "position": 39,
+      "question_id": 1344,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "2a87932262c9fe455e40e98bbb2598ab053f0dfce91bf677490c7c9f3c6eda2d"
+    },
+    {
+      "position": 40,
+      "question_id": 1346,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "6420fd10833dccc49da75591ec13fa542c5f747ae1ff8be99e7ef91927c20f3b"
+    },
+    {
+      "position": 41,
+      "question_id": 1350,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b89b7c387557b424793f41e58f641ddff3600f55f6ad4002a154bc92246ddfac"
+    },
+    {
+      "position": 42,
+      "question_id": 1351,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d394eeb28e4c1e9ac2074eee8c6245f58795b54a89aeb1ed9628cfa703227999"
+    },
+    {
+      "position": 43,
+      "question_id": 1352,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "6846db888256ee8cea8b0b6fbec2ada9029ba9b339644106885c1d4e7473afbc"
+    },
+    {
+      "position": 44,
+      "question_id": 1356,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "1a15d0d74e1ede21b66cf8b908ef3a24074ca23f136b69304d9202cf8ab7545f"
+    },
+    {
+      "position": 45,
+      "question_id": 1357,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b10a02b7415fad8e1a493f791714e625badbc3fb309fdbd3608929f4b8273100"
+    },
+    {
+      "position": 46,
+      "question_id": 1359,
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "203924a0b85ced3e5ee0139ae07bbd3d4f734ee91066f4426e9dd79c1cd7efc0"
+    },
+    {
+      "position": 47,
+      "question_id": 1361,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e96569b95c35079f6071dff8a29e8c15e33c077e2d70dc81dae37c603e156f61"
+    },
+    {
+      "position": 48,
+      "question_id": 1362,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c0248b342ae56ef015b23d18add3c349569916d8f96265ad08afdacd41044bc3"
+    },
+    {
+      "position": 49,
+      "question_id": 1368,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "095ecdd7d26549981db3c8098e00db73a1027e88308ef37489d8293f069e756d"
+    },
+    {
+      "position": 50,
+      "question_id": 1371,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "73fa0f02accb8df2177d8532e36a98e5092ffed39b573e99649dc29762394610"
+    },
+    {
+      "position": 51,
+      "question_id": 1375,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "dd3eb8538c8ad9a3746d076491220d495364e1efa78347c0b07f0036e04ae07c"
+    },
+    {
+      "position": 52,
+      "question_id": 1376,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "96c6b5f68c6dec0ef495041a2d62f12a57804fdaf4c182edc1b7bc35a299e7ca"
+    },
+    {
+      "position": 53,
+      "question_id": 1378,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "dc180bc93e05e49b0dbea1b7d6c1709951c7439903c59aad103494109941f848"
+    },
+    {
+      "position": 54,
+      "question_id": 1380,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "faed9b737942d69a7417ea46fefe818ddbe64c0e7dc005f9c51a1dc5d5d452f8"
+    },
+    {
+      "position": 55,
+      "question_id": 1381,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "36b2878395b9c5b654e1450da7c4bb29dd7af491adcf9d8432f936be98a8787d"
+    },
+    {
+      "position": 56,
+      "question_id": 1387,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "723eeb1d2f52d98bd98e8781d24303387cb54b397a33d797327836d84dc54cd9"
+    },
+    {
+      "position": 57,
+      "question_id": 1389,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "217483a66e0988c9c9369ac17123464842635e96438bb9995e67ce7d275a7aec"
+    },
+    {
+      "position": 58,
+      "question_id": 1390,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "3994d4499a279c635b8fcdde974201533aad417cd84731b7c70d9e5fe315f9a4"
+    },
+    {
+      "position": 59,
+      "question_id": 1392,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e83aa6d0f15b2fc6562216945226688774be7a37e8a579a80596f59ada9387c4"
+    },
+    {
+      "position": 60,
+      "question_id": 1394,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "7db9a88c8cc374b5c6a3443fc2c70c100f75f5e7b29ccd25ea49deedd2710f09"
+    },
+    {
+      "position": 61,
+      "question_id": 1398,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "90b8d0ebe2379378ee3d531582792aec8899a6b7067e600df78cfa063b81d514"
+    },
+    {
+      "position": 62,
+      "question_id": 1399,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "01791fa27443906f861e5d9a931b9d3e2770ae76e2230739b93dec0b620d5c2e"
+    },
+    {
+      "position": 63,
+      "question_id": 1401,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "63dbdbdacbc8616f34e4b77fb023f6026b1021d9f223a96b6fb0704107a3edf2"
+    },
+    {
+      "position": 64,
+      "question_id": 1403,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "8a05586ebc5c443dee611d594abecec28ace40301bf0d507ba5367798d0328fb"
+    },
+    {
+      "position": 65,
+      "question_id": 1404,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "95ad97123a6678ce955c54e68033acfd2699a24541a2fa79adbbdba65ad2e8e8"
+    },
+    {
+      "position": 66,
+      "question_id": 1405,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bb0e405d8d3e5d1675aa27ce839408e4219a76232a3b2151796a43bf9618cf02"
+    },
+    {
+      "position": 67,
+      "question_id": 1409,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "03b541aad50635c151bf7ddea44ecc91aee11970a69b9a67a7e46fa46bb27678"
+    },
+    {
+      "position": 68,
+      "question_id": 1410,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ddc06f3d234f23dc90abeb650a255edadd30ab48e5312e491f490ea1340c9430"
+    },
+    {
+      "position": 69,
+      "question_id": 1411,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f1d5c0d2b9f4a8301892f826799648adff33137e0cbf002d928f17a821342e43"
+    },
+    {
+      "position": 70,
+      "question_id": 1422,
+      "db_id": "student_club",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f7e9044b7758be94a6a8cf9178b48ed8ce187d1eb040390718c49828abdd7cfd"
+    },
+    {
+      "position": 71,
+      "question_id": 1426,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f5799e4729ef9e1d7920eccb997bca4d971e511fb37a7f1afd52a4db90ef8353"
+    },
+    {
+      "position": 72,
+      "question_id": 1427,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "db1153e0a52212b7e196d35910fee81a9984deb5e06ebf3d698c28e10f6c0081"
+    },
+    {
+      "position": 73,
+      "question_id": 1432,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "251d83951a8ec8c43c0054cf492e739be7c7a0892ae03ab3efeacc1ccb25c7c4"
+    },
+    {
+      "position": 74,
+      "question_id": 1435,
+      "db_id": "student_club",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e00c0f5f9f00683910a0323c6fb9554c5ff55b3488233880e4f95c2d25867808"
+    },
+    {
+      "position": 75,
+      "question_id": 1457,
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "34099fe1c7f4dcde54a7ad0f1370173132e9882f5a653a3cbb3515aca1f396f4"
+    },
+    {
+      "position": 76,
+      "question_id": 1460,
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "39608cf667a17844e9308696b24f2dea1b5f82161e2aef339782c2a98aa64aae"
+    },
+    {
+      "position": 77,
+      "question_id": 1464,
+      "db_id": "student_club",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "398a833029bfb51b615b0c8e15db78ae04da6b7230ee66ba054e57aaf56d96db"
+    },
+    {
+      "position": 78,
+      "question_id": 1149,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "b6a9248576f4cecd68fbdb474b287fe93885604e48f87fe4da6aa0c42fac72f8"
+    },
+    {
+      "position": 79,
+      "question_id": 1150,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "36fd3b8b1ce192345fbdeee599ecd554a9cc0d80b9f0e480b6a27d7ea9ac5173"
+    },
+    {
+      "position": 80,
+      "question_id": 1152,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f51b9b116f1ac2699081a8dccd721ef018fa362a690788aaba8798f7600728f1"
+    },
+    {
+      "position": 81,
+      "question_id": 1153,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c7eab1dfe5faeed627bd08a037860c4b4044f9031f6cc33451bba9b07ad0c77e"
+    },
+    {
+      "position": 82,
+      "question_id": 1155,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d62ba8d8db5f6987afd5921d7cd28314a2c31a6f40fc04df24e2749fd430e9df"
+    },
+    {
+      "position": 83,
+      "question_id": 1156,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "674efdf8ca9eecf81391729ed8852ea7accdcb0be1ed6b68cdd41d8a265a889e"
+    },
+    {
+      "position": 84,
+      "question_id": 1157,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "915b89cd46868e1cfb90a4a3e3650fd38bd157726cda7f2e42417bec3b9a7503"
+    },
+    {
+      "position": 85,
+      "question_id": 1162,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "c28d522ce30a432f1adc0f69c461e7239bbf2171efb18e87a8dfe76911abca85"
+    },
+    {
+      "position": 86,
+      "question_id": 1164,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "4dcaef0e12985c9ab6a2242ea88dd424cf5391bac0be069b0374eea22fc5fbae"
+    },
+    {
+      "position": 87,
+      "question_id": 1166,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "0f7eda75ff32b6f6a42c97303363eb06de68b3afe7f147e6b79e1c8fcc449788"
+    },
+    {
+      "position": 88,
+      "question_id": 1168,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a229b2052e4247a5b2a32e331f70b8b10b7c5f687fa1531a883e2d6fb07b622d"
+    },
+    {
+      "position": 89,
+      "question_id": 1169,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a492dd56ab3ae0e5f7991b128b0f840b5d5207cbfe8a08e2c9e807fe166993bf"
+    },
+    {
+      "position": 90,
+      "question_id": 1171,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e6d758e7dbd11aee60bd6435eefb50956e73b0a97a240d50c92421bcc93b46b2"
+    },
+    {
+      "position": 91,
+      "question_id": 1175,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a352633fe3ddb585d397dfe1e7f0ae4f5eaf888b18fd1008b21571f8f9f7efad"
+    },
+    {
+      "position": 92,
+      "question_id": 1179,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "19ad35b8b6db3429a755657075c968ae4e595c44bcadaa74d574417d34e56b89"
+    },
+    {
+      "position": 93,
+      "question_id": 1185,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ef1e3a0d2d9f0458322c6b2323de3e2b5c68dacb988963d5ad6d6913ba79b74c"
+    },
+    {
+      "position": 94,
+      "question_id": 1187,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "4765d45ec225563eb68771dfa4f4aa575660a8786e490b9046bad62d526280ca"
+    },
+    {
+      "position": 95,
+      "question_id": 1189,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "fe1da13a5dee41104f1c2595b06ad66e139192976bec1be83f9b65d20e18795c"
+    },
+    {
+      "position": 96,
+      "question_id": 1192,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "eb054267425c1062901eacb0e573880cf1726c0b5d2e51ba382ac8119b36c61c"
+    },
+    {
+      "position": 97,
+      "question_id": 1195,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "2a39f36524af5f5e77ddae4e5199dea8fbd5820d9390ea892079eb02f4898476"
+    },
+    {
+      "position": 98,
+      "question_id": 1198,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "87a363c3d8a88a166d7bb4c795714092a6bc81c0f66e0869da08031e888e30f8"
+    },
+    {
+      "position": 99,
+      "question_id": 1201,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "aaa3c0e562082cbd0bcdd94dd24c19a878ea7093a042affd66c0b5221165849e"
+    },
+    {
+      "position": 100,
+      "question_id": 1205,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "51c674c66b7e8fed3680806afd4402d290aeac8a47b759df3e1461051fac6f20"
+    },
+    {
+      "position": 101,
+      "question_id": 1208,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e8eee2806acba1452a0eff42ccafb59b3931a6064481cdd9a2e786f346a4736d"
+    },
+    {
+      "position": 102,
+      "question_id": 1209,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9604ccc2eb835522b3dd5ddb1da978ad8fb8e16a855051b31bd972d5db0b7cfe"
+    },
+    {
+      "position": 103,
+      "question_id": 1220,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3e2bf6f09267e5eda97d4daf998f630bf6bf3c6ba80650f59c78f5a7b66b5ca8"
+    },
+    {
+      "position": 104,
+      "question_id": 1225,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "10e6f57eeec9d7ccd5f0709ceb10bd1b272c003175b773e9fcfbf7e93d242e99"
+    },
+    {
+      "position": 105,
+      "question_id": 1227,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "14e9e95644d40d29e37aea3554e7982da45421de1f0bc534e42156f24f051f5f"
+    },
+    {
+      "position": 106,
+      "question_id": 1229,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "92a6cdeda5a28177d4b689d603d30cd230f9e87b1f88c6f040305a7b009dc311"
+    },
+    {
+      "position": 107,
+      "question_id": 1231,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "075c4618b13a4a90167fdca40d5fabf414890ba75d08021f3c2a7f84329921cf"
+    },
+    {
+      "position": 108,
+      "question_id": 1232,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "36af48c2c60f766b480c8000adaa10969322ecf0547c144d40b6a77b8e8af580"
+    },
+    {
+      "position": 109,
+      "question_id": 1235,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2da5ccda792eb6ecac0a90b3562eafbc833af1bb2e7b5824a23da4a3e5a92c60"
+    },
+    {
+      "position": 110,
+      "question_id": 1238,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a843e6b00092c1df4a3ebb94ae1f076a7154e97b4f488ad481a49374c0d43f84"
+    },
+    {
+      "position": 111,
+      "question_id": 1239,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9d428cbaa404f452a61871fbce99c82186eecda4b0e0a45a49ee48dcbe7d4490"
+    },
+    {
+      "position": 112,
+      "question_id": 1241,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "4e3d5207747ff56c185509750744139bf720d4f27dfc896fda5f3f43c881e447"
+    },
+    {
+      "position": 113,
+      "question_id": 1242,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2baead0bbbdfdd139bfd0bdb9130e772b8cdd5fc8e5f7a946f31612ef6276a7b"
+    },
+    {
+      "position": 114,
+      "question_id": 1243,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a7c841ab3ff2fe7d18aa4fc5e3f183bc5a92e881724d323f34b38d03a26ee1a8"
+    },
+    {
+      "position": 115,
+      "question_id": 1247,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a393b0e0638074f47efe38e21f7b173ef3ccffd1286a0723fbe36353d9f04657"
+    },
+    {
+      "position": 116,
+      "question_id": 1251,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "dc465536af0561946363e0f70845d205495e387a8381069c880f77eaddc33698"
+    },
+    {
+      "position": 117,
+      "question_id": 1252,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "bd91b594751bab41bb6d7fa87151aabf521917d98b22ebbafd363352a78cac39"
+    },
+    {
+      "position": 118,
+      "question_id": 1254,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "8cca79c6de38390727956fdf7e6988c7f20c2c61628391d99e944c8c7bf9b96b"
+    },
+    {
+      "position": 119,
+      "question_id": 1255,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2014d43267f8e6981f4bd4e4a9a9ab8cb9741f646ba92edb207a2af90cd91cb1"
+    },
+    {
+      "position": 120,
+      "question_id": 1256,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3e312c5d6ac9c1c52f8062eb34405ae354ec0eba753c955f7d5494db364c8527"
+    },
+    {
+      "position": 121,
+      "question_id": 1257,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "bc12f8393c89537eb21b579c0b74df6f5450a63c786e2c799eef508e99cead64"
+    },
+    {
+      "position": 122,
+      "question_id": 1265,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d23ac378958bca66c42c24a533671393f2bcb68cac63bef98c6ff89beb5b0ca4"
+    },
+    {
+      "position": 123,
+      "question_id": 1267,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "21d8e07007f4451df69cd860c11ee8a838f557b2e91780a1c964a299f2a2ca87"
+    },
+    {
+      "position": 124,
+      "question_id": 1270,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "67dae2cc5e378e2960d9090d41ff33ba809be0ebb580640e8baf4e93b928ef65"
+    },
+    {
+      "position": 125,
+      "question_id": 1275,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a0b5a958573223dcd686c6ffd6c316edbf136c75c040043ca528a222d3032297"
+    },
+    {
+      "position": 126,
+      "question_id": 1281,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d7119e9c8c8c9f75082a16f3cf97fae2872a3262e269cbe0d63e2d923a66db0b"
+    },
+    {
+      "position": 127,
+      "question_id": 1302,
+      "db_id": "thrombosis_prediction",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "1c29594ea702976d43711a57d02c44f2f2172eb6979fe0b7a1513de156bc9ac1"
+    },
+    {
+      "position": 128,
+      "question_id": 1025,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "620367e57723d57bf6f890c926e4104a71d960a9fd128c9445318ccbdb21bbdd"
+    },
+    {
+      "position": 129,
+      "question_id": 1028,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "7714056782b2d31317327f0e9493f9a0e9aad2dd9078ff23ad3d97805808097b"
+    },
+    {
+      "position": 130,
+      "question_id": 1029,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "8e79ef645e17286b8456d69663a9b8bf164932e5d72bd6d7a01735b2ad0987db"
+    },
+    {
+      "position": 131,
+      "question_id": 1030,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b58f41b7ec271b1bb31f902a48ae1906c3bf163171afcf369ab13ec4ee1eb704"
+    },
+    {
+      "position": 132,
+      "question_id": 1031,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "eaeeb228f1046dced634fb1194be44036bcb0e0da92046d3debcfb0d862c9872"
+    },
+    {
+      "position": 133,
+      "question_id": 1032,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "07f61267401180199c9e533d22ea2377b09da418b7ac5fa572a6ebbdddac0fac"
+    },
+    {
+      "position": 134,
+      "question_id": 1035,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c845aa3d069039e05a98fbbde922d6e4c01735a5c5d0d77dae65ceab9b4927e7"
+    },
+    {
+      "position": 135,
+      "question_id": 1036,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a9c0f28d59a0a65e76acc7c79e7b6d95fd84723b804b028c87199e36273e4084"
+    },
+    {
+      "position": 136,
+      "question_id": 1037,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a9a04a401560a8a8d3b63f475a0d810bb074bddd271e93de090ee144f2768431"
+    },
+    {
+      "position": 137,
+      "question_id": 1039,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b3b231d08a4ec80b8fae6bc72ec6e850c5a9fe052238d7bb72dac48a6c404ebf"
+    },
+    {
+      "position": 138,
+      "question_id": 1040,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9ab685b9fcfa2f86bc73ea16a046140dacf2e3b127aecc21ccf9293622034d98"
+    },
+    {
+      "position": 139,
+      "question_id": 1042,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "1ce9d638b9c31fc930a72032163ea4ca3da7f579266b298482466ee6aec44717"
+    },
+    {
+      "position": 140,
+      "question_id": 1044,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "82c6e4cff018d00248fdad42033067e4aed9cd3ee8934c15ed9d8904b8187caa"
+    },
+    {
+      "position": 141,
+      "question_id": 1048,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d3f3feb611684d0a269eb6edc9d3a8ae1ffc56034dead3376ea14c0025912f2d"
+    },
+    {
+      "position": 142,
+      "question_id": 1057,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "1655d3d9c7c7c1ed2f05987be8344acbeedf348d2ac74c6c8462bb9069d29259"
+    },
+    {
+      "position": 143,
+      "question_id": 1058,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "7b65e5fb9ad74e9cd8caca1f8ce59d56932089dac1ee95ae3393cd04c0667ef2"
+    },
+    {
+      "position": 144,
+      "question_id": 1068,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "bb9da0839714d4a63420ccf01e315c2695709aa4ecfe108cc6840525bd4d3b2e"
+    },
+    {
+      "position": 145,
+      "question_id": 1076,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c4b7b58e8ada82146016069d6fa7a46e814c9a662946933206405a99e13b4003"
+    },
+    {
+      "position": 146,
+      "question_id": 1078,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0610ce95aedefd69d57efb028aee4c726ee2b2b5b74d211da5052a55db472b92"
+    },
+    {
+      "position": 147,
+      "question_id": 1079,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "84d0465e5c7fe425a770e6cab7b939bc3dd06a9d1bb66b57abd3199ff2aa4323"
+    },
+    {
+      "position": 148,
+      "question_id": 1080,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "dbd79c097ba8e9f8d79e8e11c20faa9952a028fb0d7e5843687bc1b233a0a3f8"
+    },
+    {
+      "position": 149,
+      "question_id": 1084,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ea4cea86825f178be0a987d6c1212cb6e7c62fae4b877b1f8e162208605553b9"
+    },
+    {
+      "position": 150,
+      "question_id": 1088,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "50d76ca92bbcf9dc490db925432e61c918ac0a19f19c1d3fc0071688b7f01726"
+    },
+    {
+      "position": 151,
+      "question_id": 1091,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "08891362efbd4e0af19b132d1c51cd3d80a58fe14b7957558cce427b10b4a3d7"
+    },
+    {
+      "position": 152,
+      "question_id": 1092,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2b853afac7a924e92319cac3e39f364ff04d10a99d703331744ec1f33545e7da"
+    },
+    {
+      "position": 153,
+      "question_id": 1094,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "945726b4f5739adbb06d4bb7798df8eda3d8ec82d4fdfb99f50c6242a2c942fb"
+    },
+    {
+      "position": 154,
+      "question_id": 1096,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "84a5e80c6a72d46d5d02536cfd617738219947040b019f7f439a07668918436b"
+    },
+    {
+      "position": 155,
+      "question_id": 1098,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "3245f3f5a9b5cad0280b56ede6749c6fc0a8fc67b323ae00c4ba22e59914c7e3"
+    },
+    {
+      "position": 156,
+      "question_id": 1102,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "7752a8af9e7cf119edd0ffcc46334eb6ebf726665198aba616b0fe038a6142eb"
+    },
+    {
+      "position": 157,
+      "question_id": 1103,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "fab8f22b589912d90ca3a03b81c97a743577abc725f8e21c06ecf67c47021b96"
+    },
+    {
+      "position": 158,
+      "question_id": 1105,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "6e2367b096fb7b240fd547ae2fb0f58780037fdf2a7388e1261fa23509fc01a6"
+    },
+    {
+      "position": 159,
+      "question_id": 1107,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6051ff03b83cde802b3b3cdabf5ccd7d0e0cffdaaa89f4277594b618f30a4989"
+    },
+    {
+      "position": 160,
+      "question_id": 1110,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a061bca450281ad8b64dc7a5771162c56651760fd0f022888255b9fd3f1bdd58"
+    },
+    {
+      "position": 161,
+      "question_id": 1113,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "4e1dae04cec42d5e36b4eacf7dc0aa481079340b19b2478f06ffdafae32d83c7"
+    },
+    {
+      "position": 162,
+      "question_id": 1114,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b7c42791d98404cedf0811019f8575d5bf7c4bc8195aa134d8d634620720f804"
+    },
+    {
+      "position": 163,
+      "question_id": 1115,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "be54e275b0c6b7f56320fbf82cbf1d3ebb3c584d9ecad2b512191262107f50f2"
+    },
+    {
+      "position": 164,
+      "question_id": 1116,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "84d0465e5c7fe425a770e6cab7b939bc3dd06a9d1bb66b57abd3199ff2aa4323"
+    },
+    {
+      "position": 165,
+      "question_id": 1122,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e7bc7b61e2d3fe2ea27a05daf9849bd5f13b3656667b22a7d98c05503fe02edc"
+    },
+    {
+      "position": 166,
+      "question_id": 1124,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e9a9ce9367bd27c28b658f0d6c135e5a452b0246f10a6869bfd952ec90f8efad"
+    },
+    {
+      "position": 167,
+      "question_id": 1130,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d2754d4b28be7c7432116243764c2470378976e3b927fc302e33b4f779a6fd96"
+    },
+    {
+      "position": 168,
+      "question_id": 1133,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6bb32b31363686aa7507dccf24c53e25aac5f475ca32280fc0a9b266dbb51fe0"
+    },
+    {
+      "position": 169,
+      "question_id": 1134,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5373bd6e0e9dbba16e631886e95c2801514dadf1272dfc03d26485f0f65e198e"
+    },
+    {
+      "position": 170,
+      "question_id": 1135,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "4c9dfbc2d392e9cd5e1945ecf2321d2daf686c83bdde1d9950e892ea1624b2b1"
+    },
+    {
+      "position": 171,
+      "question_id": 1136,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2975060a2e4d2cc3b758fc8c159df84bcb64b2589ad09272aa62960929bb036f"
+    },
+    {
+      "position": 172,
+      "question_id": 1139,
+      "db_id": "european_football_2",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "4baa904dea4ddd4a542cdd90553c9ad48b1c4bf9d62ed5c7f6787d0068222dd1"
+    },
+    {
+      "position": 173,
+      "question_id": 1141,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9d2ded3273ca9eb71d50b2f37cb442bfd77b1f5e20ea7f90e204451fd99e3ce2"
+    },
+    {
+      "position": 174,
+      "question_id": 1144,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "577d4cbe9ec635d489947b6e7506fab76faa7bba1616e54022e071ca446b506a"
+    },
+    {
+      "position": 175,
+      "question_id": 1145,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a7903e6e8d8de27adbd244e9ee707c0f0257b3bd0f2c34ed5a5862b7b61e34c4"
+    },
+    {
+      "position": 176,
+      "question_id": 1146,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "928f21a86174646bee751cb96a6fdec04518873915173fe8f93ac1042aef92c0"
+    },
+    {
+      "position": 177,
+      "question_id": 1147,
+      "db_id": "european_football_2",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e7bc7b61e2d3fe2ea27a05daf9849bd5f13b3656667b22a7d98c05503fe02edc"
+    },
+    {
+      "position": 178,
+      "question_id": 1148,
+      "db_id": "european_football_2",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "4d5c1163415e4d3f395fc246c5353263dab7a42a338679047d2ddd8a1d9e955f"
+    },
+    {
+      "position": 179,
+      "question_id": 846,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9b357bfeff5f7748f9f4e54bf5856b6f481cac004dd534bee4d8159f4ca64545"
+    },
+    {
+      "position": 180,
+      "question_id": 847,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "b0ae7ec0cca6f929f0d83cc581bf2ed79c5e309c70c4a9295a9c08bc9bbef4cc"
+    },
+    {
+      "position": 181,
+      "question_id": 850,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "164c6d22991c3549da047db5acacf9fc69fc9b5b6508a8432ebc0617f7e35d34"
+    },
+    {
+      "position": 182,
+      "question_id": 854,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9c57961247db87eb845ede0b8036c532e9ee58d64b9af9bd262f04dd168e6bf7"
+    },
+    {
+      "position": 183,
+      "question_id": 857,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a893facaafae3cf2f60e395a7c5da19c86dec6f76d835a6edee3f8632e0987d9"
+    },
+    {
+      "position": 184,
+      "question_id": 859,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "eeb7da2a99c1ecedd2dcc9157e2d400da0e598e156c3985f1532e681b12ac419"
+    },
+    {
+      "position": 185,
+      "question_id": 861,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a09dde24296209b805238c2f30f2239d668090bb6e0ae3b80fd10762de7227ac"
+    },
+    {
+      "position": 186,
+      "question_id": 862,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "48300fd5c230ac1811a4093085c13268db2c45d4777f5112246a6373b5f61a68"
+    },
+    {
+      "position": 187,
+      "question_id": 865,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "689514fc8f15b76bf227490ef75a65675e40430a4a9b39475c3be8ed9a320a43"
+    },
+    {
+      "position": 188,
+      "question_id": 866,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0f19349b03ff6dd74542200335c879967a6fc6b1b80183ddebc05a323928e5a7"
+    },
+    {
+      "position": 189,
+      "question_id": 868,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "cd36b1ef3fb52001fb88f2d4978d6f5c6685009971ffe8f5371d1bb0357789b9"
+    },
+    {
+      "position": 190,
+      "question_id": 869,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "80ae6adc78ffc95ef4119e5eb7bdf5b219be66f3c7f36398057ab870d0dda2b6"
+    },
+    {
+      "position": 191,
+      "question_id": 872,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "2c6e467f61aac3e01488e35d3bbf8d1c0a18d54b6ba1acc5d1113d6774c6202a"
+    },
+    {
+      "position": 192,
+      "question_id": 875,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "edc46d4cda5a83707f6b940a85074fdf472f50941a2ac866713ab6b62d2197f4"
+    },
+    {
+      "position": 193,
+      "question_id": 877,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "eaa733a47447802d6e564d3a22ebcec969735dbb2e5f869d5eb740eca7b0b244"
+    },
+    {
+      "position": 194,
+      "question_id": 879,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "5367efb759dc29bd47a5e7e662ad75fd368a0652545c4cb294532c23ce37da85"
+    },
+    {
+      "position": 195,
+      "question_id": 880,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d1201d003085370b155eb423a6b398c47a6b89927f1d70ff0df456dc1f74f95d"
+    },
+    {
+      "position": 196,
+      "question_id": 881,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "73147329fa28ef4d6b8d643a8f62a903394cdee3ed82d2253878794c0801aa4d"
+    },
+    {
+      "position": 197,
+      "question_id": 884,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "09daebf28d1ab438bf063d0c5cababf1c00ae1eca8898593b12b3b13d13fe635"
+    },
+    {
+      "position": 198,
+      "question_id": 892,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "eb9c92adeb43f6394792ce083aabb06f27325a635b8580a722c9debe6d0c8c5b"
+    },
+    {
+      "position": 199,
+      "question_id": 894,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "aee08e666580f1eec17be995c6da6ce85a939e381e73ca5babf85a01e633aada"
+    },
+    {
+      "position": 200,
+      "question_id": 895,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "223e4cad840a74aed1effc0a3545535dd6442cafa43bdd38fd3ddca828d6021f"
+    },
+    {
+      "position": 201,
+      "question_id": 896,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "91f90f09d46ebbe6acf50bd512cc5549d5b19c2cf8fc030c9ca72c33f0387394"
+    },
+    {
+      "position": 202,
+      "question_id": 897,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d4950ec49d8fa65be6ccf02dc5ab5ca3e10553cce0e991fc00dd0b1df49bc770"
+    },
+    {
+      "position": 203,
+      "question_id": 898,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3aed45a7bd51e233780ce7987833c374268d1bb247d1475a6ae2a3af9d7019f4"
+    },
+    {
+      "position": 204,
+      "question_id": 901,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "55c14daef13ed9ff6d85442621ba938fc643a9bfa5b06e086cb9adde8e008742"
+    },
+    {
+      "position": 205,
+      "question_id": 902,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "baf9ca335d82fe71ce12c403014cc7c1cd67fb7231574695f5bb51449714c615"
+    },
+    {
+      "position": 206,
+      "question_id": 904,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3c154a3d4f97907bfeb7ebe645d526691d0e7313e19d3c5ff56169874e379bc0"
+    },
+    {
+      "position": 207,
+      "question_id": 906,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2ff1081ca047cf9e481f5bd74302bf398f705174cb069e98ebfdfe9ba1aa20a1"
+    },
+    {
+      "position": 208,
+      "question_id": 909,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "fedf5324bd480ecff4020eb7b6aa90aea4454c9069b97bf31e8c397243669f99"
+    },
+    {
+      "position": 209,
+      "question_id": 910,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "330d57f28e064e178d8a7d1947328769e9dc8dc62e3aaa2363d2edea12055849"
+    },
+    {
+      "position": 210,
+      "question_id": 912,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "099020a6905bc0941d4518a5f19a320aaed7372e23ca50f7083ba1e6b95f4913"
+    },
+    {
+      "position": 211,
+      "question_id": 915,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "704bc7ee952a30f33a2bbc31a0a434456280e820084c4a830af20e2607b7ca78"
+    },
+    {
+      "position": 212,
+      "question_id": 928,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f06a5b9de06e8e201580a879a6828df0abe0f1c8aafa5f269971242830cd6f9d"
+    },
+    {
+      "position": 213,
+      "question_id": 930,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "c549ffe131f270f31707246b34f947afbaea7db35040ac367dc43fc53dba7794"
+    },
+    {
+      "position": 214,
+      "question_id": 931,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "259cfae43e5494c94d193bb8a4ff0eca8d1fae9347b7a807e39716a9b131d69e"
+    },
+    {
+      "position": 215,
+      "question_id": 933,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f7e6f245d9d0c5e42e841bf542fb485961d5da922141ae171120c272945ac6e8"
+    },
+    {
+      "position": 216,
+      "question_id": 937,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "af199ffd2da230e8d0c5c2d4b1c175c91f2de1a78cf695d3ab4591021aa0ba9c"
+    },
+    {
+      "position": 217,
+      "question_id": 940,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "7b563adcca9578865e4c0bb75a7d8051cece7b31862b4a1653130bb1d41c77a7"
+    },
+    {
+      "position": 218,
+      "question_id": 944,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "fef389113ddede484a884824c1234bfa32fce793945abbcab9741f953418ff7b"
+    },
+    {
+      "position": 219,
+      "question_id": 945,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0cdbe86907f2a0cfe46541e1152f9acfc3157deb26d22646f9ac92500d5e0ccb"
+    },
+    {
+      "position": 220,
+      "question_id": 948,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d29de7b7b17307b676dcf1f9859daa388dfaaa01974fb8270e9f64ebe782edd4"
+    },
+    {
+      "position": 221,
+      "question_id": 950,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "b2fe161a2e274f30dbb1a46e55000b13e143f1c9706f41b511ec68672a512e39"
+    },
+    {
+      "position": 222,
+      "question_id": 951,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "824f0b3fc40c21d02e15e681ed2ccf5be5d7648b8186f9abe587b428cf531712"
+    },
+    {
+      "position": 223,
+      "question_id": 954,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "81af86e61b4d04f3e076070bc6dc2f95c1c22a8ba0be69398e245aacc27f2579"
+    },
+    {
+      "position": 224,
+      "question_id": 955,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "756c024fd18752689896d49907ba5a36a3b3b14a76013ca23dc678da70229731"
+    },
+    {
+      "position": 225,
+      "question_id": 959,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "7befb0d7ba3e715f129e9cab69e3d36e3997b2ff2ace42fbb81645db5fb7baad"
+    },
+    {
+      "position": 226,
+      "question_id": 960,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9e50d2d9de0e7aea9d2efb061f5214d879d7af21d83acb66c5ea67c48987d574"
+    },
+    {
+      "position": 227,
+      "question_id": 962,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "11707b586ded202de84a449c69476c546c8f8c5d2f36cbb3bab4ca5a4355c54d"
+    },
+    {
+      "position": 228,
+      "question_id": 963,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "23b8f584d433b11d12d5d8a0dc6a30fc368e1d5194914944c8a15b72e1fbd5a9"
+    },
+    {
+      "position": 229,
+      "question_id": 964,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "0885a57b073f125f9fe56f92240db194b15b568a923165ffe6db609cdf2a9210"
+    },
+    {
+      "position": 230,
+      "question_id": 967,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e4733e3dc604d4659b0aadb6075f45437cce28f8d5e8052c10572f40e6a4fb34"
+    },
+    {
+      "position": 231,
+      "question_id": 971,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "ee97a993232228dffc203e55a0837b66f39e4e56c14d33f1a22c0ecb96515637"
+    },
+    {
+      "position": 232,
+      "question_id": 972,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "84bbca191829008bcdbaaa7a4aeae61b933c797c2dec269fd479aed24be47898"
+    },
+    {
+      "position": 233,
+      "question_id": 977,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3e4cdf41b9ee2118634795b1ee0d96e3420bcbcd7f7651f3310438944a47eb22"
+    },
+    {
+      "position": 234,
+      "question_id": 978,
+      "db_id": "formula_1",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ea220da99a39f8584291170be2de5147888b6a6483bd2caffd97f47a86418a17"
+    },
+    {
+      "position": 235,
+      "question_id": 981,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e014f903eb1cb0bef9ac3f5f02c5fdcbad262baab9cc5505c0ba117e6451266b"
+    },
+    {
+      "position": 236,
+      "question_id": 988,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "8e0d75d47ad75d5ba9cc786a66ce4fe8e9a992b6f30a21753230889328295e5e"
+    },
+    {
+      "position": 237,
+      "question_id": 989,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a3324ab049df5af58744ef3596dde66347c3b35eeff92d23fefb3b051c7b0df9"
+    },
+    {
+      "position": 238,
+      "question_id": 990,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "4de8e264979cdc805cee0b82f7c8cb5d51d4f10c6a63d6725f195e1bd1ba5053"
+    },
+    {
+      "position": 239,
+      "question_id": 717,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "ea83bc8c4fd95462afd1087375daa0ee6d1fc0faecbb7d3bf31b563f56c208e7"
+    },
+    {
+      "position": 240,
+      "question_id": 994,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e7fc2077c973dc7b5642946e8f7408facf3cbf91f7068c5aeaeca0ab58256737"
+    },
+    {
+      "position": 241,
+      "question_id": 1001,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "510bc5003196d59e0459c8667e8feae4eb7556a3c6ffe73cdc19190d9c107591"
+    },
+    {
+      "position": 242,
+      "question_id": 1002,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2ce91e3f77136a42ab59d9f63e626ce399ac51205df9e9ab413bfae248dbd377"
+    },
+    {
+      "position": 243,
+      "question_id": 1003,
+      "db_id": "formula_1",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9c13c25583c56bb11080cf7ea667a806a6de940ad62a8ed287baa22ea9feceab"
+    },
+    {
+      "position": 244,
+      "question_id": 1011,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9035191c99cef70b1eaf036a708d6a76e9ff27a11cb49734786161fa3e61ef21"
+    },
+    {
+      "position": 245,
+      "question_id": 1014,
+      "db_id": "formula_1",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "25eddac13b82c7c71bded7a484444cdf5169650cae2c98e66caf08fa5359e598"
+    },
+    {
+      "position": 246,
+      "question_id": 719,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "2e63a82b5828f1eacce0e753d8389f22dbeca43a72c994a1bae3f00acb05e933"
+    },
+    {
+      "position": 247,
+      "question_id": 723,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a06bccdb26356ff2b4839b1920410d5c457a5c9ee715b5209d2551a0b1578315"
+    },
+    {
+      "position": 248,
+      "question_id": 724,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "8ee08d015cbe8114461c295f975e9bd748c24217a255ae433f3bfd9b3c57a119"
+    },
+    {
+      "position": 249,
+      "question_id": 726,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3897ca8970a127fbd7791692c8aa17fedb7383147e604102669d6bebfa968053"
+    },
+    {
+      "position": 250,
+      "question_id": 728,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "14d449026494e8eb4ab4e4944f2ec84d528cb208951a1a086b6f8b1b82bdcbb4"
+    },
+    {
+      "position": 251,
+      "question_id": 730,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "6aa466693042093efe226e8cad059516c35be81630d1ebef748a1c335633d099"
+    },
+    {
+      "position": 252,
+      "question_id": 732,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "745b7722ca92f3d94246e5a595df489d4a8537e5a69f3641817bfd389dc6caf6"
+    },
+    {
+      "position": 253,
+      "question_id": 733,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "fca32d85514c4fcd02ba6494dd92813614f2db9e0579c8ff69618e641e476e51"
+    },
+    {
+      "position": 254,
+      "question_id": 736,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "77856bd56d6b437340414d8503d38a060c7bbc3825d0ce0a93386f87bae98569"
+    },
+    {
+      "position": 255,
+      "question_id": 737,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "88716def89b9787e3820fa7c3f0e8b6f9ed920cbc022610222d8867f4cd3c7e4"
+    },
+    {
+      "position": 256,
+      "question_id": 738,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "436e13456ea024efc7b4b3ff5666c631adf6a524dc4c3bb4df04039c79a55b42"
+    },
+    {
+      "position": 257,
+      "question_id": 739,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "cdb0e21c801bbf35898f507815249a0133e4c83edea7258bb68c199e875dd717"
+    },
+    {
+      "position": 258,
+      "question_id": 740,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9e8065d329b8011cd85ef69cb38bbf9571217f36ede05358a2a8f0c2ac16e546"
+    },
+    {
+      "position": 259,
+      "question_id": 743,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "8ca7e8cf51c2f07f7f19a3328c4d34f4c15219c387d51418e766b9aa67d9dfff"
+    },
+    {
+      "position": 260,
+      "question_id": 744,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "dd0e1995ac049ea16a3c385fc2df81f78a6ddf26da05c2914ad0061f2b532531"
+    },
+    {
+      "position": 261,
+      "question_id": 745,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "118f52b298f86ea13a3d0177d228c676b8f39d814b81c918c2cc64456e580ba1"
+    },
+    {
+      "position": 262,
+      "question_id": 747,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "44d4f146fa6ba8e14ee67c554252f461a4737d4eee6ee5c31ee5d30a9fe96bf1"
+    },
+    {
+      "position": 263,
+      "question_id": 750,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "48856403e7b5f9bf9ccecf3cd24bfe9199bc0837163db43ee42b5a9f170de7d8"
+    },
+    {
+      "position": 264,
+      "question_id": 751,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5de70947928671627af541ccacceaee5ced365e093f7b1ea8dce68897b557069"
+    },
+    {
+      "position": 265,
+      "question_id": 753,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9e2db95032c5a6d2467745342fb10ed0a61b80e9249d6774dc7e603430e2a0b3"
+    },
+    {
+      "position": 266,
+      "question_id": 758,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5b1581d4b56f389f7e62053ea3704d8a38c294112b36928f8698d9527e609588"
+    },
+    {
+      "position": 267,
+      "question_id": 760,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "40803e45e878b14602862e2f984ed4f2b10f2830062cd5a66fa29490a8a32a7e"
+    },
+    {
+      "position": 268,
+      "question_id": 761,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5d79df6a1c0944dd803e66ddc9f6d6a96174d430e465054c991334355553abe3"
+    },
+    {
+      "position": 269,
+      "question_id": 764,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "270bfba19a3a9fdb76c3995ffae941d67718518875871cae4862c770ff4960a3"
+    },
+    {
+      "position": 270,
+      "question_id": 765,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c9589935c3f69e4417526f164000764d8fd57e5e75fc90e8f0a51cfbd0be4c79"
+    },
+    {
+      "position": 271,
+      "question_id": 766,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0bff1ad69af8258c03dec48cc797f86d14f3bdc826d45362c529b47e3d3e1ce6"
+    },
+    {
+      "position": 272,
+      "question_id": 769,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "476e4c9af07a72a335b5c157b350f2af580ed8690f38b6417c691ac2e91315d2"
+    },
+    {
+      "position": 273,
+      "question_id": 772,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f24d007dc13f34d759d4bd2354e55d00f2208e80fdd79882755bf8ffbf079870"
+    },
+    {
+      "position": 274,
+      "question_id": 773,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "dec98e9d9de2d7be3bf491a993c823e3ea19f732e703c3a8e28cb0f2fad26446"
+    },
+    {
+      "position": 275,
+      "question_id": 775,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "b6266e64ea96cb16d8b88c8b862e83551bc0d6acaca2342c231fa24274630e0f"
+    },
+    {
+      "position": 276,
+      "question_id": 779,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "45427767a0d9c438eaaca932a682b115a09bb9b55a5ca86494d55dd3d33c1d4b"
+    },
+    {
+      "position": 277,
+      "question_id": 781,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "65013e76dd5457ac94954043e32d91e56a4470525123e121c99ecdbbb8ee86de"
+    },
+    {
+      "position": 278,
+      "question_id": 782,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "25994d15dfa09d601b1149d5bc241d2961051c1da39e58777ae51aa29e8508ee"
+    },
+    {
+      "position": 279,
+      "question_id": 785,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "6a32951b681d79f9820b92c90b5675b50932defe4e9e7510ac34a906ba62cf53"
+    },
+    {
+      "position": 280,
+      "question_id": 786,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "39facd4b13bff4d4834a4c5b06114733f002784b07e8787af795eb41b9295a25"
+    },
+    {
+      "position": 281,
+      "question_id": 788,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3477400056793124acd0dba17d3a1bee4142780e0ef428668754d977576a49b1"
+    },
+    {
+      "position": 282,
+      "question_id": 790,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "327925795fc8d20a71e2fc94cb8e34177a8b2d8d3366a3b5fdd3487200811493"
+    },
+    {
+      "position": 283,
+      "question_id": 791,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "47a91d47cc6b06b649d8caa97068bcda94a8b0bb80ba2fbb278bc69bbc330955"
+    },
+    {
+      "position": 284,
+      "question_id": 792,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0df93a886bb31c97dfa9072370a02749fdae81a197e9173fc5a5e835cd1989e3"
+    },
+    {
+      "position": 285,
+      "question_id": 794,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d99b363a1c3185bf3680ec7624e77f72961ed03688614c4bb36b11c1fb0259bb"
+    },
+    {
+      "position": 286,
+      "question_id": 796,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a02a6b0f048cfab2e59dddd07967a72134a141ad107939a1bb056c278fcc057c"
+    },
+    {
+      "position": 287,
+      "question_id": 797,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "fc3baf1504bc679da02866537cc88f607b2f4e39ae8eb82b5fa18737526a00e0"
+    },
+    {
+      "position": 288,
+      "question_id": 798,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "49424acadcae7856ea6bc051661b3d9dd0e735891c9c577f97fb66e4496b86a5"
+    },
+    {
+      "position": 289,
+      "question_id": 800,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0629d79562d0f9bcf709b9b2a63d0bf9b89a574872c0759cd274fdbf9de13d2e"
+    },
+    {
+      "position": 290,
+      "question_id": 801,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0e4a9b65d63c4f42ed9c27a92bec418d3156302e37b0cc046fb8129ca0b4c9ab"
+    },
+    {
+      "position": 291,
+      "question_id": 806,
+      "db_id": "superhero",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "524bde6aaa90f1742a427da93cafa74a9d3b2c2a9b602762e980b9cb27597ee8"
+    },
+    {
+      "position": 292,
+      "question_id": 819,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "86bb92ac52e93ee8cd35a831c9f222d4ecace8cdecedbd98ea1fab2d37723e82"
+    },
+    {
+      "position": 293,
+      "question_id": 822,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f453dff46b58fc2c84631c8a5e8ee9f65856073f900d0a67fe4318014779ec15"
+    },
+    {
+      "position": 294,
+      "question_id": 824,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0af04c522c589218bc92aaa235311e879c62feb2aa5915c9508921622227a1e5"
+    },
+    {
+      "position": 295,
+      "question_id": 825,
+      "db_id": "superhero",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "78fa591ba8b537803013fc728cf2e8c4285eff219937a8f02a20039f168a73c3"
+    },
+    {
+      "position": 296,
+      "question_id": 829,
+      "db_id": "superhero",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "59d1fbf1e7d8bec69c7a41fc29fabe40f56b364a87f2a4425fcd1295abad8c6b"
+    },
+    {
+      "position": 297,
+      "question_id": 531,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e8b8e61a776eed77c2ed3a40b2f7cf30f37730befcf90d4b010d13c909d91cc1"
+    },
+    {
+      "position": 298,
+      "question_id": 532,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5d28d651535a542af230cb2386e1228103f78636c61e089245a39b6206f9136f"
+    },
+    {
+      "position": 299,
+      "question_id": 533,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a4b28768a7e543b0dbf6d65d8067415235f32f9d0ba7b5f196760e8eed561452"
+    },
+    {
+      "position": 300,
+      "question_id": 539,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "cd58cf0bf62d64dff4824a8a18e991f837273a2338493b7feecbd97586b20630"
+    },
+    {
+      "position": 301,
+      "question_id": 537,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c8ef57f350e8b8e698127d1048f2f0a81cf6fe07075188749948d214684fb4ba"
+    },
+    {
+      "position": 302,
+      "question_id": 544,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0ea271c5aa155e3a91ba0845594a05899daa5a6aa6b5b76c8ddd97bcc9f36988"
+    },
+    {
+      "position": 303,
+      "question_id": 547,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "8940dc7f659d700bdf9d8cb526380355b2311ea17e05f3c5e045c0b7107ccb01"
+    },
+    {
+      "position": 304,
+      "question_id": 549,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a01656465bdd0040b378d64621fe036cb05931ef54e3fc4fca50bb9ace18235c"
+    },
+    {
+      "position": 305,
+      "question_id": 555,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e32d24d58247b015980252657e5153db17e76886a751931dac8cac6298d9d71c"
+    },
+    {
+      "position": 306,
+      "question_id": 557,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a9a25443d22864d196eca089d90176b78bf017822d8831621b10e8bd6d298a6d"
+    },
+    {
+      "position": 307,
+      "question_id": 563,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b4313b019e2a84c61ab7052a3bcf21c8980a9d2e609538eeb912c92ae3a638f0"
+    },
+    {
+      "position": 308,
+      "question_id": 565,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2278879a7d28614717cff278b14972827cd877a39edbdb1945b59d25dcae2bb5"
+    },
+    {
+      "position": 309,
+      "question_id": 567,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d59d23294d20cd7e237a85b935362f7fd42096457b24770bed5a12dae041f9d1"
+    },
+    {
+      "position": 310,
+      "question_id": 568,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "89a234427a05c2a0a3d5931eb1814f1fc92d5be1a4c2ce0bba4daed475da48b4"
+    },
+    {
+      "position": 311,
+      "question_id": 571,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b885f78c60a8c1822a14984b1cd61797b069ed601093d1b47d937337cd6315e2"
+    },
+    {
+      "position": 312,
+      "question_id": 572,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "dfab63336a65afb9e8da3208bf017992ea60cf24837b2931d35f60d8caf7d698"
+    },
+    {
+      "position": 313,
+      "question_id": 573,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "388bc878d746c285bf042e7068ea47c4ed1a3e239c2a0e4a2b39549fab5e22a6"
+    },
+    {
+      "position": 314,
+      "question_id": 576,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b03995bb5c622572d8e69860436cbb3b5c4364c1b4672d6bc5fce605e553c73a"
+    },
+    {
+      "position": 315,
+      "question_id": 578,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "1528aa938b473a86c607f7014af9a86f9a808520f37e66c5d105db07e9dbb316"
+    },
+    {
+      "position": 316,
+      "question_id": 581,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "7fda28a1b3eabc7094c7eacfc6eadd904721a596d5d5c76aacf32769e84b8174"
+    },
+    {
+      "position": 317,
+      "question_id": 584,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "32798be805681b54bc792b5fe90fbb5772fb2a918353607ca0d803aef25b55d6"
+    },
+    {
+      "position": 318,
+      "question_id": 586,
+      "db_id": "codebase_community",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ab424d5a1a7a73d7d6e9fe75181fb0ce2ee8f89113bc24624adb00a49e93fb38"
+    },
+    {
+      "position": 319,
+      "question_id": 587,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "16c42faef42fd51d5990d193a20cdab0e9545b36f22203649ad74841bf758373"
+    },
+    {
+      "position": 320,
+      "question_id": 592,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "12c7b5521159d40f05c61eb6ce83d117443ed74f0a670fcfc447e3aa214a651b"
+    },
+    {
+      "position": 321,
+      "question_id": 595,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3ba5fa1abd70e6edebedb486e5ec9956b7f164d8f5c96a969b0bcad81130c0ee"
+    },
+    {
+      "position": 322,
+      "question_id": 598,
+      "db_id": "codebase_community",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "5fb05089ef872d44e7470bae1fc0cd6b2ef5a739bb3033a337fcbe1cd1f1b354"
+    },
+    {
+      "position": 323,
+      "question_id": 604,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "de6324a6495c1a9d94705290d856e0caed0b959ecdc32e07d4d699e67bc76739"
+    },
+    {
+      "position": 324,
+      "question_id": 629,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "eaee6210213ab6f38c6d2e7259d14641ec90265f21d816ece7ef4c1b918f6a19"
+    },
+    {
+      "position": 325,
+      "question_id": 633,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "ae53f4dcd83a72824d486eb89a56ba9b64c9294cc07b6aa05343abf838a69953"
+    },
+    {
+      "position": 326,
+      "question_id": 634,
+      "db_id": "codebase_community",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bcc0b8c3482bc475bd95b797fbb7df4d814b2bdf7fca85d2365d51891437d1c5"
+    },
+    {
+      "position": 327,
+      "question_id": 637,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f2d63f13d6508474d302f51112620a7c334c9500d7b7ba3feb9645845dc86906"
+    },
+    {
+      "position": 328,
+      "question_id": 639,
+      "db_id": "codebase_community",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2f4e5bdcda6ea164b5a83504dc8b4af15899393bbe1971b23547f77c95f6f7f5"
+    },
+    {
+      "position": 329,
+      "question_id": 640,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6c58fd1ae99efbeff09b53da0be34d225acbb8b1655eb5ca767f1763e15dd922"
+    },
+    {
+      "position": 330,
+      "question_id": 665,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d1d35ccaaa0cc83f00182f23420435e856de79200be6b382dbbf4daa359a9fb6"
+    },
+    {
+      "position": 331,
+      "question_id": 669,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "cc3f3572fa0bd12c2d4ac0ce6eef1a8d0a76d12df078ab3a6b125ab78448a818"
+    },
+    {
+      "position": 332,
+      "question_id": 671,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "99860eb4a0d2ba04fe7d5088a0902c3ee5f0d8efc5a2d16a4dc5bfa9a7e90918"
+    },
+    {
+      "position": 333,
+      "question_id": 672,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ae4dd210b8c9144b95f98365c531f809786c9faaeaea7b3ee8c093e0d699e37e"
+    },
+    {
+      "position": 334,
+      "question_id": 678,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "817b175d2edc0eeea9382fbd3e14cbe5f25272bbcf94a84d880cacb6030cf96d"
+    },
+    {
+      "position": 335,
+      "question_id": 682,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "76bdb2f7037fb9ff80d683a0ddc7c60a2af6bede235b8ed32dfb62e4a0aed272"
+    },
+    {
+      "position": 336,
+      "question_id": 683,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "184dad71d616382ffe00b988af1d2f60e8a3910dd2a254cc167b75b3d151a4c0"
+    },
+    {
+      "position": 337,
+      "question_id": 685,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "749067fc62124388811cbd79264f135f74fd9ae53cbd1ba8e4a8bcbb494daf0a"
+    },
+    {
+      "position": 338,
+      "question_id": 687,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "219f282a439bcca0455a83a88b755c0f0bfa819e6f330754cf226600d4989cc5"
+    },
+    {
+      "position": 339,
+      "question_id": 694,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "c7d613cb39ad245be681919fc65162faa9861bd8cca01b451da24de9cb7a918f"
+    },
+    {
+      "position": 340,
+      "question_id": 701,
+      "db_id": "codebase_community",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "35d1ea34673c131df51d04c41c13701b720d56814a65569e2045f19362b69a64"
+    },
+    {
+      "position": 341,
+      "question_id": 704,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c067795dcee1b3c9ae27cbdba23e2146e48888a585f206dbb67295aca92ae9d1"
+    },
+    {
+      "position": 342,
+      "question_id": 705,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "ff90aa075b024b730e729122df8f2c514be4e83c527df4356bb190d52ebf2b7d"
+    },
+    {
+      "position": 343,
+      "question_id": 707,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "4e72c6616b134cafcc935961237ed89af00a741e5159eae8328aa53268291d83"
+    },
+    {
+      "position": 344,
+      "question_id": 710,
+      "db_id": "codebase_community",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "26407c97faca8c1909af0d6b0f4352adb7407fa1441f2cb9a983633a66ad00ec"
+    },
+    {
+      "position": 345,
+      "question_id": 716,
+      "db_id": "codebase_community",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f618f79484eea33b17b8860967b5d5e881fce9f4d1f7e3231969034e2ae499e2"
+    },
+    {
+      "position": 346,
+      "question_id": 340,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f980d95895a5ccc8ad45d4ab35d19335c015e604bd4ddeb29225fdade2231541"
+    },
+    {
+      "position": 347,
+      "question_id": 341,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "c074ce5bc864945da9d46d8af28a1f7b9e9abbdb40cd6c46d5e0011a4b5cbecc"
+    },
+    {
+      "position": 348,
+      "question_id": 344,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "4886b87e45c81498502e80d1595726b5e077d9a0d46446186616bb179c54673f"
+    },
+    {
+      "position": 349,
+      "question_id": 345,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "c1a5676bcad7c61fd5a5543533d47d70de398b7c687f86de31b3f586a6ed0f7f"
+    },
+    {
+      "position": 350,
+      "question_id": 346,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f2b1289dabab296ba816cac108850987f59d9ae5ea6dc8d95cc60b891c871a4b"
+    },
+    {
+      "position": 351,
+      "question_id": 347,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "83a26c64d9979166b75d8429cf8b005ec6a5d3d2d1e1fdd07d1484ab77151bb2"
+    },
+    {
+      "position": 352,
+      "question_id": 349,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "3439db9b8b519eb92a9674d13a1b4aed67ba7c83143a6e46e875ef1c3a2d26d4"
+    },
+    {
+      "position": 353,
+      "question_id": 352,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "1f3716718b5d7ee6622ee6c8a054c8cd5d423393bff231bb271ce3fa062ee495"
+    },
+    {
+      "position": 354,
+      "question_id": 356,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "0ce39f4933c7d4bd95c5d3613e718e8c1c462a15ddf128c1f97fa2cf04ce1ac7"
+    },
+    {
+      "position": 355,
+      "question_id": 358,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "eef4e79a06f592beb06d78f5c316002a2a85b4ae963268fc7e704dfd059bd715"
+    },
+    {
+      "position": 356,
+      "question_id": 366,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "eeaaa02f9cf7ec379f56e0cd571eca26273647726e12537a365c2d6419a56613"
+    },
+    {
+      "position": 357,
+      "question_id": 368,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "4f297a58e66b6c36c4438cf543769cc170a1029b0fb15557a200a12be91da793"
+    },
+    {
+      "position": 358,
+      "question_id": 371,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a796a64f40dbb4b76ed8860ca640e95c98761a2a2d4905ce22242efaf626eeb9"
+    },
+    {
+      "position": 359,
+      "question_id": 377,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bce2a2400afc3f6fd4718c0b0af6c95c674d9bbc95dab824db496f3bdefde7ec"
+    },
+    {
+      "position": 360,
+      "question_id": 379,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "764e342861d2c2b40378638ebf070d87af95cae12b60e2fdcab90501ffaac0af"
+    },
+    {
+      "position": 361,
+      "question_id": 383,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9a4d6e0bad1cff255bbd67551fbcca86237e93275934b204e0484ba63a32dc5d"
+    },
+    {
+      "position": 362,
+      "question_id": 391,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "56826cbf381bbf5988d27e9525c8194363cecff3ce36fe30b763db6ab822477c"
+    },
+    {
+      "position": 363,
+      "question_id": 397,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b5e6c6c4bfde3832a00a390d78cbf07df362d667d316f4323167be810675e771"
+    },
+    {
+      "position": 364,
+      "question_id": 402,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "7b967a621a5e2692698f660af163bb61a2de1353d6796701c95eb3b15e4b8a99"
+    },
+    {
+      "position": 365,
+      "question_id": 405,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "af959835f01f94ac097b5f07599aa65afa2731c96c9fb674eaf06493e8322c6b"
+    },
+    {
+      "position": 366,
+      "question_id": 407,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "32d3bd4ddca830ef174dc4d06ca0459086917a9d458967d2e06efc6bb3526119"
+    },
+    {
+      "position": 367,
+      "question_id": 408,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "11f0bf2b110594e0db1211848227fe313944cdc1f5674fd56dd534eed17af1d3"
+    },
+    {
+      "position": 368,
+      "question_id": 409,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "511b3a2a32b71206e5edd5673cc3f2e36822804fcfc2d409aa5f2a055b3e8ca2"
+    },
+    {
+      "position": 369,
+      "question_id": 412,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f8505516842345ab47877d4a8439544086065123e8de61ba42cd67f978544800"
+    },
+    {
+      "position": 370,
+      "question_id": 414,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "2476c644a68d20d8a7eea866dc29704b6b415a0473e92c78992d556e8ab52105"
+    },
+    {
+      "position": 371,
+      "question_id": 415,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "2a782939c08000168060999bded086a2ba3dd5fa4941cf3430a81da3cc13facf"
+    },
+    {
+      "position": 372,
+      "question_id": 416,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "845d76c676f64c00a56b22a61d187cfabbc9a32703613de55582454a673fbc2e"
+    },
+    {
+      "position": 373,
+      "question_id": 422,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "96a8dea0daa53226ca453a06b2bea09bd8f90272cc97471e76fd4361ef814cb8"
+    },
+    {
+      "position": 374,
+      "question_id": 424,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "c73f09d5b4079ad5d7a0f71e0061bf4605c904bfb018c5a5482db0b7daccd84f"
+    },
+    {
+      "position": 375,
+      "question_id": 427,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "63119005c8fb3008dcd69568169518d62b6fdbf143c60480a7262c0a375602e9"
+    },
+    {
+      "position": 376,
+      "question_id": 440,
+      "db_id": "card_games",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bebf6c9d3e49d1663613e910609563258e333a93ff68832e8a3f19ffc1ad65f4"
+    },
+    {
+      "position": 377,
+      "question_id": 459,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5c647d68be91fb84139ae72e7b914740d4de6b28eab48b5666f10f3e324b733e"
+    },
+    {
+      "position": 378,
+      "question_id": 462,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "6c30f74481adfef5266727a4418364dfd0cfedc6cc97fe8a61d805f61c572895"
+    },
+    {
+      "position": 379,
+      "question_id": 465,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "22581f109957db00b7ac8e594b7bed4f53ed374cb51ec9dc932aee37741584a7"
+    },
+    {
+      "position": 380,
+      "question_id": 466,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d4ed55acbfea37f9b117013164c3dd7c64ac880c6617c63a9f9f80af0881852b"
+    },
+    {
+      "position": 381,
+      "question_id": 468,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "407c5f0daf302ba4a45fce03e734a64e3cf5f11d95bd8dcb415e93cf08dfe8fd"
+    },
+    {
+      "position": 382,
+      "question_id": 469,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "5c46b9b225f28665b8f6f5789fb1c3b67777a8f587a6686a2cfe1e74bf1fe6bb"
+    },
+    {
+      "position": 383,
+      "question_id": 472,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d4f379c893fc2ca7866033d2a600618372e3f346cce91a9937c992b7812bcf47"
+    },
+    {
+      "position": 384,
+      "question_id": 473,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "2935530ad19fea1039a12e9799c0164bd9c7dd1e5210dd447e7514cc12781de9"
+    },
+    {
+      "position": 385,
+      "question_id": 474,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "71df153a769eb17b8ab37c530aa34887d22b44cf95e099fa9810ddea4976921d"
+    },
+    {
+      "position": 386,
+      "question_id": 477,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b9cca24d1bd0f9eb4b1b7ceedd7e9ec2b874a8f2ff014a22737eeded39214c3a"
+    },
+    {
+      "position": 387,
+      "question_id": 479,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "08f3be315bbb8c0f31292067b518c74da38d64dc05433bc9a59ce26967cb862d"
+    },
+    {
+      "position": 388,
+      "question_id": 480,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "639fbcc287c3013f6183738a932929dc12b7a5fd9ea3f69a42f67281846fec62"
+    },
+    {
+      "position": 389,
+      "question_id": 483,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6e0a8a74ddeba0dda659f79b376bd399c63d13532b00b1279ab32a4939a0bc6c"
+    },
+    {
+      "position": 390,
+      "question_id": 484,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "aeef016c7e74e47edeb14eab1412a49e90d7ffee93f8f59cab6dc491d692ee59"
+    },
+    {
+      "position": 391,
+      "question_id": 486,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e57d0d1a9c7b6ba28da293fca1fea57df1dc337d2d9275c4975618a9c034d6c9"
+    },
+    {
+      "position": 392,
+      "question_id": 487,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "301b11d9cc80873ea49b52bea4360584e0836473b76b6fd76f17d4f958cf92c9"
+    },
+    {
+      "position": 393,
+      "question_id": 518,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6afd3709439fe61edf3568048764211889fba3bd16e1226d91d1717d0988ac6b"
+    },
+    {
+      "position": 394,
+      "question_id": 522,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "919991211edc8793c71d8e8a28d1ea5ba981c4b980f79aa6ff99676d6a0b2b3e"
+    },
+    {
+      "position": 395,
+      "question_id": 528,
+      "db_id": "card_games",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "58f10b84033ffe7f490df44bf2eb013e93c7ac7211fd0bc3dda2918ad36fbca8"
+    },
+    {
+      "position": 396,
+      "question_id": 529,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f5c7c424f81b0aad549bed07bb0a6cd0cf9ca7d65e136de2ebc21019b43079a3"
+    },
+    {
+      "position": 397,
+      "question_id": 530,
+      "db_id": "card_games",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "acbf1736fad737a1a164f7668631cc8502e6cd6c71b2d265b3c5f729d17ce169"
+    },
+    {
+      "position": 398,
+      "question_id": 195,
+      "db_id": "toxicology",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "ee4cb164dee0bf93cae893a1eed37165db3ae2bb8c82b3c027401b849f800cf0"
+    },
+    {
+      "position": 399,
+      "question_id": 197,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "56c677c0fbae9a650cb7e75aa85b40bd4edbd1fde681b2d5a8504fd4e78ff2b0"
+    },
+    {
+      "position": 400,
+      "question_id": 198,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "db9c7493cd73460caf1f820bce1161ddf4406dbc265a6b2e757c8149f3585435"
+    },
+    {
+      "position": 401,
+      "question_id": 200,
+      "db_id": "toxicology",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e14a52410323eaf95ae76b4a2ac08d330911dadae035b4ac1377c026fb252cdd"
+    },
+    {
+      "position": 402,
+      "question_id": 201,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "237355087009a087f71eac2439d27861bfde30dc24ebe59a9fc766a41241dc0d"
+    },
+    {
+      "position": 403,
+      "question_id": 206,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f5cf6c2f298cb9be967c40e230d2a67c6f4a1b9735245cd852e0ef0ac7cd65fc"
+    },
+    {
+      "position": 404,
+      "question_id": 207,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6c1776193354838f85c1b52ddb054317a0ad01468e6bdb8eea759e6f080765a3"
+    },
+    {
+      "position": 405,
+      "question_id": 208,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "30e2a809b165965fb5f3c72cacfc5713fd8d428fed25698f6390121b258d3d60"
+    },
+    {
+      "position": 406,
+      "question_id": 212,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c2e7fb8a7957995e573f2cd618070686f4bc41285d6032468d6999356b718eda"
+    },
+    {
+      "position": 407,
+      "question_id": 213,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b4ac1cfaf2d0b57c9eb59328c74ae12a2e1397d2c94954667a0a9214ac312ccd"
+    },
+    {
+      "position": 408,
+      "question_id": 215,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e82976477a6dcde15ac1a4b7a706565f9b979e730ea3017ead3a1604cc1b5589"
+    },
+    {
+      "position": 409,
+      "question_id": 218,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "858512335b8dca7d68617fb58adef7d3541073210c549595671bc464a645a1aa"
+    },
+    {
+      "position": 410,
+      "question_id": 219,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "3fce24165de640599e6b47ba04b51fdf1b2a4aa267941fb564e6b80907f1f30a"
+    },
+    {
+      "position": 411,
+      "question_id": 220,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "c7dcd55d6d0a5a6337964e5e736135bd91be2bd7ade65abee26edd81f36ba90e"
+    },
+    {
+      "position": 412,
+      "question_id": 226,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "372589c25b7e7bd079e68bd6c2611f2f946ef7b576882cc6b14d6482f36d9b6f"
+    },
+    {
+      "position": 413,
+      "question_id": 227,
+      "db_id": "toxicology",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "8536ce4b4efadee92317a80b83b4731e3ea61ad45266aca3ed1be6d081fda147"
+    },
+    {
+      "position": 414,
+      "question_id": 228,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "289537c69239a2df5b4893098861e662599a0b32d908f060737388d36761648e"
+    },
+    {
+      "position": 415,
+      "question_id": 230,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "e2056737cf0f3a067762fd57ede44c3220fb92a899463ac5f778a70573d9c247"
+    },
+    {
+      "position": 416,
+      "question_id": 231,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "b4397e026b6dc584fa0a0dc549339258b2ae8e2a05013e831463c12bc8b5d821"
+    },
+    {
+      "position": 417,
+      "question_id": 232,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "1c9a57744c23ab5d69790dc745b8e63e37f15da75ef5facd747aefa4c1a87ccd"
+    },
+    {
+      "position": 418,
+      "question_id": 234,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "1a79ba6e1aae0a79c54fba7787c18e2c0ca7d029b9d38f9d5bdf1a77028ecc71"
+    },
+    {
+      "position": 419,
+      "question_id": 236,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "ecfe186f9222765b06f502e9ba4704f75de00761f758eb323230cedcc33c1d58"
+    },
+    {
+      "position": 420,
+      "question_id": 239,
+      "db_id": "toxicology",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "33372edda2c4a86914f9c1acd78fa15261206e85c38ceb017c6f2d1e96416176"
+    },
+    {
+      "position": 421,
+      "question_id": 240,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "aaf22001bc1ea05ade6e9df15ad896c54f3a6857859a6a4390e219daf5cafaf6"
+    },
+    {
+      "position": 422,
+      "question_id": 242,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ef86cedd10421e3a04ec48f95634c5d103233e4bddcf8e0ef0793aa5b00949f6"
+    },
+    {
+      "position": 423,
+      "question_id": 243,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9ecffd85f1dcdaea5a5280b1ca3e0572dfdad57c5c78523ac6f912be99894d43"
+    },
+    {
+      "position": 424,
+      "question_id": 244,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "440ada73d0f610f9c8945f53282d07d9b22101b0124cab81c6b1687cefccbdf3"
+    },
+    {
+      "position": 425,
+      "question_id": 245,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "fd81025889cec7840d6c89c41a07b4e279659d670ea9e2386eb7677337ca5f1e"
+    },
+    {
+      "position": 426,
+      "question_id": 247,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9fd81343cfa41bb7e718b18cd6cbb82b6747eee852f2481f56ec5d6b3bc17df9"
+    },
+    {
+      "position": 427,
+      "question_id": 248,
+      "db_id": "toxicology",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "db05838400ee41410e1b0f6f233fea040e7071919d160ab949d1f283d5ff7a9e"
+    },
+    {
+      "position": 428,
+      "question_id": 249,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "78b0c8842d170ea8c75c873a645161909d178129b367be1c82f8524d90464dea"
+    },
+    {
+      "position": 429,
+      "question_id": 253,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9b20bf968895e215011e182a68d25bdc96ac616eb42dc4b2c527954b77cd5409"
+    },
+    {
+      "position": 430,
+      "question_id": 255,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bfd02bf583a34fb621a30f6901c5cb948d2cc3dedaa1647a4745819fe68aabdf"
+    },
+    {
+      "position": 431,
+      "question_id": 260,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "01e6fbfdcb9bd4468eae1d1547ec695b13108885353504dc7e65eaa23941c23b"
+    },
+    {
+      "position": 432,
+      "question_id": 263,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "86cee6cea8dfcfb28c5a01b206c7c53a612d491476957eed7d2900022bb0cae8"
+    },
+    {
+      "position": 433,
+      "question_id": 268,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "1df043687ac1658e5a3229fdb936f986a275a27be1d04baeb0bb6b818372d817"
+    },
+    {
+      "position": 434,
+      "question_id": 273,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "edac81f42349cb25076ad56616086bfbf72668d442c6892418b4d8eb505ccc06"
+    },
+    {
+      "position": 435,
+      "question_id": 281,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "84c79c16e61b32cb1f359d3d3cb69e3804f5a9ab290d95a5b33b2305f631ebdc"
+    },
+    {
+      "position": 436,
+      "question_id": 282,
+      "db_id": "toxicology",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "7a13024abb9415cf79e14941238c3d66d1f7f6ab0d875ffd17c690d2c9f9c1fe"
+    },
+    {
+      "position": 437,
+      "question_id": 327,
+      "db_id": "toxicology",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "d44681c01c590809d2709de57b05a7f68f593ddafa63ca580274dec99ef78eb9"
+    },
+    {
+      "position": 438,
+      "question_id": 5,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "4361036f6f797a4c0556f7983b1d0dbf51eb2cfec94431db9271421c482c5bb7"
+    },
+    {
+      "position": 439,
+      "question_id": 11,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "ff552400c07b42e223b2afd5d2bd94bfa504d2297375cef5295fb9d4c4845ff4"
+    },
+    {
+      "position": 440,
+      "question_id": 12,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "a35a3dd1c89d56ac7a5641ba6fa5e7550e1455cd3d344c03688dd66f2eb18a57"
+    },
+    {
+      "position": 441,
+      "question_id": 17,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "9c684752148f3b81081e8c46e1bba60efbbd4d1b0e45cf705b2ba1375f8fe9c5"
+    },
+    {
+      "position": 442,
+      "question_id": 23,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "956fe137d5d78378374c2f19d3487ea48399e4222e84299854d04cc069f6f9e6"
+    },
+    {
+      "position": 443,
+      "question_id": 24,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "0e69bce1cf2e0116a792785d3f8f2b92d96cc2531dcd772c39bebf83c3c2cb2a"
+    },
+    {
+      "position": 444,
+      "question_id": 25,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "1cccdeccc19add71e605b9890f9e5164b22b79eb2705091563f0ec48fe0fb33a"
+    },
+    {
+      "position": 445,
+      "question_id": 26,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "62f830ab5d11b4fdcab38610a02f7a0489a0414c0dae1c455d04ef48f2ee5fd7"
+    },
+    {
+      "position": 446,
+      "question_id": 27,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "8cb5b8b92f635de8d7e40d9345a926f5327b7a47bc0dae1709a068e52911d495"
+    },
+    {
+      "position": 447,
+      "question_id": 28,
+      "db_id": "california_schools",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "4578e43495900accf58793ee2fd806719c3359505239781858787bdd7885cb12"
+    },
+    {
+      "position": 448,
+      "question_id": 31,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "072c2768a8c8bb8940f749d988bfae0625751dd20d56dc6d3117b46034f60aa4"
+    },
+    {
+      "position": 449,
+      "question_id": 32,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "7b51e8fc9c78ef4fd71188f52cffab12d6ace63611285f93cd2c2da498f75abb"
+    },
+    {
+      "position": 450,
+      "question_id": 37,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6668faaf9a7cf25c2b86c1ebdcb7b0537a5c6afc920c91b1a8c73a0c21f0d8b1"
+    },
+    {
+      "position": 451,
+      "question_id": 36,
+      "db_id": "california_schools",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "f317bd063f32c16384cf488ae3ff6587536f73296cb9d9e7815cc2075333ac67"
+    },
+    {
+      "position": 452,
+      "question_id": 39,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9cef166812fd4d3cc9186ee67fb1051c28d67ef82b75f25e53565b77d20718c8"
+    },
+    {
+      "position": 453,
+      "question_id": 40,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "a2a2e74e954a2b692d46d812343f2dbe06efdf560ae77bc1bfe0f3ad2b42c919"
+    },
+    {
+      "position": 454,
+      "question_id": 41,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "50ec8a6d5201346ef5ff97b2473adde4f949d2dbd8fa88cda88fe1afd8ca8283"
+    },
+    {
+      "position": 455,
+      "question_id": 45,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "95bb910bcba303354ff99206d50ebb26deb28e2cdb302aad4db71869a28d3cb5"
+    },
+    {
+      "position": 456,
+      "question_id": 46,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "871ed9b27e5e0f69a23fb5e41ffa6c0103b4f7aa7fcbf60ec52ff6f732b0f918"
+    },
+    {
+      "position": 457,
+      "question_id": 47,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "2995b146b5510598050b8b5f5b34956d16e645e8018ed74deba8319e615d0065"
+    },
+    {
+      "position": 458,
+      "question_id": 48,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "fd882bf5e3cd351da4e8041bda02913e98dff6a1e2fab000140b0d32b5997168"
+    },
+    {
+      "position": 459,
+      "question_id": 50,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "c2c66953386a1aabe47e754f88d2783f8b82d2b4da9ee7f5191cfbdb8335515c"
+    },
+    {
+      "position": 460,
+      "question_id": 62,
+      "db_id": "california_schools",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "961bc0b31f34ddba6f4763a7259deca7e810e8d328971bf5ba68a069c197baf5"
+    },
+    {
+      "position": 461,
+      "question_id": 72,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "115190ae0dc6c7b4dd9ea1e0ecc26997c08f78aa017b1db38fd1157270edfd42"
+    },
+    {
+      "position": 462,
+      "question_id": 77,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "696088f007233606f10a725ad7b098e7e6ba10e647b7d09fdcb445a78cab12fb"
+    },
+    {
+      "position": 463,
+      "question_id": 79,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f622d70caa4e8945b40752ca1132ba650e43b66a91d99688fc133bd63041cb27"
+    },
+    {
+      "position": 464,
+      "question_id": 82,
+      "db_id": "california_schools",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "154205c8d034235207a84e17a96cfe6149a611148cd856a94dbaf14c8e0125d7"
+    },
+    {
+      "position": 465,
+      "question_id": 83,
+      "db_id": "california_schools",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "00221850585ba9ef43063ce9f3c64d4f9d0711ad8c0effea808f3c1a2ecf0516"
+    },
+    {
+      "position": 466,
+      "question_id": 85,
+      "db_id": "california_schools",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "487ea39ea09ba4bc1aa63a7baf54ca8ffd5ab3dd9cfad3bbe8a3a0c4e0fc266f"
+    },
+    {
+      "position": 467,
+      "question_id": 87,
+      "db_id": "california_schools",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "41d7ffa0cff05928c0cc6929729a7ac3ebe98add88a4bb8c20373b5e99769f1f"
+    },
+    {
+      "position": 468,
+      "question_id": 89,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "74c60ae8a6ddac35be70586bbc08b2a5f60b3ed6ca13c29d0674a6a61fc992c0"
+    },
+    {
+      "position": 469,
+      "question_id": 92,
+      "db_id": "financial",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "670834ce4227b65211deb9dfabf7bb8cf91ef410d6c2aa900d7a28ebcc492bb9"
+    },
+    {
+      "position": 470,
+      "question_id": 93,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "5b597fef9efccc5482aebd016fe4d7b4bb46b24a3ea4aeded171b23249b25f12"
+    },
+    {
+      "position": 471,
+      "question_id": 94,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "e69a01c6d2af7c90622b463e085d3686408d5f820cdde937940c22690e028360"
+    },
+    {
+      "position": 472,
+      "question_id": 95,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "08d1af58d5204f30d05f325033612af9d4a13892860309fcc6ec51d4a33c0b36"
+    },
+    {
+      "position": 473,
+      "question_id": 98,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f26ae0eacadaa1ced9e3e41307795e7a5fcecf028293f42597fe6ff16ef0dd99"
+    },
+    {
+      "position": 474,
+      "question_id": 99,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "92a41e4691de9875997edc513b73b48eb0def4f75892cae4c6eab17965cd5957"
+    },
+    {
+      "position": 475,
+      "question_id": 100,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "436143c6d7470e2814d664ef1a78838b9fe0b453e2661973688980fbb69136ce"
+    },
+    {
+      "position": 476,
+      "question_id": 112,
+      "db_id": "financial",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "9b8114745925f8d94f2a2213f71f475b066d2621690c8990229f3bfe402a705d"
+    },
+    {
+      "position": 477,
+      "question_id": 115,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "abf27f64e4fa5a045060cc68ed629be8fa2c6b6eb8ebf35c24770f935d7db7fb"
+    },
+    {
+      "position": 478,
+      "question_id": 116,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6b88e492359e288f18cac2087a6f06c062830da4e0fde4096e0566f4e76bc848"
+    },
+    {
+      "position": 479,
+      "question_id": 117,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "90cd8ae411748bb34e900d248f764302076d407fc673db192aa7e4b570121c36"
+    },
+    {
+      "position": 480,
+      "question_id": 118,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "addeae37528aa3b1fd21f8e4b5854f925393f691ecf2ccf05f37ca9bb697f907"
+    },
+    {
+      "position": 481,
+      "question_id": 125,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "152699940f7d3e7178eed3bae05332dcac49f30094bda6f354f1c1efbe98b460"
+    },
+    {
+      "position": 482,
+      "question_id": 128,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "654f03ac0ebd393d22d41f6917ef709c04ca5a526affc2e01e6e3331cafc45c6"
+    },
+    {
+      "position": 483,
+      "question_id": 136,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "89e8ede79e064acb28c2edec0bc3a3f3717692a4284c1cbd49d015745c056bbf"
+    },
+    {
+      "position": 484,
+      "question_id": 137,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bcf650a9f573b6bdb404ecfc499fd458d305dd4d75ca44b1ddaf675b674f6b1b"
+    },
+    {
+      "position": 485,
+      "question_id": 138,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "f547179faf5c753bb64759ec0e54c14564d483e4b49b60c059896127f35c6454"
+    },
+    {
+      "position": 486,
+      "question_id": 129,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "52b6a0c804141507f2b1b580451ad508d0a20d25e45949f0d0c7959404e38d48"
+    },
+    {
+      "position": 487,
+      "question_id": 137,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "bcf650a9f573b6bdb404ecfc499fd458d305dd4d75ca44b1ddaf675b674f6b1b"
+    },
+    {
+      "position": 488,
+      "question_id": 138,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "10b3c4d0154a9bbfddd05b21ac8e9ea261f62c4763b92991f48ea15553fd1165"
+    },
+    {
+      "position": 489,
+      "question_id": 145,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "897ff5e2b2c4e7e1648c274c25a03913c7cd9143eca21d6a64874ff0989c02da"
+    },
+    {
+      "position": 490,
+      "question_id": 149,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d800a9f325c81a0d00e981b2f4ce78ff5d4223a5c6728539d11a19e7a6df3b34"
+    },
+    {
+      "position": 491,
+      "question_id": 152,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "8fbdb1b18bed1fa6587d73adfc4471e4e6bf306aeac1e0b28f313114dcfdb50a"
+    },
+    {
+      "position": 492,
+      "question_id": 159,
+      "db_id": "financial",
+      "difficulty": "simple",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "93a015cbdd87cd1c933d349b9f085874d53b0caeee43684fcb9d2849cb9b2280"
+    },
+    {
+      "position": 493,
+      "question_id": 168,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "d27398508510f8026697b425d0121c1333dbd8bf75ff677a709559465bcfcfe9"
+    },
+    {
+      "position": 494,
+      "question_id": 169,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "56d450049f7f33fc81bde4bdb9f8521b52f208a7b546dfd06a44bc5dad775bbb"
+    },
+    {
+      "position": 495,
+      "question_id": 173,
+      "db_id": "financial",
+      "difficulty": "challenging",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "b3ccd2b89a66c585909fb5a10135c575ea26565404e1e784e4fd3d90c2a4763d"
+    },
+    {
+      "position": 496,
+      "question_id": 186,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "6adbb50b44c49287e67f1fa80dac9d2d531f39e773f4d7aae6fbffb4ecfcede3"
+    },
+    {
+      "position": 497,
+      "question_id": 189,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "127e9d72e9ede040180e96df08f9fdeb77efe6213635d059238626dfd9b7d06c"
+    },
+    {
+      "position": 498,
+      "question_id": 192,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 1,
+      "sql_sha256": "28f042d6efee00c36f17c9d43464d0470412a1c730205f485f2be7061b0252e9"
+    },
+    {
+      "position": 499,
+      "question_id": 194,
+      "db_id": "financial",
+      "difficulty": "moderate",
+      "status": "generated",
+      "ex_match": 0,
+      "sql_sha256": "787387be8ed0525a92298b8e9f41cabc4808e4c5a8ff743f776cfe96170a6e0f"
+    }
+  ]
+}
