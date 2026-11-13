@@ -146,3 +146,88 @@ def install_fake_curl(tmp: Path, monkeypatch) -> Path:
     p.chmod(0o755)
     monkeypatch.setattr(download, "CURL", str(p))
     return p
+
+
+# --- 스터디 Olist 받기(가짜 gh) ---
+
+OLIST_REPO = "owner/fake-study"
+OLIST_COMMIT = "a" * 40
+OLIST_ALLOWED_KEYS = ["id", "question", "question_type", "task_conditions"]
+
+
+def make_fake_olist_source(tmp: Path, *, extra_key: str | None = None) -> tuple[Path, dict]:
+    """가짜 원격 폴더(가짜 gh가 contents/<remote>로 읽는다)와 해시 표(olist_study.json과 같은 꼴)를 만든다."""
+    src = tmp / "fake-olist"
+    item = {"id": "q1", "question": "how many?", "question_type": "count", "task_conditions": []}
+    if extra_key:
+        item[extra_key] = "x"
+    blobs = {
+        "data/olist.db": ("db", "data/olist/olist.db", db_bytes(tmp, "olist")),
+        "evals/model_inputs.json": (
+            "model_inputs",
+            "data/olist/model_inputs.v0.3.json",
+            json.dumps({"description": "d", "items": [item, {**item, "id": "q2"}]}).encode(),
+        ),
+        "evals/manifest.json": ("eval_manifest", "data/olist/manifest.v0.3.json", b'{"version": "0.3"}'),
+        "evals/schema.json": ("schema_snapshot", "data/olist/schema.snapshot.json", b'{"tables": []}'),
+        "evals/study.json": (
+            "gold",
+            "gold/olist/study-v0.3.json",
+            json.dumps([{"id": "q1", "sql": f"SELECT '{MARK}'"}]).encode(),
+        ),
+    }
+    files = []
+    for remote, (role, path, data) in blobs.items():
+        (src / remote).parent.mkdir(parents=True, exist_ok=True)
+        (src / remote).write_bytes(data)
+        files.append({"role": role, "remote": remote, "path": path, "size": len(data), "sha256": sha(data)})
+    manifest = {
+        "format": "t2s-fetch-olist/1",
+        "source": {"repository": OLIST_REPO, "commit": OLIST_COMMIT},
+        "files": files,
+        "model_inputs_allowed_item_keys": OLIST_ALLOWED_KEYS,
+        "license_note": "라이선스 줄",
+    }
+    return src, manifest
+
+
+FAKE_GH = """#!{python}
+# 시험용 가짜 gh. 호출마다 인자를 기록하고, contents/<remote>?ref=<commit>이면 가짜 폴더의 파일을 표준 출력으로 낸다.
+import json, os, sys
+args = sys.argv[1:]
+src, log = {src!r}, {log!r}
+with open(log, "a") as f:
+    f.write(json.dumps(args) + "\\n")
+if args == ["--version"]:
+    print("gh version 9.9.9 (fake)")
+    sys.exit(0)
+if args[:2] == ["auth", "status"]:
+    print("Logged in to github.com account someone")
+    sys.exit(0 if {auth} else 1)
+if args[0] == "api" and "--jq" in args:
+    sys.exit(0 if {access} else 1)
+if args[0] == "api" and "-H" in args:
+    path = args[-1]
+    remote = path.split("/contents/", 1)[1].split("?ref=", 1)[0]
+    if "FAIL" in remote:
+        sys.stdout.write("partial")
+        sys.stderr.write("HTTP 404: Not Found\\n")
+        sys.exit(1)
+    sys.stdout.buffer.write(open(os.path.join(src, remote), "rb").read())
+    sys.exit(0)
+sys.exit(2)
+"""
+
+
+def install_fake_gh(tmp: Path, monkeypatch, src: Path, *, auth: bool = True, access: bool = True) -> Path:
+    """가짜 gh를 깔고 호출 기록 파일 경로를 돌려준다."""
+    import sys
+
+    from t2s.fetch import olist
+
+    p = tmp / "fake-gh"
+    log = tmp / "fake-gh.log"
+    p.write_text(FAKE_GH.format(python=sys.executable, src=str(src), log=str(log), auth=auth, access=access))
+    p.chmod(0o755)
+    monkeypatch.setattr(olist, "GH", str(p))
+    return log

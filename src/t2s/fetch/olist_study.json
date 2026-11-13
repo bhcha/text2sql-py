@@ -1,0 +1,57 @@
+{
+  "format": "t2s-fetch-olist/1",
+  "purpose": "/getolist가 받는 스터디 Olist 자료의 출처와 해시. 해시가 다르면 받지 않는다.",
+  "source": {
+    "repository": "jenn25ng/text-to-sql-study",
+    "visibility": "private (gh 로그인과 저장소 접근 권한 필요)",
+    "commit": "290ff9bee2d8ac70e01932857911f025a377c1ba",
+    "commit_note": "평가셋 v0.3(49문항) 확정과 E0 기준선을 넣은 PR #38 병합 커밋(2026-11-05)",
+    "checked_at": "2026-11-13"
+  },
+  "files": [
+    {
+      "role": "db",
+      "remote": "data/olist.db",
+      "path": "data/olist/olist.db",
+      "size": 68333568,
+      "sha256": "be98591c197c11499b40ade1fe276bec13164c2548ee6cf588b8843d10b7a043"
+    },
+    {
+      "role": "model_inputs",
+      "remote": "evals/combined/model_inputs.v0.3.json",
+      "path": "data/olist/model_inputs.v0.3.json",
+      "size": 52408,
+      "sha256": "07736ede2cfdd977e0b651c03aa725e2a2a1588ca27bc9571203d67723b248e0"
+    },
+    {
+      "role": "eval_manifest",
+      "remote": "evals/combined/manifest.v0.3.json",
+      "path": "data/olist/manifest.v0.3.json",
+      "size": 3755,
+      "sha256": "bf2889176c7b7fb61dae9c4d7238c581bb1d4e792d20668b451007e5b1d2d828"
+    },
+    {
+      "role": "schema_snapshot",
+      "remote": "evals/combined/schema.snapshot.json",
+      "path": "data/olist/schema.snapshot.json",
+      "size": 4698,
+      "sha256": "17d976bf4feddf9b4ca4a4332bcb113436a0c8a0a16910df667da39b741bd929",
+      "note": "notes·logical_relations는 사람이 쓴 설명이라 퓨어 조건(AGENTS 규칙 9)에서는 모델에 주지 않는다"
+    },
+    {
+      "role": "gold",
+      "remote": "evals/combined/study-v0.3.json",
+      "path": "gold/olist/study-v0.3.json",
+      "size": 332347,
+      "sha256": "131eaf491fecad4c4dbd6d8d965d3da1a191123a9435f51dcef71dde8cebedf1",
+      "note": "정답 SQL·기대 결과·채점 메모가 들어 있다. 채점 단계만 읽는다(AGENTS 규칙 3)"
+    }
+  ],
+  "model_inputs_allowed_item_keys": [
+    "id",
+    "question",
+    "question_type",
+    "task_conditions"
+  ],
+  "license_note": "Olist 자료는 CC BY-NC-SA 4.0 (https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce). 스터디 용도로만 쓴다."
+}

@@ -94,8 +94,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("leak-audit", help="프롬프트에 정답이 들어갔는지 검사")
     p.add_argument("--run", metavar="이름", help="없으면 가장 최근 run")
 
-    p = sub.add_parser("fetch", help="BIRD 자료·임베딩 모델 받기")
-    p.add_argument("what", choices=["bird", "model"])
+    p = sub.add_parser("fetch", help="BIRD 자료·임베딩 모델·스터디 Olist 자료 받기")
+    p.add_argument("what", choices=["bird", "model", "olist"])
     return parser
 
 

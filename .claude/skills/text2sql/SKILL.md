@@ -9,10 +9,12 @@ description: 지금 연결된 데이터셋에 자연어 질문 하나를 보내 
 
 ## 절차
 
-1. 대상을 정한다. 대상은 지금 연결된 데이터셋이다. 사용자가 다른 데이터셋이나 새 DB 파일을 말하면 이 스킬에서 바꾸지 않고 "/connect로 먼저 바꿔 주세요"라고 알리고 멈춘다.
+1. 대상을 정한다. 대상은 /connect로 정한 데이터셋이다. 기본 데이터셋은 없다.
+   - 먼저 `uv run t2s datasets`를 돌린다. 첫 줄이 "지금 바라보는 데이터셋: 없음"이면 돌리지 않고 "먼저 /connect로 데이터셋을 정해 주세요(/connect bird, /connect olist, 또는 /connect <SQLite 경로>)"라고 알리고 멈춘다. 대신 정하지 않는다.
+   - 사용자가 지금과 다른 데이터셋이나 새 DB 파일을 말하면 이 스킬에서 바꾸지 않고 "/connect <그 이름 또는 경로>로 먼저 바꿔 주세요"라고 알리고 멈춘다. 예: BIRD면 "/connect bird", Olist면 "/connect olist".
    - 소스가 하나인 데이터셋이면 `--source`를 붙이지 않는다.
    - BIRD처럼 소스가 여럿이면 사용자가 말한 DB 이름을 `--source <이름>`으로 붙인다(financial, card_games, california_schools, codebase_community, debit_card_specializing, european_football_2, formula_1, student_club, superhero, thrombosis_prediction, toxicology).
-   - DB 이름을 말하지 않았으면 `uv run t2s datasets`로 지금 데이터셋을 보여 주고 어느 DB인지 한 줄로 묻는다. 추측하지 않는다.
+   - DB 이름을 말하지 않았으면 위 `datasets` 출력을 보여 주고 어느 DB인지 한 줄로 묻는다. 추측하지 않는다.
 2. 모델을 정한다(아래 "모델 정하기").
 3. 실행한다. 질문 문장은 사용자가 쓴 그대로 따옴표 안에 넣는다(고치거나 번역하지 않는다):
 
@@ -23,6 +25,7 @@ description: 지금 연결된 데이터셋에 자연어 질문 하나를 보내 
    - 2이고 "소스를 정해야 합니다"가 나오면 목록을 보여 주고 어느 것인지 묻는다.
    - 2이고 "모델을 알 수 없습니다"가 나오면 그 문장으로 되묻는다.
    - 5("준비 필요")면 `uv run t2s prepare`를 돌린 뒤(BIRD 첫 준비는 약 2분) 3번을 한 번만 다시 한다. `prepare`가 "자료 없음"으로 멈추면 "먼저 /getbird"라고 알리고 멈춘다.
+   - 2이고 "데이터셋을 정하지 않았습니다"가 나오면 1번의 "먼저 /connect" 안내를 하고 멈춘다.
    - 그 밖의 0이 아닌 코드면 마지막 오류 줄을 그대로 보여 주고 멈춘다. 같은 질문을 다시 돌리지 않는다(모델 호출마다 사용량이 든다).
 
 ## 모델 정하기 (사용자에게 인자를 묻지 않는다)

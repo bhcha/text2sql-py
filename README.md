@@ -13,17 +13,20 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 - macOS, uv, git, curl. Python 3.13.7은 uv가 받는다. 첫 `uv run`이 실행 의존(numpy·onnxruntime·tokenizers)과 채점 의존(func-timeout·psycopg2-binary·PyMySQL)을 깐다.
 - `codex` 또는 `claude` 명령(로그인된 상태).
 - 디스크 약 3GB(BIRD zip 0.8GB, 푼 DB 1.4GB, 임베딩 모델 0.4GB).
+- `/getolist`를 쓸 때만: GitHub CLI(gh) 로그인과 스터디 저장소(비공개) 접근 권한.
 
 ## 스킬로 쓰기 (Claude Code는 /이름, Codex는 $이름)
 
 | 차례 | 스킬 | 하는 일 | 걸리는 시간 |
 |---|---|---|---|
 | 1 | `/getbird` | BIRD Mini-Dev 자료와 임베딩 모델을 받고 해시를 대조, 정답은 `gold/`로 | 받기 1.2GB |
-| 2 | `/connect` | 데이터셋 목록·준비·전환. `/connect bird`, `/connect <SQLite 경로>`(고지 뒤 승인), `/connect <이름>` | BIRD 준비 약 2분 |
+| 2 | `/connect` | 데이터셋 목록·준비·전환. `/connect bird`, `/connect olist`(고지 뒤 승인), `/connect <SQLite 경로>`(고지 뒤 승인), `/connect <이름>` | BIRD 준비 약 2분 |
 | 3 | `/text2sql <질문>` | 지금 데이터셋에 질문 하나. BIRD면 DB 이름을 함께 말한다 | 수 초~수십 초 |
 | 4 | `/runset` | 지금 데이터셋 전체(또는 "앞 N문항만")를 돌리고, 정답이 있으면 채점·기준 비교 | 500문항 30~70분 |
+| 따로 | `/getolist` | 스터디 Olist DB와 평가셋 v0.3(49문항)을 gh로 받고 해시를 대조, 정답은 `gold/olist/`로 | 받기 약 70MB |
 
-- `/getbird` 뒤 바로 `/runset`을 불러도 된다(스킬이 `prepare`를 먼저 돌린다). 기본 데이터셋이 `bird-minidev`라서 `/connect bird`는 건너뛰어도 된다. `bird`는 데이터셋 `bird-minidev`를 가리키는 말이다.
+- `/getbird` 뒤 바로 `/runset`을 불러도 된다(스킬이 `prepare`를 먼저 돌린다). 기본 데이터셋은 없다. `/text2sql`·`/runset` 전에 `/connect bird`, `/connect olist`, `/connect <경로>` 중 하나로 데이터셋을 정해야 한다. `bird`는 데이터셋 `bird-minidev`를 가리키는 말이다.
+- `/getolist`는 받기만 한다. Olist DB를 쓰려면 `/connect olist`로 등록한다(고지 뒤 승인). 평가셋 49문항을 한꺼번에 돌리거나 채점하는 길은 아직 없다. Olist 자료는 CC BY-NC-SA 4.0이고 스터디 용도로만 쓴다.
 - BIRD의 DB 이름 11개: financial, card_games, california_schools, codebase_community, debit_card_specializing, european_football_2, formula_1, student_club, superhero, thrombosis_prediction, toxicology(`uv run t2s datasets`로도 본다).
 
 스킬이 부르는 명령(스킬을 쓰지 않을 때 같은 일을 하는 차례):
@@ -31,7 +34,9 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | 스킬 | 명령 |
 |---|---|
 | `/getbird` | `fetch bird` |
+| `/getolist` | `fetch olist` |
 | `/connect bird` | `prepare bird-minidev` → `use bird-minidev` |
+| `/connect olist` | `register olist --sqlite data/olist/olist.db`(고지) → 승인 뒤 `--yes` → `prepare olist` → `use olist`. 이미 등록돼 있으면 `use olist` |
 | `/connect <경로>` | `register <이름> --sqlite <경로>`(고지) → 승인 뒤 `--yes` → `prepare <이름>` → `use <이름>`. 이름은 말한 것, 없으면 파일 이름에서 만든다 |
 | `/text2sql <질문>` | `ask [--source <DB>] <모델 인자> "<질문>"`. 종료 코드 5면 `prepare` 뒤 한 번 더 |
 | `/runset` | `status`로 할 일을 고른 뒤 `prepare` → `run <모델 인자> [--limit N] [--questions <파일>]` → (물을 때) `status` → `report` |
@@ -46,6 +51,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 |---|---|---|
 | `fetch bird` | BIRD 자료·정답·임베딩 모델 받기와 해시 대조 | `uv run t2s fetch bird` |
 | `fetch model` | 임베딩 모델만 받기 | `uv run t2s fetch model` |
+| `fetch olist` | 스터디 Olist DB·평가셋 받기(gh)와 해시 대조, 정답은 `gold/olist/`로 | `uv run t2s fetch olist` |
 | `datasets` | 데이터셋 목록, 지금 바라보는 것, 준비 상태 | `uv run t2s datasets` |
 | `use` | 바라볼 데이터셋 바꾸기 | `uv run t2s use shop` |
 | `register` | SQLite 파일을 데이터셋으로 등록(고지 뒤 `--yes`) | `uv run t2s register shop --sqlite ~/db/shop.sqlite --yes` |

@@ -7,8 +7,8 @@ from pathlib import Path
 from t2s.cli.main import build_parser
 
 REPO = Path(__file__).resolve().parents[2]
-SKILLS = ("getbird", "connect", "text2sql", "runset")
-CALL = re.compile(r"(?<![\w/.-])/(text2sql|runset|getbird|connect)(?![A-Za-z0-9_-])")
+SKILLS = ("getbird", "getolist", "connect", "text2sql", "runset")
+CALL = re.compile(r"(?<![\w/.-])/(text2sql|runset|getbird|getolist|connect)(?![A-Za-z0-9_-])")
 COMMAND = re.compile(r"uv run t2s ([a-z][a-z-]*)")
 FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 

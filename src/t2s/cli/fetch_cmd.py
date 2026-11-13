@@ -6,6 +6,7 @@ import sys
 
 from t2s.dataset.config import ConfigError, find_root
 from t2s.fetch.bird import fetch_bird, fetch_model_only
+from t2s.fetch.olist import fetch_olist
 from t2s.fetch.steps import FetchStopped
 
 EXIT_OK, EXIT_FAIL = 0, 1
@@ -18,7 +19,7 @@ def run(args) -> int:
         print(f"오류: {e}", file=sys.stderr)
         return EXIT_FAIL
     try:
-        lines = fetch_bird(root) if args.what == "bird" else fetch_model_only(root)
+        lines = {"bird": fetch_bird, "model": fetch_model_only, "olist": fetch_olist}[args.what](root)
     except FetchStopped as e:
         for line in e.lines():
             print(line, file=sys.stderr)

@@ -39,6 +39,7 @@
 | 채점 연결 | (오픈소스 없음) TS `benchmarks/vendor-bridge/ex_worker.py`, `benchmarks/benchkit/submit.ts`·`score.ts` | `src/t2s/eval/ex_worker.py`, `src/t2s/eval/bird.py`, `src/t2s/eval/gold.py` | 자체(TS를 옮김). 공식 함수를 부르기만 하고 판정 논리는 없음 | 자체 |
 | 일괄 실행 | (오픈소스 없음) TS `benchmarks/benchkit/run.ts`, `harness/allbird.ts` | `src/t2s/runner/batch.py`, `src/t2s/runner/records.py`, `src/t2s/cli/run_cmds.py` | 자체(TS를 옮김). 팩 프로세스 대신 스레드, 한도 연속 5회 멈춤은 그대로, 호출 실패 연속 20회 멈춤과 분리 전 확인 호출을 더함 | 자체 |
 | 보고·누설 검사 | (오픈소스 없음) TS `benchmarks/benchkit/report.ts`, `harness/lib/sentence.ts`, `harness/leak-audit.ts` | `src/t2s/eval/report.py`, `src/t2s/eval/leak_audit.py` | 자체(TS를 옮김). 부호 검정·문장 규칙은 같은 식 | 자체 |
+| 스터디 Olist 받기 | (오픈소스 없음) TS `harness/fetch-olist.ts`, `benchmarks/olist/manifest.json` | `src/t2s/fetch/olist.py`, `src/t2s/fetch/olist_study.json` | 자체(TS를 옮김). 해시 표 값은 그대로, 규칙 번호만 이 저장소 것으로. 원본은 TS 하네스에서 아직 커밋되지 않은 상태에서 옮김 | 자체. 받는 자료는 CC BY-NC-SA 4.0 |
 
 ## 4. Python판에서 달라진 동작
 

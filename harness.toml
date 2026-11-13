@@ -1,5 +1,5 @@
 [defaults]
-dataset = "bird-minidev"
+# 기본 데이터셋은 두지 않는다. /connect(t2s use)로 정한 것만 쓴다.
 profile = "session"
 
 [paths]
