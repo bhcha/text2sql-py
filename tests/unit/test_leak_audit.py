@@ -107,3 +107,49 @@ def test_rescore_note(mini, tmp_path):
     r = L.audit(config, "rs")
     assert r["note"] == "프롬프트 없음(재채점 run)" and not L.leaked(r)
     assert L.leak_summary(r) == "누설 검사: 프롬프트 없음(재채점 run)"
+
+
+@pytest.fixture
+def study(tmp_path, shop_db):
+    from fixtures import mini_study as MS
+
+    root = MS.make_mini_study(tmp_path / "s", shop_db)
+    return root, load_config(root, State()), MS
+
+
+def make_study_run(root, prompts: dict[int, list[str]]):
+    run = root / "runs" / "sk"
+    R.write_json_atomic(run / "run.json", {"run_id": "sk", "kind": "generate", "dataset": "olist", "count": 4})
+    recs = []
+    for pos in range(4):
+        texts = prompts.get(pos, ["plain prompt about products"])
+        folder = R.item_dir(run, pos)
+        for k, text in enumerate(texts, start=1):
+            (folder / "calls" / str(k)).mkdir(parents=True, exist_ok=True)
+            (folder / "calls" / str(k) / "prompt.txt").write_text(text, encoding="utf-8")
+        rec = {"position": pos, "db_id": "olist", "llm": {"call_count": len(texts)}}
+        R.write_json_atomic(folder / "record.json", rec)
+        recs.append(rec)
+    R.write_jsonl(run / "records.jsonl", recs)
+
+
+def test_study_clean_and_label(study):
+    root, config, _ = study
+    make_study_run(root, {})
+    r = L.audit(config, "sk")
+    assert r["prompts"] == 4 and not L.leaked(r) and r["evidence_label"] == "문항 조건·채점 메모"
+    assert L.leak_summary(r) == (
+        "누설 검사: 프롬프트 4개, 정답 SQL 0, 문항 조건·채점 메모 0, 다른 문항 정답 0, 프롬프트 누락 0"
+        " (모델이 쓴 SQL이 정답과 같음 0)"
+    )
+
+
+def test_study_hits(study):
+    root, config, MS = study
+    cond = MS.CONDITIONS[1][0].replace(" ", "\n ")
+    make_study_run(
+        root, {0: [f"q {MS.GOLD_SQL[0]}"], 1: [f"q {cond}"], 2: [f"q {MS.NOTES[2]}"], 3: [f"{MS.GOLD_SQL[1]}"]}
+    )
+    r = L.audit(config, "sk")
+    assert r["gold_sql_hits"] == [0] and r["evidence_hits"] == [1, 2] and r["other_gold_hits"] == [3]
+    assert MS.MARK not in L.leak_summary(r) and MS.COND_MARK not in L.leak_summary(r)

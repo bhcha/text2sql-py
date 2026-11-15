@@ -103,3 +103,79 @@ def test_dataset_without_gold(root, capsys, shop_db, tmp_path):
     assert code == 4
     assert not os.path.exists(root / "runs/ng/score.json")
     assert json.loads((root / "runs/ng/report.json").read_text())["kind"] == "no_gold"
+
+
+@pytest.fixture
+def study_root(tmp_path, monkeypatch, shop_db, capsys):
+    from fixtures import mini_study as MS
+
+    r = MS.make_mini_study(tmp_path / "srepo", shop_db)
+    model = r / "data/models/Xenova/all-mpnet-base-v2"
+    fake = {}
+    for f in embed.MODEL_FILES:
+        (model / f).parent.mkdir(parents=True, exist_ok=True)
+        (model / f).write_bytes(f"fake {f}".encode())
+        fake[f] = hashlib.sha256(f"fake {f}".encode()).hexdigest()
+    monkeypatch.setattr(embed, "MODEL_SHA256", fake)
+    monkeypatch.setattr(embed, "load_embedder", lambda d: embed.HashEmbedder())
+    monkeypatch.setenv("T2S_ROOT", str(r))
+    monkeypatch.setattr(data_cmds, "install_guard", lambda root: None)
+    monkeypatch.setattr(run_cmds, "install_guard", lambda root: None)
+    assert main(["prepare"]) == 0
+    capsys.readouterr()
+    return r, MS
+
+
+def test_study_run_scores_and_reports(study_root, capsys):
+    root, MS = study_root
+    code, lines, errs = cli(
+        capsys, "run", "--foreground", "--backend", "fake", "--questions", str(root / MS.INPUTS), "--run-id", "sf"
+    )
+    assert code == 0, lines
+    run = root / "runs/sf"
+    meta = R.read_json(run / "run.json")
+    q = meta["questions"]
+    assert q["ids"] == MS.IDS and q["input_format"] == "study-model-inputs" and q["conditions"] == "not_used"
+    assert q["source_sha256"] == hashlib.sha256((root / MS.INPUTS).read_bytes()).hexdigest()
+    score = R.read_json(run / "score.json")
+    assert score["ex_total"]["correct"] == 2 and score["ex_total"]["denominator"] == 4
+    assert score["cross_check"] is True and score["data_unchanged"] is True
+    assert score["leak"]["total"] == 0 and score["leak"]["prompts"] > 0
+    assert score["label"].startswith("Olist 스터디 평가셋 v0.3 / SQLite / ")
+    assert score["label"].endswith(" / 가짜 백엔드·점수 아님") and "소표본" not in score["label"]
+    log = (run / "run.log").read_text(encoding="utf-8")
+    assert "score: Olist 스터디 평가셋 v0.3" in log and "정답 대조 True" in log
+    # 프롬프트에 문항 조건·정답 글이 없고, run 폴더 어디에도 정답·조건 글이 없다
+    prompts = list(run.rglob("prompt.txt"))
+    assert prompts
+    for p in prompts:
+        text = p.read_text(encoding="utf-8")
+        assert MS.COND_MARK not in text and MS.MARK not in text
+    text = "".join(p.read_text(encoding="utf-8", errors="replace") for p in run.rglob("*") if p.is_file())
+    assert MS.MARK not in text and MS.COND_MARK not in text
+    work = root / "gold/_work/sf/detail.jsonl"
+    assert work.is_file()
+
+    code, lines, errs = cli(capsys, "score", "--run", "sf")
+    assert code == 0 and lines[0].startswith("score: Olist") and lines[0].endswith("누설 0")
+    code, rep, errs2 = cli(capsys, "report")
+    assert code == 0 and rep[0] == score["label"] and "비교 대상 없음" in rep
+    assert rep[2].startswith("정답 대조 True · DB 불변 True")
+    code, against, _ = cli(capsys, "report", "--against", "sf")
+    assert code == 0 and "부호 검정 p=1.000. 4문항·1회 실행이라 낫다·못하다로 읽지 않는다" in against
+    code, leak, _ = cli(capsys, "leak-audit", "--run", "sf")
+    assert code == 0 and "문항 조건·채점 메모 0" in leak[0]
+    out = "\n".join(lines + rep + against + leak) + errs + errs2
+    assert MS.MARK not in out and MS.COND_MARK not in out
+
+    code, _, err = cli(capsys, "score", "--predictions", str(work), "--run-id", "x")
+    assert code == 2 and "--predictions" in err and not (root / "runs/x").exists()
+
+
+def test_study_score_rejects_plain_question_run(study_root, capsys, tmp_path):
+    q = tmp_path / "q.txt"
+    q.write_text("How many products?\n")
+    code, _, _ = cli(capsys, "run", "--foreground", "--backend", "fake", "--questions", str(q), "--run-id", "tx")
+    assert code == 1  # 이어 부른 채점이 실패한다(문항 id 기록이 없음)
+    code, _, err = cli(capsys, "score", "--run", "tx")
+    assert code == 1 and "스터디 모델 입력 파일" in err

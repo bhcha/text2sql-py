@@ -24,6 +24,7 @@ from t2s.dataset.questions import (
     PublicQuestion,
     QuestionsError,
     load_public_questions,
+    load_questions_json,
     load_text_questions,
     to_public_json,
 )
@@ -108,20 +109,22 @@ def _running_run(config: Config) -> str | None:
     return None
 
 
-def _questions(args, spec, root: Path) -> tuple[list[PublicQuestion], Path | None]:
-    """(문항, --questions로 받은 원본 경로 또는 None)."""
+def _questions(args, spec, root: Path) -> tuple[list[PublicQuestion], Path | None, dict | None]:
+    """(문항, --questions로 받은 원본 경로 또는 None, run.json questions에 더할 칸 또는 None)."""
+    single = next(iter(spec.sources)) if len(spec.sources) == 1 else None
     if args.questions:
         path = Path(args.questions).expanduser().resolve()
         if not path.is_file():
             raise QuestionsError(f"문항 파일이 없습니다: {path}")
         if path.suffix == ".json":
-            return load_public_questions(path), path
-        if len(spec.sources) != 1:
+            questions, extra = load_questions_json(path, single)
+            return questions, path, extra
+        if single is None:
             raise QuestionsError("텍스트 문항 파일은 소스가 하나인 데이터셋에서만 쓴다(공개 문항 꼴 JSON을 준다)")
-        return load_text_questions(path, next(iter(spec.sources))), path
+        return load_text_questions(path, single), path, None
     if spec.questions is None:
-        return [], None
-    return load_public_questions(spec.questions), None
+        return [], None, None
+    return load_public_questions(spec.questions), None, None
 
 
 def cmd_run(args, root: Path, state, config: Config) -> int:
@@ -137,7 +140,7 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         err(f"{name}: {spec.missing} ({hint})")
         return EXIT_FAIL
 
-    questions, given = _questions(args, spec, root)
+    questions, given, extra = _questions(args, spec, root)
     if not questions:
         err("이 데이터셋에는 문항 파일이 없습니다. --questions <파일>")
         return EXIT_USAGE
@@ -222,6 +225,7 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
             "sha256": R.sha256_file(qpath),
             "total": total,
             "given": None if given is None else str(given),
+            **(extra or {}),
         },
         "count": count,
         "limit": args.limit,

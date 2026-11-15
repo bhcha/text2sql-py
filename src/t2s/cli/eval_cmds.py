@@ -10,7 +10,7 @@ import sys
 
 from t2s.dataset.config import ConfigError, find_root, load_config
 from t2s.dataset.state import StateError, current_dataset, load_state
-from t2s.eval import bird, leak_audit, report
+from t2s.eval import bird, leak_audit, report, study
 from t2s.eval import gold as G
 from t2s.runner import records as R
 
@@ -61,6 +61,9 @@ def _run_id(args, config) -> str | None:
 
 
 def cmd_score(args, state, config) -> int:
+    def leak(rid):
+        return leak_audit.short(leak_audit.audit(config, rid))
+
     if args.predictions:
         if not args.run_id:
             err("예측 파일로 채점하려면 --run-id <이름>이 필요합니다")
@@ -69,7 +72,10 @@ def cmd_score(args, state, config) -> int:
         if not dataset or dataset not in config.datasets:
             err("데이터셋을 정하지 않았습니다(/connect)")
             return EXIT_USAGE
-        G.load_gold(config.root, dataset)  # 정답이 없으면 run 폴더를 만들기 전에 끝낸다
+        gold = G.load_gold(config.root, dataset)  # 정답이 없으면 run 폴더를 만들기 전에 끝낸다
+        if G.is_study(gold.evaluator):
+            err("스터디 채점기는 예측 파일(--predictions) 채점을 받지 않습니다(run을 채점한다)")
+            return EXIT_USAGE
         bird.import_predictions(config, dataset, args.predictions, args.run_id)
         run_id = args.run_id
     else:
@@ -77,13 +83,18 @@ def cmd_score(args, state, config) -> int:
         if run_id is None:
             err("채점할 run이 없습니다")
             return EXIT_USAGE
-    summary = bird.score(
-        config,
-        run_id,
-        num_cpus=args.num_cpus,
-        meta_time_out=args.meta_time_out,
-        leak=lambda rid: leak_audit.short(leak_audit.audit(config, rid)),
-    )
+    run_meta = R.read_json_if(R.run_dir(config.runs_dir, run_id) / R.RUN_FILE)
+    if run_meta is None:
+        raise bird.ScoreError(f"run이 없습니다: {run_id}")
+    try:
+        use_study = G.is_study(G.load_gold(config.root, run_meta["dataset"]).evaluator)
+    except G.NoGold:
+        use_study = False  # 정답 없음은 bird.score가 다른 확인 뒤에 알린다(종료 코드 4)
+    if use_study:
+        summary = study.score(config, run_id, meta_time_out=args.meta_time_out, leak=leak)
+    else:
+        extra = {} if args.meta_time_out is None else {"meta_time_out": args.meta_time_out}
+        summary = bird.score(config, run_id, num_cpus=args.num_cpus, leak=leak, **extra)
     out(bird.score_line(summary))
     return EXIT_FAIL if bird.score_failed(summary) else EXIT_OK
 

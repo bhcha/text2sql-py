@@ -458,7 +458,8 @@ def score_line(summary: dict) -> str:
         leak_text = f"누설 {leak.get('total', 0)}"
     return (
         f"score: {summary['label']} → EX {ex['correct']}/{ex['denominator']} ({pct}%) · "
-        f"채점기 대조 {summary['cross_check']} · DB 불변 {summary['data_unchanged']} · {leak_text}"
+        f"{summary.get('cross_check_label', '채점기 대조')} {summary['cross_check']} · "
+        f"DB 불변 {summary['data_unchanged']} · {leak_text}"
     )
 
 

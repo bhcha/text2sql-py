@@ -2,6 +2,8 @@
 
 옮긴 TS 코드(자체): harness/leak-audit.ts(세 가지 셈, 모델이 쓴 SQL이 정답과 같은 경우 따로 세기, 프롬프트 누락 세기).
 TS와 다른 점: 이어 돌 때 옮겨 둔 `<위치>.attempt-<n>` 폴더의 프롬프트도 본다.
+스터디 채점기 정답이면 정답 SQL은 gold_sql, evidence 자리는 문항 조건 각 줄과 채점 메모(study.leak_texts)로 세고,
+db_id 대조는 건너뛴다(스터디 정답 파일에는 db_id가 없다).
 """
 
 from __future__ import annotations
@@ -12,10 +14,13 @@ from pathlib import Path
 import t2s.runner.records as R
 from t2s.dataset.config import Config
 from t2s.eval import gold as G
+from t2s.eval import study
 
 OTHER_GOLD_MIN = 40
 EVIDENCE_MIN = 25
 RESCORE_NOTE = "프롬프트 없음(재채점 run)"
+EVIDENCE_LABEL = "evidence"
+STUDY_EVIDENCE_LABEL = "문항 조건·채점 메모"
 HIT_KEYS = ("gold_sql_hits", "evidence_hits", "other_gold_hits", "prompts_missing")
 _WS = re.compile(r"\s+")
 
@@ -60,6 +65,7 @@ def audit(config: Config, run_id: str) -> dict:
         "other_gold_hits": [],
         "model_made": [],
         "prompts_missing": [],
+        "evidence_label": EVIDENCE_LABEL,
         "note": None,
     }
     if meta.get("kind") == "rescore":
@@ -68,8 +74,16 @@ def audit(config: Config, run_id: str) -> dict:
         return result
     gold = G.load_gold(config.root, meta["dataset"])
     items = G.gold_items(gold)
-    gold_sql = [normalize(str(it.get("SQL", ""))) for it in items]
-    evidence = [normalize(str(it.get("evidence", ""))) for it in items]
+    is_study = G.is_study(gold.evaluator)
+    if is_study:
+        texts = study.leak_texts(gold)
+        gold_sql = [normalize(t["sql"]) for t in texts]
+        hints = [[normalize(h) for h in t["hints"]] for t in texts]
+        result["evidence_label"] = STUDY_EVIDENCE_LABEL
+    else:
+        gold_sql = [normalize(str(it.get("SQL", ""))) for it in items]
+        hints = [[normalize(str(it.get("evidence", "")))] for it in items]
+    hints = [[h for h in hs if len(h) >= EVIDENCE_MIN] for hs in hints]
     others = [(i, s) for i, s in enumerate(gold_sql) if len(s) >= OTHER_GOLD_MIN]
     records = (
         {int(r["position"]): r for r in R.read_jsonl(run / R.RECORDS_FILE)} if (run / R.RECORDS_FILE).is_file() else {}
@@ -80,7 +94,7 @@ def audit(config: Config, run_id: str) -> dict:
         if pos >= len(items):
             continue
         rec = records.get(pos) if current else R.read_json_if(folder / R.RECORD_FILE)
-        if rec is not None and rec.get("db_id") != items[pos].get("db_id"):
+        if not is_study and rec is not None and rec.get("db_id") != items[pos].get("db_id"):
             raise G.GoldError(f"run 기록과 정답 파일의 db_id가 어긋납니다(위치 {pos})")
         files = _prompts(folder)
         if current and rec is not None and len(files) != int((rec.get("llm") or {}).get("call_count", 0)):
@@ -93,7 +107,7 @@ def audit(config: Config, run_id: str) -> dict:
             text = normalize(f.read_text(encoding="utf-8"))
             if own and own in text:
                 (result["model_made"] if own in rounds else result["gold_sql_hits"]).append(pos)
-            if len(evidence[pos]) >= EVIDENCE_MIN and evidence[pos] in text:
+            if any(h in text for h in hints[pos]):
                 result["evidence_hits"].append(pos)
             if any(i != pos and s != own and s in text for i, s in others):
                 result["other_gold_hits"].append(pos)
@@ -110,7 +124,7 @@ def leak_summary(result: dict) -> str:
         return f"누설 검사: {result['note']}"
     return (
         f"누설 검사: 프롬프트 {result['prompts']}개, 정답 SQL {len(result['gold_sql_hits'])}, "
-        f"evidence {len(result['evidence_hits'])}, 다른 문항 정답 {len(result['other_gold_hits'])}, "
+        f"{result.get('evidence_label', EVIDENCE_LABEL)} {len(result['evidence_hits'])}, 다른 문항 정답 {len(result['other_gold_hits'])}, "
         f"프롬프트 누락 {len(result['prompts_missing'])} (모델이 쓴 SQL이 정답과 같음 {len(result['model_made'])})"
     )
 

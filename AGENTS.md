@@ -6,13 +6,13 @@
 
 2. 모듈 경계. `tests/test_import_rules.py`의 import 표를 따른다. `t2s.eval`을 import하는 것은 `cli/eval_cmds.py`뿐이고, `t2s.fetch`를 import하는 것은 `cli/fetch_cmd.py`뿐이다. 이 테스트를 고쳐서 통과시키지 않는다. 경계를 바꿔야 하면 사용자 확인을 받는다.
 
-3. 정답 격리. 정답·evidence가 든 파일은 `gold/`에만 둔다. 정답 설정(`gold.toml`)과 채점 중간 파일(`gold/_work/`)도 `gold/`에 둔다. 생성 쪽(`datasource`, `dataset`, `prep`, `pipeline`, `llm`, `runner`)은 `gold/`를 읽거나 문자열로 가리키지 않는다. `ask`·`run`·`prepare`는 읽기 감시를 걸고 돈다. 모든 500문항 run에 `t2s leak-audit`을 돌려 0건을 확인한다.
+3. 정답 격리. 정답·evidence가 든 파일은 `gold/`에만 둔다. 정답 설정(`gold.toml`)과 채점 중간 파일(`gold/_work/`)도 `gold/`에 둔다. 생성 쪽(`datasource`, `dataset`, `prep`, `pipeline`, `llm`, `runner`)은 `gold/`를 읽거나 문자열로 가리키지 않는다. `ask`·`run`·`prepare`는 읽기 감시를 걸고 돈다. 모든 500문항 run과 Olist 평가셋 49문항 run에 `t2s leak-audit`을 돌려 0건을 확인한다.
 
 4. 출처 기록. 다른 저장소 코드를 복사해 고친 파일은 머리말에 출처 저장소·커밋·원본 파일·줄·바꾼 것을 적고 `docs/provenance.md` 표에 한 줄을 더한다. CHESS는 Apache-2.0, DAMO-ConvAI는 MIT 고지를 유지한다. MAC-SQL은 코드도 문장도 복사하지 않고 동작만 다시 구현하며, 읽은 파일·줄을 `docs/provenance.md`에 적는다. MAC-SQL 원문 템플릿 파일을 실행 때 읽지 않는다.
 
 5. 측정 규칙. 커밋한 깨끗한 작업 트리에서만 500문항을 잰다(라벨의 `(미커밋 코드)`를 대표로 쓰지 않는다). 측정 중 `src/` 아래를 바꾸지 않는다. `caffeinate -i`로 잠자기를 막는다. 채점한 run은 이어 돌릴 수 없다. 측정 앞뒤의 CLI 판(`codex --version`, `claude --version`)과 Python·SQLite 판을 run 기록에 남긴다.
 
-6. 라벨과 문장. 모든 점수에 `BIRD Mini-Dev / SQLite / cc48ba16 / 500문제 / EX / evidence not_used / 로컬 측정 / <모델>·추론 <단계>·<백엔드> / 1회 실행 / 구현 Python <커밋>`을 붙인다. 새로 맞음·새로 틀림을 함께 적는다. 차이가 13 이하이거나 부호 검정 p가 0.05 이상이면 "차이 없음(변동 범위)"이라고 쓴다. 백엔드가 다른 점수끼리 우열을 말하지 않는다. 원 논문·리더보드 점수와 같은 줄에 두지 않는다.
+6. 라벨과 문장. 모든 점수에 `BIRD Mini-Dev / SQLite / cc48ba16 / 500문제 / EX / evidence not_used / 로컬 측정 / <모델>·추론 <단계>·<백엔드> / 1회 실행 / 구현 Python <커밋>`을 붙인다. 새로 맞음·새로 틀림을 함께 적는다. 차이가 13 이하이거나 부호 검정 p가 0.05 이상이면 "차이 없음(변동 범위)"이라고 쓴다. 백엔드가 다른 점수끼리 우열을 말하지 않는다. 원 논문·리더보드 점수와 같은 줄에 두지 않는다. Olist 평가셋 점수에는 `Olist 스터디 평가셋 v0.3 / SQLite / 131eaf49 / 49문제 / EX(스터디 결과 비교) / 문항 조건 not_used / 로컬 측정 / <모델>·추론 <단계>·<백엔드> / 1회 실행 / 구현 Python <커밋>`을 붙인다(꼬리표는 BIRD와 같다). Olist 비교 문장은 "차이 13 이하" 기준 대신 부호 검정 p만 쓰고 "49문항·1회 실행이라 낫다·못하다로 읽지 않는다"를 붙인다. 스터디 E0 점수와 같은 줄에 두지 않는다.
 
 7. 기록은 덮어쓰지 않는다. 기준선 파일(`baselines/`)은 덮어쓰지 않고 새 이름으로 쓴다. `docs/provenance.md`에는 줄·절을 더하기만 한다.
 

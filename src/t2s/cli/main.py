@@ -80,12 +80,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-id", dest="run_id", metavar="이름")
     p.add_argument("--foreground", action="store_true", help="분리하지 않고 그 자리에서 돈다")
 
-    p = sub.add_parser("score", help="공식 채점기로 채점한다(정답 있는 데이터셋만)")
+    p = sub.add_parser("score", help="정답 설정의 채점기(BIRD 공식 채점기 또는 스터디 채점기)로 채점한다")
     p.add_argument("--run", metavar="이름", help="없으면 가장 최근 run")
     p.add_argument("--predictions", metavar="파일", help="예측 파일(.json 또는 .jsonl)을 받아 새 run으로 채점")
     p.add_argument("--run-id", dest="run_id", metavar="이름", help="--predictions로 만들 run 이름")
     p.add_argument("--num-cpus", dest="num_cpus", type=int, default=4)
-    p.add_argument("--meta-time-out", dest="meta_time_out", type=float, default=30.0)
+    p.add_argument(
+        "--meta-time-out",
+        dest="meta_time_out",
+        type=float,
+        default=None,
+        help="문항당 시간 제한(초). 없으면 채점기별 기본(BIRD 30초, 스터디 10초)",
+    )
 
     p = sub.add_parser("report", help="채점 결과와 기준 비교(정답이 없으면 실행 요약)")
     p.add_argument("--run", metavar="이름", help="없으면 가장 최근 run")

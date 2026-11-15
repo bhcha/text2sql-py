@@ -65,6 +65,22 @@ def comparison_sentences(
     return lines
 
 
+def study_sentences(
+    *, newly_correct: int, regressed: int, positions: int, sample: bool, is_reference: bool, backend_differs: bool
+) -> list[str]:
+    """스터디 평가셋 비교 문장: 부호 검정 p만 쓰고, 문항 수가 적어 낫다·못하다로 읽지 않는다고 붙인다."""
+    a, b = newly_correct, regressed
+    lines = [f"새로 맞음 {a}, 새로 틀림 {b} (공통 {positions}위치)"]
+    if sample:
+        return [*lines, "소표본·점수 아님 — 비교 문장 생략"]
+    lines.append(f"부호 검정 p={sign_test_p(a, b):.3f}. {positions}문항·1회 실행이라 낫다·못하다로 읽지 않는다")
+    if not is_reference:
+        lines.append("모델이 달라 재현 비교 아님")
+    if backend_differs:
+        lines.append("백엔드가 달라 우열을 말하지 않는다")
+    return lines
+
+
 def sql_digest(sql) -> str | None:
     return hashlib.sha256(sql.encode("utf-8")).hexdigest() if isinstance(sql, str) else None
 
@@ -231,7 +247,7 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
         + "".join(f" · {lvl} {bd[lvl]['correct']}/{bd[lvl]['total']}" for lvl in LEVELS if lvl in bd)
     )
     lines.append(
-        f"채점기 대조 {score['cross_check']} · DB 불변 {score['data_unchanged']} · 상태 {_status_text(score['status_counts'])}"
+        f"{score.get('cross_check_label', '채점기 대조')} {score['cross_check']} · DB 불변 {score['data_unchanged']} · 상태 {_status_text(score['status_counts'])}"
     )
     rescore = meta.get("kind") == "rescore"
     ref = against or DEFAULT_BASELINES.get(meta["dataset"])
@@ -244,7 +260,9 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
         lines.append(f"기준 {side.description}{changed}")
         llm = meta.get("llm") or {}
         is_ref = rescore or (llm.get("backend"), llm.get("model"), llm.get("reasoning_effort")) == REFERENCE
-        lines += comparison_sentences(
+        is_study = str((score.get("evaluator") or {}).get("id") or "").startswith(G.STUDY_PREFIX)
+        sentences = study_sentences if is_study else comparison_sentences
+        lines += sentences(
             newly_correct=len(comparison["newly_correct"]),
             regressed=len(comparison["regressed"]),
             positions=comparison["positions"],
@@ -270,9 +288,12 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
         lines.append(warn)
     lines.append(os.path.relpath(run, config.root))
 
-    md: list[str] = ["## 난도별", "", "| 난도 | 맞음 | 문항 |", "|---|---|---|"]
-    md += [f"| {lvl} | {b['correct']} | {b['total']} |" for lvl, b in bd.items()]
-    md += ["", "## DB별", "", "| DB | 맞음 | 문항 |", "|---|---|---|"]
+    md: list[str] = []
+    if bd:
+        md += ["## 난도별", "", "| 난도 | 맞음 | 문항 |", "|---|---|---|"]
+        md += [f"| {lvl} | {b['correct']} | {b['total']} |" for lvl, b in bd.items()]
+        md += [""]
+    md += ["## DB별", "", "| DB | 맞음 | 문항 |", "|---|---|---|"]
     md += [f"| {db} | {b['correct']} | {b['total']} |" for db, b in sorted(score.get("by_db", {}).items())]
     if comparison is not None:
         for title, key in (("새로 맞은 위치", "newly_correct"), ("새로 틀린 위치", "regressed")):

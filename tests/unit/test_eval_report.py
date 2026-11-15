@@ -279,3 +279,17 @@ def test_model_line_matches_select(tmp_path):
     ]
     for llm in cases:
         assert REP._model_line(llm.to_json()) == select.first_line(llm)
+
+
+def test_study_sentences():
+    base = {"positions": 49, "sample": False, "is_reference": True, "backend_differs": False}
+    assert REP.study_sentences(newly_correct=14, regressed=0, **base) == [
+        "새로 맞음 14, 새로 틀림 0 (공통 49위치)",
+        "부호 검정 p=0.000. 49문항·1회 실행이라 낫다·못하다로 읽지 않는다",
+    ]
+    assert REP.study_sentences(newly_correct=3, regressed=1, **{**base, "sample": True})[1] == (
+        "소표본·점수 아님 — 비교 문장 생략"
+    )
+    assert REP.study_sentences(newly_correct=1, regressed=2, **{**base, "backend_differs": True})[-1] == (
+        "백엔드가 달라 우열을 말하지 않는다"
+    )

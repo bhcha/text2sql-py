@@ -15,6 +15,7 @@
 | CHESS | https://github.com/ShayanTalaei/CHESS | `3d6e835f858d26885d21d4bc0215aeecf855efbe` | Apache-2.0 (`LICENSES/Apache-2.0-CHESS.txt`) | NOTICE 파일 없음 |
 | DAMO-ConvAI | https://github.com/AlibabaResearch/DAMO-ConvAI | `faf754671f5b850e1b4d1ff870db37a6a2480df6` | MIT, Copyright (c) 2022 Alibaba Research (`LICENSES/MIT-DAMO-ConvAI.txt`) | 아래 5절 둘째 문구 |
 | MAC-SQL | https://github.com/wbbeyourself/MAC-SQL | `31a9df5e0d520be4769be57a4b9022e5e34a14f4` | 표기 없음 | 위 커밋의 저장소 내용만 보았다. 그 뒤 커밋에 라이선스 표기가 생겼는지는 미확인 |
+| 스터디 저장소 | jenn25ng/text-to-sql-study (GitHub 비공개, gh 로그인과 접근 권한 필요) | `290ff9bee2d8ac70e01932857911f025a377c1ba` | 표기 없음(위 커밋의 저장소 맨 위에 LICENSE 파일이 없음을 확인) | 채점 스크립트 `scripts/run_baseline.py`를 사용자 판단으로 복사 후 수정했다. 저장소에는 쓰지 않고 `gh api`로 읽기만 했다 |
 
 ## 3. 단계별 출처 표
 
@@ -40,6 +41,8 @@
 | 일괄 실행 | (오픈소스 없음) TS `benchmarks/benchkit/run.ts`, `harness/allbird.ts` | `src/t2s/runner/batch.py`, `src/t2s/runner/records.py`, `src/t2s/cli/run_cmds.py` | 자체(TS를 옮김). 팩 프로세스 대신 스레드, 한도 연속 5회 멈춤은 그대로, 호출 실패 연속 20회 멈춤과 분리 전 확인 호출을 더함 | 자체 |
 | 보고·누설 검사 | (오픈소스 없음) TS `benchmarks/benchkit/report.ts`, `harness/lib/sentence.ts`, `harness/leak-audit.ts` | `src/t2s/eval/report.py`, `src/t2s/eval/leak_audit.py` | 자체(TS를 옮김). 부호 검정·문장 규칙은 같은 식 | 자체 |
 | 스터디 Olist 받기 | (오픈소스 없음) TS `harness/fetch-olist.ts`, `benchmarks/olist/manifest.json` | `src/t2s/fetch/olist.py`, `src/t2s/fetch/olist_study.json` | 자체(TS를 옮김). 해시 표 값은 그대로, 규칙 번호만 이 저장소 것으로. 원본은 TS 하네스에서 아직 커밋되지 않은 상태에서 옮김 | 자체. 받는 자료는 CC BY-NC-SA 4.0 |
+| 채점(Olist 스터디 평가셋) | 스터디 저장소 `scripts/run_baseline.py` `extract_sql` 118-121행 가운데 120-121행(끝 `;` 떼기), `ALLOWED` 126행, `connect` 129-140행, `execute` 143-158행, `_same` 163-166행, `_rows_equal` 169-180행, `compare` 183-200행, `run` 391행(실행 오류면 비교 없이 실패) | `src/t2s/eval/study.py` | 복사 후 수정. DB 경로를 받은 그대로 열고 `immutable=1`을 더함, 실행·비교가 이유 코드를 함께 돌려줌(시간 초과·거절을 나눔), 코드 블록 꺼내기는 가져오지 않음, 정답 SQL을 같은 규칙으로 돌려 기대 결과와 대조하는 단계를 더함. 판정 규칙은 그대로 | 원본 저장소에 LICENSE 없음. 사용자 판단으로 복사 후 수정. 파일 머리말에 출처·커밋·줄·바꾼 것 |
+| 스터디 문항 넣기·정답 연결·보고·누설 | (오픈소스 없음) 착안: 스터디 저장소 `scripts/run_baseline.py` `MODEL_FIELDS` 42행(모델 입력 칸 넷), `run` 333행(SQL 문항만 채점) | `src/t2s/dataset/questions.py` `load_study_inputs`·`load_questions_json`, `src/t2s/fetch/olist.py` `write_gold_toml`, `src/t2s/eval/gold.py`, `src/t2s/eval/report.py` `study_sentences`, `src/t2s/eval/leak_audit.py` | 자체. 문항 조건은 읽은 뒤 버림(not_used), SQL 문항이 아니면 멈춤, `gold.toml`은 `fetch/bird.py`와 같은 꼴 | 자체 |
 
 ## 4. Python판에서 달라진 동작
 

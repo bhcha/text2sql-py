@@ -1,6 +1,6 @@
 # text2sql-py
 
-P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스다. SQLite DB에 자연어로 묻고, 문항 묶음을 한꺼번에 돌리고, 정답이 있으면(BIRD Mini-Dev) 공식 채점기로 잰다. 규칙은 `AGENTS.md`, 출처는 `docs/provenance.md`에 있다.
+P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스다. SQLite DB에 자연어로 묻고, 문항 묶음을 한꺼번에 돌리고, 정답이 있으면 잰다(BIRD Mini-Dev는 공식 채점기, Olist 스터디 평가셋 v0.3은 스터디 채점 규칙). 규칙은 `AGENTS.md`, 출처는 `docs/provenance.md`에 있다.
 
 ## 먼저 알 것
 
@@ -22,11 +22,11 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | 1 | `/getbird` | BIRD Mini-Dev 자료와 임베딩 모델을 받고 해시를 대조, 정답은 `gold/`로 | 받기 1.2GB |
 | 2 | `/connect` | 데이터셋 목록·준비·전환. `/connect bird`, `/connect olist`(고지 뒤 승인), `/connect <SQLite 경로>`(고지 뒤 승인), `/connect <이름>` | BIRD 준비 약 2분 |
 | 3 | `/text2sql <질문>` | 지금 데이터셋에 질문 하나. BIRD면 DB 이름을 함께 말한다 | 수 초~수십 초 |
-| 4 | `/runset` | 지금 데이터셋 전체(또는 "앞 N문항만")를 돌리고, 정답이 있으면 채점·기준 비교 | 500문항 30~70분 |
-| 따로 | `/getolist` | 스터디 Olist DB와 평가셋 v0.3(49문항)을 gh로 받고 해시를 대조, 정답은 `gold/olist/`로 | 받기 약 70MB |
+| 4 | `/runset` | 지금 데이터셋 전체(또는 "앞 N문항만")를 돌리고, 정답이 있으면 채점·기준 비교. Olist면 평가셋 49문항을 돌리고 스터디 채점 규칙으로 잰다 | 500문항 30~70분 |
+| 따로 | `/getolist` | 스터디 Olist DB와 평가셋 v0.3(49문항)을 gh로 받고 해시를 대조, 정답은 `gold/olist/`로, 정답 설정 `gold/olist/gold.toml`을 만듦 | 받기 약 70MB |
 
 - `/getbird` 뒤 바로 `/runset`을 불러도 된다(스킬이 `prepare`를 먼저 돌린다). 기본 데이터셋은 없다. `/text2sql`·`/runset` 전에 `/connect bird`, `/connect olist`, `/connect <경로>` 중 하나로 데이터셋을 정해야 한다. `bird`는 데이터셋 `bird-minidev`를 가리키는 말이다.
-- `/getolist`는 받기만 한다. Olist DB를 쓰려면 `/connect olist`로 등록한다(고지 뒤 승인). 평가셋 49문항을 한꺼번에 돌리거나 채점하는 길은 아직 없다. Olist 자료는 CC BY-NC-SA 4.0이고 스터디 용도로만 쓴다.
+- `/getolist`는 받기만 한다(정답 설정 `gold/olist/gold.toml`도 이때 만든다). Olist DB를 쓰려면 `/connect olist`로 등록한다(고지 뒤 승인). 그 뒤 `/runset`이 평가셋 49문항을 돌리고 채점한다(아래 "Olist 평가셋 채점"). Olist 자료는 CC BY-NC-SA 4.0이고 스터디 용도로만 쓴다.
 - BIRD의 DB 이름 11개: financial, card_games, california_schools, codebase_community, debit_card_specializing, european_football_2, formula_1, student_club, superhero, thrombosis_prediction, toxicology(`uv run t2s datasets`로도 본다).
 
 스킬이 부르는 명령(스킬을 쓰지 않을 때 같은 일을 하는 차례):
@@ -39,7 +39,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | `/connect olist` | `register olist --sqlite data/olist/olist.db`(고지) → 승인 뒤 `--yes` → `prepare olist` → `use olist`. 이미 등록돼 있으면 `use olist` |
 | `/connect <경로>` | `register <이름> --sqlite <경로>`(고지) → 승인 뒤 `--yes` → `prepare <이름>` → `use <이름>`. 이름은 말한 것, 없으면 파일 이름에서 만든다 |
 | `/text2sql <질문>` | `ask [--source <DB>] <모델 인자> "<질문>"`. 종료 코드 5면 `prepare` 뒤 한 번 더 |
-| `/runset` | `status`로 할 일을 고른 뒤 `prepare` → `run <모델 인자> [--limit N] [--questions <파일>]` → (물을 때) `status` → `report` |
+| `/runset` | `status`로 할 일을 고른 뒤 `prepare` → `run <모델 인자> [--limit N] [--questions <파일>]` → (물을 때) `status` → `report`. 지금 데이터셋이 olist면 늘 `--questions data/olist/model_inputs.v0.3.json` |
 - `/runset`은 시작하고 바로 돌아온다. "진행 어때"로 상태를, 끝난 뒤 "보고"로 결과를 본다.
 - 모델은 지금 세션의 모델이 기본이다. "terra medium으로", "opus로"처럼 말하면 그 모델을 쓴다. 모델을 알 수 없으면 돌리지 않고 묻는다.
 
@@ -57,11 +57,11 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | `register` | SQLite 파일을 데이터셋으로 등록(고지 뒤 `--yes`) | `uv run t2s register shop --sqlite ~/db/shop.sqlite --yes` |
 | `prepare` | 값 색인·프로파일 만들기(준비된 것은 건너뜀) | `uv run t2s prepare` |
 | `ask` | 질문 하나 → SQL → 읽기 전용 실행 → 앞 10행 | `uv run t2s ask --source financial --profile p3-ref "How many accounts are there?"` |
-| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지) | `uv run t2s run --profile p3-ref --limit 20` |
+| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지). `--questions`는 공개 문항 꼴 JSON, 스터디 모델 입력 JSON, 한 줄에 질문 하나인 텍스트 | `uv run t2s run --profile p3-ref --limit 20` |
 | `status` | 가장 최근(또는 `--run-id`) run의 진행, 10줄 안 | `uv run t2s status` |
 | `stop` | 도는 run 멈추기 | `uv run t2s stop` |
 | `resume` | 멈춘 run 이어 돌기(채점 전, 같은 커밋일 때만) | `uv run t2s resume` |
-| `score` | 공식 채점기로 채점, 또는 예측 파일을 받아 채점 | `uv run t2s score --run <id>` |
+| `score` | 정답 설정의 채점기(BIRD 공식 채점기 또는 스터디 채점기)로 채점. BIRD는 예측 파일을 받아 채점도 한다(스터디는 종료 코드 2). `--meta-time-out`이 없으면 BIRD 30초, 스터디 10초 | `uv run t2s score --run <id>` |
 | `report` | 라벨, EX, 기준과 위치별 비교, 누설 검사 한 줄 | `uv run t2s report` |
 | `leak-audit` | 프롬프트에 정답·evidence가 들어갔는지 검사 | `uv run t2s leak-audit --run <id>` |
 
@@ -85,7 +85,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 - `runs/<run_id>/`: `run.json`(시작 조건: 모델, 커밋, 판, DB 지문), `control.json`(진행 상태), `run.log`, `items/<위치>/`(`record.json`, `trace.json`, 호출마다 `calls/<k>/prompt.txt`·`response.txt`·`llm-meta.json`·`cli-events.jsonl`), `records.jsonl`, `predictions.json`, `manifest.json`, 채점 뒤 `score.json`·`ex.jsonl`·`evaluator-stdout.txt`·`leak-audit.json`, 보고 뒤 `report.json`·`report.md`.
 - `runs/ask/<시각>-<16진>/`: `ask` 한 번의 `trace.json`·`ask.json`·`calls/`.
 - `data/`: 받은 자료, 임베딩 모델, 자산(`data/assets/<데이터셋>/<소스>/`의 값 색인·프로파일·manifest).
-- `gold/`: 정답과 정답 설정, 채점 중간 파일(`gold/_work/<run_id>/`). 채점(`score`·`report`·`leak-audit`)만 읽는다. 생성 쪽(`ask`·`run`)은 읽기 감시를 걸고 돌아 이 폴더를 열지 못한다.
+- `gold/`: 정답과 정답 설정, 채점 중간 파일(`gold/_work/<run_id>/`, 스터디 채점의 문항별 이유는 `detail.jsonl`). 채점(`score`·`report`·`leak-audit`)만 읽는다. 생성 쪽(`ask`·`run`)은 읽기 감시를 걸고 돌아 이 폴더를 열지 못한다.
 - `var/state.json`: 지금 바라보는 데이터셋과 등록 기록.
 
 ## 점수를 읽는 법
@@ -94,7 +94,19 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 - 기준(TS 기준선 `baselines/ts-pure-fix.json`, EX 263/500)과 위치별로 견주어 새로 맞음·새로 틀림을 함께 적는다. 차이가 13 이하이거나 부호 검정 p가 0.05 이상이면 "차이 없음(변동 범위)"이다. 같은 코드도 run마다 수십 위치가 갈리므로 1회 실행으로 낫다·못하다를 말하지 않는다.
 - 참조 조건은 codex-cli·gpt-5.6-terra·medium이다. 다른 모델이면 "재현 비교 아님", 백엔드가 다르면 우열을 말하지 않는다.
 - 원 논문·리더보드 점수와 견주지 않는다(측정 조건이 다르다).
+- Olist 라벨: `Olist 스터디 평가셋 v0.3 / SQLite / 131eaf49 / 49문제 / EX(스터디 결과 비교) / 문항 조건 not_used / 로컬 측정 / <모델>·추론 <단계>·<백엔드> / 1회 실행 / 구현 Python <커밋>`. `131eaf49`는 정답 파일의 sha256 앞 8자다. 꼬리표(미커밋 코드, 소표본·점수 아님, 가짜 백엔드·점수 아님)는 BIRD와 같다. 기본 기준 run은 없고 `report --against <run>`으로 견준다. 비교 문장은 부호 검정 p만 쓰고 "49문항·1회 실행이라 낫다·못하다로 읽지 않는다"를 붙인다. 스터디 E0 점수와 같은 줄에 두지 않는다.
 - 누설 검사 한 줄이 0이 아니거나 도구 호출이 0이 아닌 run은 대표로 쓰지 않는다.
+
+## Olist 평가셋 채점
+
+`/getolist`로 받은 평가셋 v0.3(49문항)을 `/connect olist` 뒤 `/runset`으로 돌린다. 명령으로는 `uv run t2s run <모델 인자> --questions data/olist/model_inputs.v0.3.json`이며, 끝나면 `score`·`report`가 이어 돈다.
+
+- 모델에는 질문만 간다. 문항 조건(task_conditions)과 문항 종류는 주지 않는다(문항 조건 not_used, AGENTS 규칙 9). 문항 종류가 sql이 아닌 항목이 있거나 칸이 다르면 읽지 않고 멈춘다.
+- 채점 규칙은 스터디 채점 스크립트(`scripts/run_baseline.py`, 커밋 `290ff9be`)와 같다. 열 이름은 보지 않고 열 수·행 수는 같아야 한다. 열이 6개 이하면 열 순서의 모든 순열을 시도한다. 정답 파일의 행 순서 칸이 any·ignored·not_required·unordered일 때만 행 순서를 무시하고(중복은 보존), 그 밖은 순서대로 비교한다. 양쪽이 수면 차이가 문항의 허용 오차(없으면 0.0001) 안이면 같다. NULL은 NULL과만 같다.
+- 예측 SQL은 끝 `;`를 떼고, 안에 `;`가 남으면 실행하지 않는다. 시간 제한 10초, 1000행을 넘으면 실패다. 읽기 전용(`mode=ro&immutable=1`)으로 열고 SELECT·READ·FUNCTION·RECURSIVE 밖의 동작과 load_extension을 거절한다.
+- 정답 대조: 정답 SQL을 같은 규칙으로 돌려 정답 파일의 기대 결과와 같은지 본다. 하나라도 다르면 "정답 대조 False"이고 종료 코드 1이다.
+- run 폴더의 `ex.jsonl`에는 문항별 0·1과 실행 이유 코드만 있고 난도는 빈 글이다. 이유 글은 `gold/_work/<run_id>/detail.jsonl`에만 있다.
+- 예측 파일 채점(`score --predictions`)은 스터디 채점기에서 받지 않는다.
 
 ## TS 하네스와의 관계
 

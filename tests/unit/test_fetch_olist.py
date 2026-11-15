@@ -146,3 +146,36 @@ def test_cli_paths_do_not_leak(setup, capsys, monkeypatch):
     (root / gold["path"]).write_bytes(b"changed")
     rc, text = _cli(capsys, manifest, root, monkeypatch)
     assert rc == 1 and "중단 2단계" in text and MARK not in text
+
+
+def test_gold_toml_made_then_matched(setup):
+    _src, manifest, root, _log = setup
+    lines = fetch_olist(root, manifest=manifest)
+    assert lines[6] == "6 정답 설정 gold.toml: 만듦(채점기 study-run-baseline-290ff9b)" and len(lines) <= 10
+    gold = next(it for it in manifest["files"] if it["role"] == "gold")
+    toml = (root / "gold/olist/gold.toml").read_text(encoding="utf-8")
+    assert toml == (
+        'answers = "study-v0.3.json"\nevaluator = "study-run-baseline-290ff9b"\n\n'
+        f'[sha256]\nanswers = "{gold["sha256"]}"\n'
+    )
+    again = fetch_olist(root, manifest=manifest)
+    assert again[6] == "6 정답 설정 gold.toml: 일치(채점기 study-run-baseline-290ff9b)"
+    assert not list(root.rglob("*.part"))
+
+
+def test_gold_toml_different_stops(setup):
+    _src, manifest, root, _log = setup
+    fetch_olist(root, manifest=manifest)
+    (root / "gold/olist/gold.toml").write_text('answers = "other.json"\n', encoding="utf-8")
+    with pytest.raises(FetchStopped) as e:
+        fetch_olist(root, manifest=manifest)
+    assert e.value.step == "4단계" and "gold.toml" in e.value.message
+    assert (root / "gold/olist/gold.toml").read_text(encoding="utf-8") == 'answers = "other.json"\n'
+
+
+def test_real_manifest_names_study_evaluator():
+    from t2s.eval import study
+
+    m = olist.load_manifest()
+    assert m["evaluator"] == study.EVALUATOR_ID
+    assert study.SOURCE["commit"] == m["source"]["commit"] and study.SOURCE["repository"] == m["source"]["repository"]

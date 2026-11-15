@@ -6,6 +6,8 @@
 - 인자를 받지 않는다. 해시를 건너뛰는 옵션·환경변수가 없고, 해시가 다르면 멈춘다.
 - 정답 파일은 처음부터 gold/olist/ 안에 받는다(.part도 그 안에 생긴다). 파일 내용은 출력하지 않는다.
 - 이어받기는 없다. 남은 .part는 덮어쓴다.
+- 받은 뒤 정답 설정(gold/olist/gold.toml: 정답 파일 이름, 채점기 이름, 정답 파일 sha256)을 만든다. 이미 있으면 대조하고,
+  다르면 멈춘다(fetch/bird.py의 write_gold_toml과 같은 꼴).
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from t2s.fetch.steps import FetchStopped, format_summary, hash_mismatch, megabyt
 GH = "gh"  # 테스트는 가짜 실행 파일로 바꾼다
 MANIFEST_NAME = "olist_study.json"
 MIN_FREE_BYTES = 1024**3
+GOLD_TOML = "gold.toml"
 
 
 def load_manifest() -> dict:
@@ -125,6 +128,31 @@ def _check_model_inputs(root: Path, entry: dict, allowed: list[str]) -> int:
     return len(items)
 
 
+def write_gold_toml(root: Path, manifest: dict) -> str:
+    step = "4단계"
+    gold = next(it for it in manifest["files"] if it["role"] == "gold")
+    target = _at(root, gold["path"]).parent / GOLD_TOML
+    body = (
+        f'answers = "{Path(gold["path"]).name}"\n'
+        f'evaluator = "{manifest["evaluator"]}"\n'
+        "\n"
+        "[sha256]\n"
+        f'answers = "{gold["sha256"]}"\n'
+    )
+    if target.exists():
+        if target.read_text(encoding="utf-8") != body:
+            raise FetchStopped(
+                step,
+                f"이미 있는 {GOLD_TOML}의 내용이 해시 표와 다르다",
+                f"{GOLD_TOML}을 지우고 다시 /getolist를 부른다",
+            )
+        return f"정답 설정 {GOLD_TOML}: 일치(채점기 {manifest['evaluator']})"
+    tmp = target.with_name(target.name + ".part")
+    tmp.write_text(body, encoding="utf-8")
+    os.replace(tmp, target)
+    return f"정답 설정 {GOLD_TOML}: 만듦(채점기 {manifest['evaluator']})"
+
+
 def fetch_olist(root: Path, *, manifest: dict | None = None) -> list[str]:
     m = manifest or load_manifest()
     repo, commit = m["source"]["repository"], m["source"]["commit"]
@@ -145,4 +173,5 @@ def fetch_olist(root: Path, *, manifest: dict | None = None) -> list[str]:
     gold_path = next(it for it in files if it["role"] == "gold")["path"]
     steps.append(f"공개 쪽: {public_dir}/ (DB·모델 입력·평가셋 manifest·스키마 스냅숏)")
     steps.append(f"정답 쪽: {gold_path} (채점 단계만 읽는다)")
+    steps.append(write_gold_toml(root, m))
     return format_summary("getolist 완료", steps, m["license_note"])

@@ -186,6 +186,7 @@ def make_fake_olist_source(tmp: Path, *, extra_key: str | None = None) -> tuple[
         "source": {"repository": OLIST_REPO, "commit": OLIST_COMMIT},
         "files": files,
         "model_inputs_allowed_item_keys": OLIST_ALLOWED_KEYS,
+        "evaluator": "study-run-baseline-290ff9b",
         "license_note": "라이선스 줄",
     }
     return src, manifest

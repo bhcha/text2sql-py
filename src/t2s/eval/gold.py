@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 GOLD_DIR = "gold"
@@ -24,13 +24,24 @@ class GoldError(Exception):
     """정답 설정이 잘못되었거나 해시가 다르다(종료 코드 1)."""
 
 
+STUDY_PREFIX = "study-"  # 스터디 채점기(eval/study.py) 이름의 앞머리
+# 채점기별로 gold.toml에 있어야 하는 파일 칸. 모르는 채점기는 BIRD 칸을 요구한다.
+BIRD_FILE_KEYS = ("questions_with_answers", "gold_sql")
+STUDY_FILE_KEYS = ("answers",)
+
+
 @dataclass(frozen=True)
 class Gold:
     dataset: str
     folder: Path
     evaluator: str
-    questions_path: Path  # 정답 포함 문제 파일(해시 대조를 마친 경로)
-    gold_sql_path: Path  # 정답 SQL 파일
+    questions_path: Path  # 정답 포함 문제 파일(해시 대조를 마친 경로). 스터디는 정답 파일(answers)
+    gold_sql_path: Path | None  # 정답 SQL 파일(BIRD만)
+    files: dict[str, Path] = field(default_factory=dict)  # 칸 이름 → 해시 대조를 마친 경로
+
+
+def is_study(evaluator: str) -> bool:
+    return str(evaluator).startswith(STUDY_PREFIX)
 
 
 def _sha256(path: Path) -> str:
@@ -55,12 +66,14 @@ def load_gold(root: Path, dataset: str) -> Gold:
     except tomllib.TOMLDecodeError as e:
         raise GoldError(f"정답 설정을 읽지 못했습니다: {cfg} ({e.lineno}행)") from None
     try:
-        qname, sname, evaluator = raw["questions_with_answers"], raw["gold_sql"], raw["evaluator"]
+        evaluator = str(raw["evaluator"])
+        keys = STUDY_FILE_KEYS if is_study(evaluator) else BIRD_FILE_KEYS
+        names = {key: raw[key] for key in keys}
         want = raw["sha256"]
     except KeyError as e:
         raise GoldError(f"정답 설정에 칸이 없습니다: {e.args[0]} ({cfg})") from None
     out = {}
-    for key, name in (("questions_with_answers", qname), ("gold_sql", sname)):
+    for key, name in names.items():
         p = folder / str(name)
         if not p.is_file():
             raise GoldError(f"정답 파일이 없습니다: {p}")
@@ -68,7 +81,9 @@ def load_gold(root: Path, dataset: str) -> Gold:
         if got != want.get(key):
             raise GoldError(f"정답 파일 해시가 다릅니다: {p.name} (지금 {got[:8]}, 기대 {str(want.get(key))[:8]})")
         out[key] = p
-    return Gold(dataset, folder, str(evaluator), out["questions_with_answers"], out["gold_sql"])
+    if is_study(evaluator):
+        return Gold(dataset, folder, evaluator, out["answers"], None, out)
+    return Gold(dataset, folder, evaluator, out["questions_with_answers"], out["gold_sql"], out)
 
 
 def gold_items(gold: Gold) -> list[dict]:
@@ -81,6 +96,8 @@ def gold_items(gold: Gold) -> list[dict]:
 
 def gold_lines(gold: Gold) -> list[str]:
     """정답 SQL 파일의 줄들(줄 끝 제거). 줄마다 "SQL\\tdb_id"."""
+    if gold.gold_sql_path is None:
+        raise GoldError(f"정답 설정에 정답 SQL 파일이 없습니다(채점기 {gold.evaluator})")
     return [line.rstrip("\r\n") for line in gold.gold_sql_path.read_text(encoding="utf-8").splitlines()]
 
 

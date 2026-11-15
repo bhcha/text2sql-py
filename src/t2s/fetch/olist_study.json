@@ -53,5 +53,7 @@
     "question_type",
     "task_conditions"
   ],
+  "evaluator": "study-run-baseline-290ff9b",
+  "evaluator_note": "채점은 스터디 채점 스크립트 scripts/run_baseline.py(위 커밋)를 복사 후 수정한 src/t2s/eval/study.py가 한다",
   "license_note": "Olist 자료는 CC BY-NC-SA 4.0 (https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce). 스터디 용도로만 쓴다."
 }
