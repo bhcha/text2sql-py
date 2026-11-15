@@ -85,3 +85,53 @@ def test_is_protected(tmp_path):
     assert not is_protected(tmp_path, tmp_path / "golden.txt")
     assert not is_protected(tmp_path, tmp_path / "data" / "x" / "extracted" / "f")
     assert not is_protected(tmp_path, 3)
+
+
+HINT_SCRIPT = textwrap.dedent(
+    r"""
+    import json, sys
+    from pathlib import Path
+    from t2s.runner.guard import GoldAccessBlocked, install_guard
+    root = Path(sys.argv[1])
+    if sys.argv[2] == "allow":
+        install_guard(root, allow_hints=True)
+    else:
+        install_guard(root)
+    out = {}
+    for name, rel in (("hints", "data/x/hints.public.json"), ("gold", "gold/x.txt"), ("run_hints", "runs/r/hints.json")):
+        try:
+            open(str(root / rel)).read()
+            out[name] = "ok"
+        except GoldAccessBlocked:
+            out[name] = "blocked"
+    print(json.dumps(out))
+    """
+)
+
+
+def test_guard_hint_files(tmp_path):
+    root = tmp_path / "repo"
+    (root / "gold").mkdir(parents=True)
+    (root / "gold" / "x.txt").write_text("g")
+    (root / "data" / "x").mkdir(parents=True)
+    (root / "data" / "x" / "hints.public.json").write_text("[]")
+    (root / "runs" / "r").mkdir(parents=True)
+    (root / "runs" / "r" / "hints.json").write_text("[]")
+    got = {}
+    for mode in ("default", "allow"):
+        r = subprocess.run(
+            [sys.executable, "-c", HINT_SCRIPT, str(root), mode], capture_output=True, text=True, check=True
+        )
+        got[mode] = json.loads(r.stdout)
+    assert got["default"] == {"hints": "blocked", "gold": "blocked", "run_hints": "ok"}
+    assert got["allow"] == {"hints": "ok", "gold": "blocked", "run_hints": "ok"}
+
+
+def test_is_protected_hints(tmp_path):
+    from t2s.runner.guard import is_protected
+
+    hints = tmp_path / "data" / "bird-minidev" / "hints.public.json"
+    assert is_protected(tmp_path, hints)
+    assert not is_protected(tmp_path, hints, allow_hints=True)
+    assert is_protected(tmp_path, tmp_path / "gold" / "a", allow_hints=True)
+    assert not is_protected(tmp_path, tmp_path / "data" / "bird-minidev" / "questions.public.json")

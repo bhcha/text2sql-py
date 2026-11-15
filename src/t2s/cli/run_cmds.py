@@ -3,6 +3,10 @@
 `run`은 앞에서 확인을 마친 뒤 `caffeinate -i`로 분리된 프로세스(`run --worker`)를 띄우고 바로 돌아온다.
 분리된 프로세스는 생성이 끝나면 `score`와 `report`를 하위 프로세스로 이어 부른다(--no-score면 부르지 않는다).
 TS 하네스(text2sql-harness) harness/allbird.ts(분리 실행, 제어 파일, status 줄, 멈춤)를 옮겼다.
+
+evidence(`--evidence used|not_used`, 기본 not_used): used면 run을 시작하는 이 프로세스만 읽기 감시를 allow_hints=True로
+걸어 공개 evidence 파일(BIRD) 또는 스터디 모델 입력 파일의 문항 조건(Olist)을 읽고, 위치별 글을 run 폴더의 hints.json에
+쓴다. 분리된 프로세스와 resume은 hints.json만 읽는다(run.json의 sha256과 대조).
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 from t2s.cli.data_cmds import err, out
+from t2s.dataset import hints as H
 from t2s.dataset.config import Config, ConfigError, find_root, load_config
 from t2s.dataset.questions import (
     PublicQuestion,
@@ -42,6 +47,9 @@ from t2s.runner.guard import install_guard
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
 OUTGOING = "질문, CREATE 원문·예시 3행, 질문과 비슷한 값, 열 프로파일, 실행 오류 글"
+OUTGOING_EVIDENCE = "문항 evidence 글"
+EVIDENCE_USED, EVIDENCE_NOT_USED = "used", "not_used"
+NEEDS_GETBIRD = "먼저 /getbird(다시 부르면 evidence 파일을 만든다)"
 PHASE_NAMES = {"generate": "생성", "score": "채점", "report": "보고"}
 HALT_NAMES = {"usage_limit": "사용량 한도", "consecutive_failures": "연속 실패", "stop": "stop"}
 STOP_WAIT_SECONDS = 10
@@ -69,13 +77,16 @@ def _spawn(cmd: list[str], *, cwd: Path, env: dict, log: Path) -> int:
     return proc.pid
 
 
-def _setup():
+def _setup(allow_hints: bool = False):
     try:
         root = find_root()
     except ConfigError as e:
         err(f"오류: {e}")
         return None
-    install_guard(root)
+    if allow_hints:
+        install_guard(root, allow_hints=True)  # evidence used run을 시작하는 프로세스 한 곳뿐
+    else:
+        install_guard(root)
     try:
         state = load_state(root)
         config = load_config(root, state)
@@ -86,7 +97,10 @@ def _setup():
 
 
 def run(args) -> int:
-    setup = _setup()
+    allow_hints = (
+        args.command == "run" and not args.worker and getattr(args, "evidence", EVIDENCE_NOT_USED) == EVIDENCE_USED
+    )
+    setup = _setup(allow_hints)
     if setup is None:
         return EXIT_FAIL
     root, state, config = setup
@@ -109,22 +123,62 @@ def _running_run(config: Config) -> str | None:
     return None
 
 
-def _questions(args, spec, root: Path) -> tuple[list[PublicQuestion], Path | None, dict | None]:
-    """(문항, --questions로 받은 원본 경로 또는 None, run.json questions에 더할 칸 또는 None)."""
+def _questions(
+    args, spec, root: Path, keep_conditions: bool = False
+) -> tuple[list[PublicQuestion], Path | None, dict | None, list[list[str]] | None]:
+    """(문항, --questions로 받은 원본 경로 또는 None, run.json questions에 더할 칸 또는 None,
+    문항별 조건 목록 또는 None). 조건 목록은 keep_conditions이고 스터디 모델 입력 꼴일 때만 있다."""
     single = next(iter(spec.sources)) if len(spec.sources) == 1 else None
     if args.questions:
         path = Path(args.questions).expanduser().resolve()
         if not path.is_file():
             raise QuestionsError(f"문항 파일이 없습니다: {path}")
         if path.suffix == ".json":
+            if keep_conditions:
+                questions, extra, conditions = load_questions_json(path, single, keep_conditions=True)
+                return questions, path, extra, conditions
             questions, extra = load_questions_json(path, single)
-            return questions, path, extra
+            return questions, path, extra, None
         if single is None:
             raise QuestionsError("텍스트 문항 파일은 소스가 하나인 데이터셋에서만 쓴다(공개 문항 꼴 JSON을 준다)")
-        return load_text_questions(path, single), path, None
+        return load_text_questions(path, single), path, None, None
     if spec.questions is None:
-        return [], None, None
-    return load_public_questions(spec.questions), None, None
+        return [], None, None, None
+    return load_public_questions(spec.questions), None, None, None
+
+
+class _Refused(Exception):
+    def __init__(self, code: int, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+def _evidence_texts(
+    root: Path, spec, questions: list[PublicQuestion], given: Path | None, extra: dict | None, conditions
+) -> tuple[list[str], dict]:
+    """evidence used run의 위치별 글(문항 전체)과 run.json evidence에 넣을 출처 칸. 쓸 수 없으면 _Refused."""
+    if spec.kind == "bird-minidev" and given is None:
+        if spec.hints is None or not Path(spec.hints).is_file():
+            raise _Refused(EXIT_FAIL, f"{spec.name}: 공개 evidence 파일이 없습니다({NEEDS_GETBIRD})")
+        texts = H.load_public_hints(Path(spec.hints), questions)
+        return texts, {
+            "source": "official",
+            "source_path": _rel(root, Path(spec.hints)),
+            "source_sha256": R.sha256_file(Path(spec.hints)),
+        }
+    if conditions is not None and given is not None and extra is not None:
+        texts = [H.join_conditions(c) for c in conditions]
+        return texts, {
+            "source": "task_conditions",
+            "source_path": _rel(root, given),
+            "source_sha256": extra["source_sha256"],
+            "join": H.JOIN,
+        }
+    raise _Refused(
+        EXIT_USAGE,
+        "이 문항에는 evidence가 없습니다(evidence used는 BIRD Mini-Dev 공개 문항과 스터디 모델 입력 파일에서만 쓴다)",
+    )
 
 
 def cmd_run(args, root: Path, state, config: Config) -> int:
@@ -140,7 +194,11 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         err(f"{name}: {spec.missing} ({hint})")
         return EXIT_FAIL
 
-    questions, given, extra = _questions(args, spec, root)
+    used = getattr(args, "evidence", EVIDENCE_NOT_USED) == EVIDENCE_USED
+    if used and spec.kind == "bird-minidev" and args.questions:
+        err("evidence used는 BIRD 공개 문항 전체(--questions 없이)에서만 쓴다")
+        return EXIT_USAGE
+    questions, given, extra, conditions = _questions(args, spec, root, keep_conditions=used)
     if not questions:
         err("이 데이터셋에는 문항 파일이 없습니다. --questions <파일>")
         return EXIT_USAGE
@@ -151,6 +209,15 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
     total = len(questions)
     count = min(args.limit, total) if args.limit else total
     chosen = questions[:count]
+    hint_texts: list[str] | None = None
+    evidence_source: dict = {}
+    if used:
+        try:
+            all_texts, evidence_source = _evidence_texts(root, spec, questions, given, extra, conditions)
+        except _Refused as e:
+            err(e.message)
+            return e.code
+        hint_texts = all_texts[:count]
 
     try:
         llm = select.select_from_args(
@@ -203,7 +270,8 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
     if llm.backend == "fake":
         out("밖으로 나가는 것 없음(가짜 백엔드)")
     else:
-        out(f"밖으로 나감({select.provider_name(llm.backend)}): {OUTGOING}")
+        outgoing = f"{OUTGOING}, {OUTGOING_EVIDENCE}" if used else OUTGOING
+        out(f"밖으로 나감({select.provider_name(llm.backend)}): {outgoing}")
 
     run.mkdir(parents=True)
     if given is not None:
@@ -211,6 +279,21 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         R.write_json_atomic(qpath, to_public_json(questions))
     else:
         qpath = Path(spec.questions)
+    evidence: dict = {"mode": EVIDENCE_NOT_USED}
+    if hint_texts is not None:
+        hpath = run / R.HINTS_FILE
+        R.write_json_atomic(hpath, hint_texts)
+        evidence = {
+            "mode": EVIDENCE_USED,
+            "source": evidence_source["source"],
+            "path": _rel(root, hpath),
+            "sha256": R.sha256_file(hpath),
+            "source_path": evidence_source["source_path"],
+            "source_sha256": evidence_source["source_sha256"],
+            "count": len(hint_texts),
+            "rules": H.HINT_RULES_VERSION,
+            **({"join": evidence_source["join"]} if "join" in evidence_source else {}),
+        }
     settings = PipelineSettings.from_mapping(config.pipeline)
     git = batch.git_info(root)
     run_meta = {
@@ -230,6 +313,7 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         "count": count,
         "limit": args.limit,
         "sample": count != total,
+        "evidence": evidence,
         "workers": args.workers,
         "llm": llm.to_json(),
         "pipeline": {**asdict(settings), "refine_template_sha256": refine.template_sha256()},
@@ -245,7 +329,8 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         run / R.CONTROL_FILE,
         {"run_id": run_id, "pid": None, "started_at": run_meta["started_at"], "state": "starting", "sessions": []},
     )
-    return _launch(root, config, run, run_id, args.foreground, f"{name} {count}문항 · 동시 {args.workers}")
+    what = f"{name} {count}문항 · 동시 {args.workers} · evidence {evidence['mode']}"
+    return _launch(root, config, run, run_id, args.foreground, what)
 
 
 def _launch(root: Path, config: Config, run: Path, run_id: str, foreground: bool, what: str) -> int:
@@ -279,6 +364,12 @@ def work(root: Path, config: Config, run_id: str) -> int:
         R.update_control(run, state="failed")
         return EXIT_FAIL
     questions = load_public_questions(root / meta["questions"]["path"])[: meta["count"]]
+    try:
+        hint_texts = _run_hints(run, meta)
+    except _Refused as e:
+        err(e.message)
+        R.update_control(run, state="failed")
+        return EXIT_FAIL
     llm = select.ResolvedLlm.from_json(meta["llm"])
     settings = PipelineSettings(**{k: v for k, v in meta["pipeline"].items() if k != "refine_template_sha256"})
     R.update_control(run, worker_pid=os.getpid(), state="running", phase="generate")
@@ -299,6 +390,7 @@ def work(root: Path, config: Config, run_id: str) -> int:
         embedder=embedder,
         model_hashes=model_hashes,
         backend_factory=BACKEND_FACTORY,
+        hints=hint_texts,
     )
     done = R.read_item_records(run)
     attempts = {q.position: _next_attempt(run, q.position) for q in questions}
@@ -329,6 +421,27 @@ def work(root: Path, config: Config, run_id: str) -> int:
 
 
 BACKEND_FACTORY = None  # 테스트가 바꿔치기한다(문항마다 부를 백엔드를 만드는 함수)
+
+
+def evidence_mode(meta: dict) -> str | None:
+    """run.json의 evidence 방식. 칸이 없는 옛 run은 not_used, 재채점 run은 None(미확인)."""
+    if meta.get("kind") == "rescore":
+        return None
+    return (meta.get("evidence") or {}).get("mode", EVIDENCE_NOT_USED)
+
+
+def _run_hints(run: Path, meta: dict) -> list[str] | None:
+    """evidence used run이면 run 폴더의 hints.json을 run.json의 sha256과 대조해 읽는다. not_used면 None."""
+    if evidence_mode(meta) != EVIDENCE_USED:
+        return None
+    ev = meta["evidence"]
+    hpath = run / R.HINTS_FILE
+    if not hpath.is_file() or R.sha256_file(hpath) != ev.get("sha256"):
+        raise _Refused(EXIT_FAIL, "run의 evidence 파일(hints.json)이 run.json의 sha256과 다릅니다")
+    texts = R.read_json(hpath)
+    if not isinstance(texts, list) or not all(isinstance(t, str) for t in texts) or len(texts) != meta["count"]:
+        raise _Refused(EXIT_FAIL, "run의 evidence 파일(hints.json)의 꼴이나 수가 run.json과 다릅니다")
+    return texts
 
 
 def threading_main() -> bool:
@@ -400,7 +513,9 @@ def cmd_status(args, root: Path, state, config: Config) -> int:
     word = state_word(run)
     item_limit = float(meta.get("llm", {}).get("item_timeout_seconds") or 0) * 1000
     slow = sum(1 for r in items.values() if item_limit and r.get("elapsed_ms", 0) > item_limit)
-    out(f"{rid} · {meta.get('dataset')} · {word}" + (f" · 오래 걸린 문항 {slow}" if slow else ""))
+    mode = evidence_mode(meta)
+    ev_word = "evidence 미확인" if mode is None else f"evidence {mode}"
+    out(f"{rid} · {meta.get('dataset')} · {ev_word} · {word}" + (f" · 오래 걸린 문항 {slow}" if slow else ""))
     if meta.get("kind") == "rescore":
         out("재채점 run(생성 없음)")
     else:
@@ -512,6 +627,10 @@ def cmd_resume(args, root: Path, state, config: Config) -> int:
     qpath = root / meta["questions"]["path"]
     if not qpath.is_file() or R.sha256_file(qpath) != meta["questions"]["sha256"]:
         return refuse("문항 파일이 다릅니다")
+    try:
+        _run_hints(run, meta)  # evidence 방식은 run.json 그대로 이어 간다
+    except _Refused:
+        return refuse("evidence 파일(hints.json)이 run.json과 다릅니다")
     if batch.fingerprints(spec, list(meta.get("databases", {}))) != meta.get("databases"):
         return refuse("DB 지문이 다릅니다")
     busy = _running_run(config)
@@ -537,7 +656,8 @@ def cmd_resume(args, root: Path, state, config: Config) -> int:
     sessions.append({"pid": control.get("pid"), "started_at": control.get("started_at")})
     R.update_control(run, resumes=resumes, sessions=sessions, started_at=batch.now(), state="starting")
     out(select.first_line(select.ResolvedLlm.from_json(meta["llm"])))
-    return _launch(root, config, run, rid, args.foreground, f"이어 돌기 {len(retry)}문항")
+    what = f"이어 돌기 {len(retry)}문항 · evidence {evidence_mode(meta)}"
+    return _launch(root, config, run, rid, args.foreground, what)
 
 
 def select_retryable() -> tuple[str, ...]:

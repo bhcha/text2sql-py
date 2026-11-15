@@ -8,7 +8,10 @@ MAC-SQL의 동작을 읽고 다시 구현했다. 코드와 문장을 복사하�
 옮긴 TS 코드: engines/pure-fix-h/pack/fix.ts `addPrefix`, `parseSqlFromString`, `refinerPrompt`, `fkString`, run.ts의 반복.
 
 고치기 템플릿 `templates/refine.txt`는 새로 쓴 것이다. MAC 템플릿의 일곱 칸과 순서·뜻이 같고, 문장은 옮기지 않았다.
-칸: question, knowledge(늘 빈 글), schema(생성 프롬프트에 넣은 스키마 글), foreign_keys, sql, sqlite_error, exception_class.
+칸: question, knowledge, schema(생성 프롬프트에 넣은 스키마 글), foreign_keys, sql, sqlite_error, exception_class.
+knowledge는 evidence not_used면 빈 글이고, evidence used면 문항의 힌트 글 그대로다. MAC 고치기 템플릿의 evidence 칸
+(`core/const.py` 579행)에 해당하는 자리이고, 원본은 `Refiner._refine` 723행·731행에서 문항의 evidence를 그 칸에 넣는다
+(`talk` 753-756행에서 받음). MAC 코드·문장은 옮기지 않았다(동작만 다시 구현).
 
 차례마다:
 1. 지금 SQL에 'error' 글이 있으면 실행하지 않고 멈춘다.
@@ -169,6 +172,7 @@ def refine_loop(
     tables: list[str],
     source: DataSource,
     ask: AskFn,
+    knowledge: str = "",
     rounds: int = MAX_ROUNDS,
     exec_timeout_seconds: float = 120,
     keep_rows: int = 5,
@@ -204,7 +208,7 @@ def refine_loop(
         prompt = refine_prompt(
             {
                 "question": question,
-                "knowledge": "",
+                "knowledge": knowledge,
                 "schema": schema_text,
                 "foreign_keys": fix.fk.text,
                 "sql": sql_arg,

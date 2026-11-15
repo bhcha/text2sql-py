@@ -121,7 +121,7 @@ def test_foreground_fake(root, capsys):
     assert control["state"] == "finished" and control["phase"] == "done"
     code, lines, _ = run(capsys, "status")
     assert code == 0 and len(lines) <= 10
-    assert lines[0] == "f3 · shop · 끝남"
+    assert lines[0] == "f3 · shop · evidence not_used · 끝남"
     assert lines[2].startswith("진행 3/3") and lines[3] == "상태 generated 3 · no_sql 0 · exception 0"
 
 

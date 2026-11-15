@@ -44,6 +44,21 @@ def is_study(evaluator: str) -> bool:
     return str(evaluator).startswith(STUDY_PREFIX)
 
 
+EVIDENCE_USED, EVIDENCE_NOT_USED = "used", "not_used"
+
+
+def evidence_mode(run_meta: dict) -> str | None:
+    """run.json의 evidence 방식. 칸이 없는 옛 run은 not_used, 재채점 run(예측 파일)은 None(미확인)."""
+    if run_meta.get("kind") == "rescore":
+        return None
+    return (run_meta.get("evidence") or {}).get("mode", EVIDENCE_NOT_USED)
+
+
+def evidence_word(mode: str | None) -> str:
+    """라벨의 evidence 칸."""
+    return "evidence 미확인" if mode is None else f"evidence {mode}"
+
+
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:

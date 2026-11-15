@@ -2,6 +2,9 @@
 
 옮긴 TS 코드(자체): harness/lib/sentence.ts(signTestP, comparisonSentences), benchmarks/benchkit/report.ts(비교 대상 읽기,
 SQL 바뀜 세기), harness/allbird.ts report(보고 줄). 원 논문·리더보드 점수는 어디에도 쓰지 않는다.
+
+evidence 방식(used·not_used)이 다른 run·기준선끼리는 견주지 않는다(새로 맞음·새로 틀림도 내지 않는다, AGENTS 규칙 6).
+방식을 모르는 쪽(ex.jsonl, 칸 없는 기준선·옛 run, 재채점 run)은 not_used로 본다.
 """
 
 from __future__ import annotations
@@ -16,7 +19,8 @@ from t2s.dataset.config import Config
 from t2s.eval import gold as G
 from t2s.eval import leak_audit
 
-DEFAULT_BASELINES = {"bird-minidev": "baselines/ts-pure-fix.json"}
+# (데이터셋, evidence 방식) → 기본 기준. evidence used 기준선은 두지 않는다.
+DEFAULT_BASELINES = {("bird-minidev", "not_used"): "baselines/ts-pure-fix.json"}
 VARIATION_LIMIT = 13
 REFERENCE = ("codex-cli", "gpt-5.6-terra", "medium")
 LEVELS = ("simple", "moderate", "challenging")
@@ -91,6 +95,19 @@ class Side:
     description: str
     rows: dict[int, dict]
     summary: dict = field(default_factory=dict)
+    evidence: str | None = G.EVIDENCE_NOT_USED  # None이면 알 수 없음(ex.jsonl, 재채점 run)
+
+
+def _run_evidence(meta: dict | None, score: dict | None) -> str | None:
+    """run의 evidence 방식: score.json의 evidence 칸, 없으면 run.json. 칸이 없으면 not_used, 재채점 run은 None."""
+    ev = (score or {}).get("evidence")
+    if isinstance(ev, dict) and "mode" in ev:
+        return ev["mode"]
+    return G.evidence_mode(meta or {})
+
+
+def _effective(mode: str | None) -> str:
+    return G.EVIDENCE_NOT_USED if mode is None else mode
 
 
 def _resolve(config: Config, ref: str) -> Path:
@@ -106,11 +123,12 @@ def load_side(config: Config, ref: str) -> Side:
         rows = {int(r["position"]): r for r in data["rows"]}
         ex = data.get("summary", {}).get("ex_total", {})
         desc = f"{ref} (TS {data.get('pack')} {data.get('run_id')}, EX {ex.get('correct')}/{ex.get('denominator')})"
-        return Side(ref, desc, rows, data.get("summary", {}))
+        policy = (data.get("run_manifest_digest") or {}).get("evidence_policy") or G.EVIDENCE_NOT_USED
+        return Side(ref, desc, rows, data.get("summary", {}), policy)
     if path.suffix == ".jsonl" and path.is_file():
         rows = {int(r["position"]): r for r in R.read_jsonl(path)}
         correct = sum(int(r["ex_match"]) for r in rows.values())
-        return Side(ref, f"{ref} (ex.jsonl, EX {correct}/{len(rows)})", rows)
+        return Side(ref, f"{ref} (ex.jsonl, EX {correct}/{len(rows)})", rows, evidence=None)
     run = R.run_dir(config.runs_dir, ref)
     score = R.read_json_if(run / R.SCORE_FILE)
     if score is None or not (run / R.EX_FILE).is_file():
@@ -121,7 +139,8 @@ def load_side(config: Config, ref: str) -> Side:
         pos = int(r["position"])
         rows[pos] = {**r, "sql_sha256": sql_digest(sqls.get(pos))}
     ex = score["ex_total"]
-    return Side(ref, f"run {ref} (EX {ex['correct']}/{ex['denominator']})", rows, score)
+    evidence = _run_evidence(R.read_json_if(run / R.RUN_FILE), score)
+    return Side(ref, f"run {ref} (EX {ex['correct']}/{ex['denominator']})", rows, score, evidence)
 
 
 def compare(a_rows: dict[int, dict], b_rows: dict[int, dict]) -> dict:
@@ -250,11 +269,27 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
         f"{score.get('cross_check_label', '채점기 대조')} {score['cross_check']} · DB 불변 {score['data_unchanged']} · 상태 {_status_text(score['status_counts'])}"
     )
     rescore = meta.get("kind") == "rescore"
-    ref = against or DEFAULT_BASELINES.get(meta["dataset"])
+    mine_evidence = _run_evidence(meta, score)
+    mode = _effective(mine_evidence)
+    ref = against or DEFAULT_BASELINES.get((meta["dataset"], mode))
     comparison = None
     side = None
+    refused = None
     if ref and (against or _resolve(config, ref).is_file()):
         side = load_side(config, ref)
+        if _effective(side.evidence) != mode:
+            theirs = side.evidence or "알 수 없음"
+            if against:
+                refused = f"evidence 조건이 달라 견주지 않는다(이번 {mode}, 기준 {theirs})"
+            else:
+                refused = f"비교 대상 없음(기준은 evidence {theirs}, 이번은 {mode}라 견주지 않는다)"
+            lines.append(refused)
+    elif not against and mode != G.EVIDENCE_NOT_USED:
+        other = DEFAULT_BASELINES.get((meta["dataset"], G.EVIDENCE_NOT_USED))
+        if other and _resolve(config, other).is_file():
+            refused = f"비교 대상 없음(기준은 evidence not_used, 이번은 {mode}라 견주지 않는다)"
+            lines.append(refused)
+    if side is not None and refused is None:
         comparison = compare(mine, side.rows)
         changed = "" if comparison["sql_changed"] is None else f" · SQL 바뀜 {comparison['sql_changed']}"
         lines.append(f"기준 {side.description}{changed}")
@@ -275,7 +310,7 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
             nc = sum(1 for p in comparison["newly_correct"] if p in fixed)
             rg = sum(1 for p in comparison["regressed"] if p in fixed)
             lines.append(f"고친 문항 {len(fixed)}개 가운데 새로 맞음 {nc}, 새로 틀림 {rg}")
-    else:
+    elif refused is None:
         lines.append("비교 대상 없음")
     leak = R.read_json_if(run / R.LEAK_FILE)
     if leak is None:
@@ -307,7 +342,11 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
         "by_difficulty": bd,
         "against": None if side is None else side.ref,
         "comparison": comparison,
+        "evidence": mine_evidence,
+        "against_evidence": None if side is None else side.evidence,
+        "comparison_refused": refused,
         "leak": leak_audit.short(leak),
     }
     _write(run, lines, data, md)
-    return lines, (1 if leak_audit.leaked(leak) else 0)
+    refused_by_user = refused is not None and bool(against)
+    return lines, (1 if leak_audit.leaked(leak) or refused_by_user else 0)

@@ -4,7 +4,8 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 
 ## 먼저 알 것
 
-- 밖으로 나가는 것: 질문, CREATE 원문과 예시 3행, 질문과 비슷한 값, 열 프로파일(범주형 열은 값 전부), 실행 오류 글이 모델 제공자 서버(OpenAI 또는 Anthropic)로 나간다. 정답 SQL은 나가지 않는다. 민감한 DB에 쓰지 않는다.
+- 밖으로 나가는 것: 질문, CREATE 원문과 예시 3행, 질문과 비슷한 값, 열 프로파일(범주형 열은 값 전부), 실행 오류 글이 모델 제공자 서버(OpenAI 또는 Anthropic)로 나간다. evidence used run에서는 문항의 evidence 글도 나간다. 정답 SQL은 나가지 않는다. 민감한 DB에 쓰지 않는다.
+- evidence: 기본은 퓨어 조건(evidence not_used)이다. 문항의 evidence(BIRD 공식 evidence, Olist 문항 조건)를 모델에 주는 evidence used는 `/runset`에 "evidence 줘서", "문항 조건 넣어서"처럼 말했을 때만 도는 별도 조건이다(아래 "evidence used로 돌리기").
 - DB는 읽기 전용으로만 연다(`mode=ro&immutable=1`, 쓰기 거절, 실행 전후 sha256 비교). 다른 프로그램이 그 DB에 쓰고 있지 않아야 한다.
 - 모델 호출은 이 기기의 `codex` 또는 `claude` 명령으로 한다(구독 사용량이 든다). 500문항은 약 1,000~1,500회 호출, 30~70분이다.
 
@@ -19,7 +20,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 
 | 차례 | 스킬 | 하는 일 | 걸리는 시간 |
 |---|---|---|---|
-| 1 | `/getbird` | BIRD Mini-Dev 자료와 임베딩 모델을 받고 해시를 대조, 정답은 `gold/`로 | 받기 1.2GB |
+| 1 | `/getbird` | BIRD Mini-Dev 자료와 임베딩 모델을 받고 해시를 대조, 정답은 `gold/`로, 공개 evidence 파일을 만듦 | 받기 1.2GB |
 | 2 | `/connect` | 데이터셋 목록·준비·전환. `/connect bird`, `/connect olist`(고지 뒤 승인), `/connect <SQLite 경로>`(고지 뒤 승인), `/connect <이름>` | BIRD 준비 약 2분 |
 | 3 | `/text2sql <질문>` | 지금 데이터셋에 질문 하나. BIRD면 DB 이름을 함께 말한다 | 수 초~수십 초 |
 | 4 | `/runset` | 지금 데이터셋 전체(또는 "앞 N문항만")를 돌리고, 정답이 있으면 채점·기준 비교. Olist면 평가셋 49문항을 돌리고 스터디 채점 규칙으로 잰다 | 500문항 30~70분 |
@@ -39,7 +40,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | `/connect olist` | `register olist --sqlite data/olist/olist.db`(고지) → 승인 뒤 `--yes` → `prepare olist` → `use olist`. 이미 등록돼 있으면 `use olist` |
 | `/connect <경로>` | `register <이름> --sqlite <경로>`(고지) → 승인 뒤 `--yes` → `prepare <이름>` → `use <이름>`. 이름은 말한 것, 없으면 파일 이름에서 만든다 |
 | `/text2sql <질문>` | `ask [--source <DB>] <모델 인자> "<질문>"`. 종료 코드 5면 `prepare` 뒤 한 번 더 |
-| `/runset` | `status`로 할 일을 고른 뒤 `prepare` → `run <모델 인자> [--limit N] [--questions <파일>]` → (물을 때) `status` → `report`. 지금 데이터셋이 olist면 늘 `--questions data/olist/model_inputs.v0.3.json` |
+| `/runset` | `status`로 할 일을 고른 뒤 `prepare` → `run <모델 인자> [--limit N] [--questions <파일>] [--evidence used]` → (물을 때) `status` → `report`. 지금 데이터셋이 olist면 늘 `--questions data/olist/model_inputs.v0.3.json`. `--evidence used`는 사용자가 evidence(문항 조건)를 주라고 말했을 때만 |
 - `/runset`은 시작하고 바로 돌아온다. "진행 어때"로 상태를, 끝난 뒤 "보고"로 결과를 본다.
 - 모델은 지금 세션의 모델이 기본이다. "terra medium으로", "opus로"처럼 말하면 그 모델을 쓴다. 모델을 알 수 없으면 돌리지 않고 묻는다.
 
@@ -57,13 +58,13 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | `register` | SQLite 파일을 데이터셋으로 등록(고지 뒤 `--yes`) | `uv run t2s register shop --sqlite ~/db/shop.sqlite --yes` |
 | `prepare` | 값 색인·프로파일 만들기(준비된 것은 건너뜀) | `uv run t2s prepare` |
 | `ask` | 질문 하나 → SQL → 읽기 전용 실행 → 앞 10행 | `uv run t2s ask --source financial --profile p3-ref "How many accounts are there?"` |
-| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지). `--questions`는 공개 문항 꼴 JSON, 스터디 모델 입력 JSON, 한 줄에 질문 하나인 텍스트 | `uv run t2s run --profile p3-ref --limit 20` |
+| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지). `--questions`는 공개 문항 꼴 JSON, 스터디 모델 입력 JSON, 한 줄에 질문 하나인 텍스트. `--evidence used`면 문항의 evidence를 준다(기본 not_used) | `uv run t2s run --profile p3-ref --limit 20` |
 | `status` | 가장 최근(또는 `--run-id`) run의 진행, 10줄 안 | `uv run t2s status` |
 | `stop` | 도는 run 멈추기 | `uv run t2s stop` |
 | `resume` | 멈춘 run 이어 돌기(채점 전, 같은 커밋일 때만) | `uv run t2s resume` |
-| `score` | 정답 설정의 채점기(BIRD 공식 채점기 또는 스터디 채점기)로 채점. BIRD는 예측 파일을 받아 채점도 한다(스터디는 종료 코드 2). `--meta-time-out`이 없으면 BIRD 30초, 스터디 10초 | `uv run t2s score --run <id>` |
-| `report` | 라벨, EX, 기준과 위치별 비교, 누설 검사 한 줄 | `uv run t2s report` |
-| `leak-audit` | 프롬프트에 정답·evidence가 들어갔는지 검사 | `uv run t2s leak-audit --run <id>` |
+| `score` | 정답 설정의 채점기(BIRD 공식 채점기 또는 스터디 채점기)로 채점. BIRD는 예측 파일을 받아 채점도 한다(스터디는 종료 코드 2, 예측 파일 채점의 라벨은 `evidence 미확인`). evidence used run이면 run에 준 evidence 글이 정답 쪽 원본과 글자 그대로 같은지도 본다. `--meta-time-out`이 없으면 BIRD 30초, 스터디 10초 | `uv run t2s score --run <id>` |
+| `report` | 라벨, EX, 기준과 위치별 비교, 누설 검사 한 줄. evidence 방식이 다른 run·기준선과는 견주지 않는다 | `uv run t2s report` |
+| `leak-audit` | 프롬프트에 정답·evidence가 들어갔는지 검사(evidence used run이면 evidence는 세지 않고 빠진 위치를 센다) | `uv run t2s leak-audit --run <id>` |
 
 `ask`·`run`은 스스로 준비하지 않는다. 자산이 없거나 낡았으면 모델을 부르기 전에 종료 코드 5로 멈추므로 `prepare`를 먼저 돌린다. 소스가 하나인 데이터셋이면 `ask`에 `--source`를 붙이지 않는다. 모델 인자가 없으면 세션 기록에서 모델을 찾고, 못 찾으면 종료 코드 2로 멈춘다. 정답이 없는 데이터셋에서 `run`은 0으로 끝나고(생성 뒤 이어 부른 채점만 4), `score`·`leak-audit`은 4다.
 
@@ -82,31 +83,47 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 
 모두 git 밖이다.
 
-- `runs/<run_id>/`: `run.json`(시작 조건: 모델, 커밋, 판, DB 지문), `control.json`(진행 상태), `run.log`, `items/<위치>/`(`record.json`, `trace.json`, 호출마다 `calls/<k>/prompt.txt`·`response.txt`·`llm-meta.json`·`cli-events.jsonl`), `records.jsonl`, `predictions.json`, `manifest.json`, 채점 뒤 `score.json`·`ex.jsonl`·`evaluator-stdout.txt`·`leak-audit.json`, 보고 뒤 `report.json`·`report.md`.
+- `runs/<run_id>/`: `run.json`(시작 조건: 모델, 커밋, 판, DB 지문, evidence 방식), evidence used run이면 `hints.json`(위치별로 준 evidence 글), `control.json`(진행 상태), `run.log`, `items/<위치>/`(`record.json`, `trace.json`, 호출마다 `calls/<k>/prompt.txt`·`response.txt`·`llm-meta.json`·`cli-events.jsonl`), `records.jsonl`, `predictions.json`, `manifest.json`, 채점 뒤 `score.json`·`ex.jsonl`·`evaluator-stdout.txt`·`leak-audit.json`, 보고 뒤 `report.json`·`report.md`.
 - `runs/ask/<시각>-<16진>/`: `ask` 한 번의 `trace.json`·`ask.json`·`calls/`.
-- `data/`: 받은 자료, 임베딩 모델, 자산(`data/assets/<데이터셋>/<소스>/`의 값 색인·프로파일·manifest).
-- `gold/`: 정답과 정답 설정, 채점 중간 파일(`gold/_work/<run_id>/`, 스터디 채점의 문항별 이유는 `detail.jsonl`). 채점(`score`·`report`·`leak-audit`)만 읽는다. 생성 쪽(`ask`·`run`)은 읽기 감시를 걸고 돌아 이 폴더를 열지 못한다.
+- `data/`: 받은 자료, 임베딩 모델, 자산(`data/assets/<데이터셋>/<소스>/`의 값 색인·프로파일·manifest), 공개 evidence 파일(`data/bird-minidev/hints.public.json`, 위치별 question_id와 evidence 글만, sha256 고정). 공개 evidence 파일은 evidence used run을 시작하는 프로세스만 연다(그 밖에는 읽기 감시가 막는다).
+- `gold/`: 정답이 든 파일(정답 SQL, 기대 결과, 채점 메모, 공식 문제 파일 원본)과 정답 설정, 채점 중간 파일(`gold/_work/<run_id>/`, 스터디 채점의 문항별 이유는 `detail.jsonl`). 채점(`score`·`report`·`leak-audit`)만 읽는다. 생성 쪽(`ask`·`run`)은 읽기 감시를 걸고 돌아 이 폴더를 열지 못한다.
 - `var/state.json`: 지금 바라보는 데이터셋과 등록 기록.
 
 ## 점수를 읽는 법
 
-- 모든 점수에 라벨 전체가 붙는다. 예: `BIRD Mini-Dev / SQLite / cc48ba16 / 500문제 / EX / evidence not_used / 로컬 측정 / gpt-5.6-terra·추론 medium·codex-cli / 1회 실행 / 구현 Python <커밋>`. `cc48ba16`은 BIRD zip의 sha256 앞 8자다. 미커밋 코드면 `/ (미커밋 코드)`, 앞 N문항만이면 `/ 소표본·점수 아님`, 가짜 백엔드면 `/ 가짜 백엔드·점수 아님`이 붙는다. 라벨을 줄여 쓰지 않는다.
+- 모든 점수에 라벨 전체가 붙는다. 예: `BIRD Mini-Dev / SQLite / cc48ba16 / 500문제 / EX / evidence not_used / 로컬 측정 / gpt-5.6-terra·추론 medium·codex-cli / 1회 실행 / 구현 Python <커밋>`. evidence used run이면 `evidence used`, 예측 파일 채점이면 `evidence 미확인`이 그 자리에 들어간다. `cc48ba16`은 BIRD zip의 sha256 앞 8자다. 미커밋 코드면 `/ (미커밋 코드)`, 앞 N문항만이면 `/ 소표본·점수 아님`, 가짜 백엔드면 `/ 가짜 백엔드·점수 아님`이 붙는다. 라벨을 줄여 쓰지 않는다.
 - 기준(TS 기준선 `baselines/ts-pure-fix.json`, EX 263/500)과 위치별로 견주어 새로 맞음·새로 틀림을 함께 적는다. 차이가 13 이하이거나 부호 검정 p가 0.05 이상이면 "차이 없음(변동 범위)"이다. 같은 코드도 run마다 수십 위치가 갈리므로 1회 실행으로 낫다·못하다를 말하지 않는다.
 - 참조 조건은 codex-cli·gpt-5.6-terra·medium이다. 다른 모델이면 "재현 비교 아님", 백엔드가 다르면 우열을 말하지 않는다.
+- evidence 방식이 다른 점수끼리는 견주지 않는다(새로 맞음·새로 틀림도 내지 않는다). TS 기준선은 evidence not_used라 evidence used run의 `report`는 "비교 대상 없음(기준은 evidence not_used, 이번은 used라 견주지 않는다)"을 낸다. `--against`로 방식이 다른 run을 주면 "evidence 조건이 달라 견주지 않는다(…)"를 내고 종료 코드 1이다. 방식을 모르는 쪽(ex.jsonl, 칸 없는 옛 run)은 not_used로 본다. used 점수는 퓨어 조건 점수라고 부르지 않는다.
 - 원 논문·리더보드 점수와 견주지 않는다(측정 조건이 다르다).
-- Olist 라벨: `Olist 스터디 평가셋 v0.3 / SQLite / 131eaf49 / 49문제 / EX(스터디 결과 비교) / 문항 조건 not_used / 로컬 측정 / <모델>·추론 <단계>·<백엔드> / 1회 실행 / 구현 Python <커밋>`. `131eaf49`는 정답 파일의 sha256 앞 8자다. 꼬리표(미커밋 코드, 소표본·점수 아님, 가짜 백엔드·점수 아님)는 BIRD와 같다. 기본 기준 run은 없고 `report --against <run>`으로 견준다. 비교 문장은 부호 검정 p만 쓰고 "49문항·1회 실행이라 낫다·못하다로 읽지 않는다"를 붙인다. 스터디 E0 점수와 같은 줄에 두지 않는다.
+- Olist 라벨: `Olist 스터디 평가셋 v0.3 / SQLite / 131eaf49 / 49문제 / EX(스터디 결과 비교) / evidence not_used / 로컬 측정 / <모델>·추론 <단계>·<백엔드> / 1회 실행 / 구현 Python <커밋>`(Olist의 evidence는 문항 조건이다. 문항 조건을 준 run이면 `evidence used`). `131eaf49`는 정답 파일의 sha256 앞 8자다. 꼬리표(미커밋 코드, 소표본·점수 아님, 가짜 백엔드·점수 아님)는 BIRD와 같다. 기본 기준 run은 없고 `report --against <run>`으로 견준다. 비교 문장은 부호 검정 p만 쓰고 "49문항·1회 실행이라 낫다·못하다로 읽지 않는다"를 붙인다. 스터디 E0 점수와 같은 줄에 두지 않는다.
 - 누설 검사 한 줄이 0이 아니거나 도구 호출이 0이 아닌 run은 대표로 쓰지 않는다.
 
 ## Olist 평가셋 채점
 
 `/getolist`로 받은 평가셋 v0.3(49문항)을 `/connect olist` 뒤 `/runset`으로 돌린다. 명령으로는 `uv run t2s run <모델 인자> --questions data/olist/model_inputs.v0.3.json`이며, 끝나면 `score`·`report`가 이어 돈다.
 
-- 모델에는 질문만 간다. 문항 조건(task_conditions)과 문항 종류는 주지 않는다(문항 조건 not_used, AGENTS 규칙 9). 문항 종류가 sql이 아닌 항목이 있거나 칸이 다르면 읽지 않고 멈춘다.
+- 기본으로 모델에는 질문만 간다. 문항 조건(task_conditions)과 문항 종류는 주지 않는다(evidence not_used, AGENTS 규칙 9). 문항 종류가 sql이 아닌 항목이 있거나 칸이 다르면 읽지 않고 멈춘다.
+- evidence used(`/runset`에 "문항 조건 넣어서"처럼 말했을 때만): 문항 조건 각 줄의 앞뒤 공백만 떼고 `"; "`로 이은 한 줄을 evidence로 준다. 새로 받을 파일은 없다. 채점은 같고, 채점 때 run에 준 글이 정답 파일의 문항 조건을 같은 규칙으로 이은 글과 같은지 대조한다.
 - 채점 규칙은 스터디 채점 스크립트(`scripts/run_baseline.py`, 커밋 `290ff9be`)와 같다. 열 이름은 보지 않고 열 수·행 수는 같아야 한다. 열이 6개 이하면 열 순서의 모든 순열을 시도한다. 정답 파일의 행 순서 칸이 any·ignored·not_required·unordered일 때만 행 순서를 무시하고(중복은 보존), 그 밖은 순서대로 비교한다. 양쪽이 수면 차이가 문항의 허용 오차(없으면 0.0001) 안이면 같다. NULL은 NULL과만 같다.
 - 예측 SQL은 끝 `;`를 떼고, 안에 `;`가 남으면 실행하지 않는다. 시간 제한 10초, 1000행을 넘으면 실패다. 읽기 전용(`mode=ro&immutable=1`)으로 열고 SELECT·READ·FUNCTION·RECURSIVE 밖의 동작과 load_extension을 거절한다.
 - 정답 대조: 정답 SQL을 같은 규칙으로 돌려 정답 파일의 기대 결과와 같은지 본다. 하나라도 다르면 "정답 대조 False"이고 종료 코드 1이다.
 - run 폴더의 `ex.jsonl`에는 문항별 0·1과 실행 이유 코드만 있고 난도는 빈 글이다. 이유 글은 `gold/_work/<run_id>/detail.jsonl`에만 있다.
 - 예측 파일 채점(`score --predictions`)은 스터디 채점기에서 받지 않는다.
+
+## evidence used로 돌리기
+
+기본은 퓨어 조건(evidence not_used)이다. evidence used는 사용자가 말했을 때만 재는 별도 조건이다(AGENTS 규칙 9).
+
+- 스킬: `/runset`에 "evidence 써서", "evidence 줘서", "조건 줘서", "문항 조건 넣어서", "힌트 줘서", "used로"처럼 말한다. 말이 없으면 not_used다.
+- 명령: `uv run t2s run <모델 인자> --evidence used`(Olist면 `--questions data/olist/model_inputs.v0.3.json`도).
+- BIRD: `/getbird`가 만든 공개 evidence 파일(`data/bird-minidev/hints.public.json`)을 쓴다. 이미 BIRD를 받았는데 이 파일이 없으면 `/getbird`를 한 번 더 부른다(다른 파일은 해시만 대조하고 건너뛴다). 공개 문항 전체에서만 쓰고 `--questions`와 함께 쓰지 않는다. `--limit N`이면 앞 N문항의 evidence만 준다.
+- Olist: 모델 입력 파일의 문항 조건을 `"; "`로 이은 한 줄을 준다.
+- `/connect`로 붙인 DB와 텍스트 문항에는 evidence가 없어 쓰임새 오류(종료 코드 2)로 멈춘다.
+- 같은 evidence 글을 세 자리에 글자 그대로 넣는다: 키워드 프롬프트의 힌트 칸, 생성 프롬프트의 `-- External Knowledge:` 줄, 고치기 프롬프트의 지식 칸. 빈 evidence는 빈 글 그대로다. not_used run의 프롬프트는 이 갈래를 두기 전과 글자 하나 다르지 않다(`tests/unit/test_prompt_regression.py`).
+- run을 시작하는 프로세스가 위치별 글을 `runs/<run_id>/hints.json`에 쓰고, 분리된 프로세스와 `resume`은 이 파일만 읽는다(run.json의 sha256과 대조). 이어 돌 때 evidence 방식은 run.json 그대로다.
+- `leak-audit`은 그 문항의 evidence 글을 누설로 세지 않고, 정답 SQL·다른 문항 정답·프롬프트 누락·Olist 채점 메모는 그대로 센다. 빈 글이 아닌 evidence가 그 문항의 어느 프롬프트에도 없으면 "빠짐"으로 센다(0이 아니면 실패). 요약 줄은 `… 정답 SQL 0, evidence 제공(used)·빠짐 0, …`이다.
+- evidence used 기준선은 두지 않는다. used run끼리는 `report --against <run>`으로 견준다.
 
 ## TS 하네스와의 관계
 
@@ -115,7 +132,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 ## 개발
 
 - 검사: `uv run pytest -q`, `uv run ruff check .`, `uv run ruff format --check .`.
-- 모듈 경계: `t2s.eval`(채점)을 import하는 것은 `cli/eval_cmds.py`뿐이고, 생성 쪽(`datasource`·`dataset`·`prep`·`pipeline`·`llm`·`runner`)은 정답 폴더를 읽거나 문자열로 가리키지 않는다. `tests/test_import_rules.py`가 이것을 검사하며, 이 테스트를 고쳐서 통과시키지 않는다. 공식 채점기 사본(`src/t2s/eval/vendor/`)은 고치지 않는다.
+- 모듈 경계: `t2s.eval`(채점)을 import하는 것은 `cli/eval_cmds.py`뿐이고, 생성 쪽(`datasource`·`dataset`·`prep`·`pipeline`·`llm`·`runner`)은 정답 폴더를 읽거나 문자열로 가리키지 않는다. `tests/test_import_rules.py`가 이것을 검사하며, 이 테스트를 고쳐서 통과시키지 않는다. 'evidence'라는 글자는 겉(`cli/main.py`·`cli/run_cmds.py`의 인자·출력·run.json 칸)에만 쓰고, 안쪽 생성 패키지는 hint·knowledge라는 말만 쓴다(사용자가 승인한 예외 두 파일, `EVIDENCE_WORD_ALLOWED`). 공식 채점기 사본(`src/t2s/eval/vendor/`)은 고치지 않는다.
 - 500문항 측정은 커밋한 깨끗한 작업 트리에서만 하고, 측정 중 `src/`를 바꾸지 않는다.
 
 ## 라이선스와 출처

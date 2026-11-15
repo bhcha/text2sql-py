@@ -10,7 +10,9 @@ Apache License 2.0, LICENSES/Apache-2.0-CHESS.txt)
 바꾼 것:
 - 원본의 `eval`은 쓰지 않는다. `ast`로 리터럴만 읽는다(모델 응답을 실행하지 않게). 목록·튜플·집합·사전은 적힌 순서대로 항목을 읽는다.
 - langchain을 쓰지 않는다. 자리표는 원본 `\\{(.*?)\\}` 규칙으로 한 번에 바꾼다.
-- 힌트 칸은 늘 빈 글이다(AGENTS 규칙 9). 못 읽으면 부르는 쪽(run.py)이 같은 프롬프트로 다시 부른다(TS 규칙 1.0.0).
+- 힌트 칸은 evidence not_used면 빈 글, evidence used면 문항의 힌트 글 그대로다(AGENTS 규칙 9, 넣는 쪽은 run.py).
+  원본 `_run` 24행은 HINT 칸에 문항의 evidence를 늘 넣는다. 이 하네스는 evidence used run에서만 그렇게 한다.
+  못 읽으면 부르는 쪽(run.py)이 같은 프롬프트로 다시 부른다(TS 규칙 1.0.0).
 TS engines/pure-fix-h/pack/keywords.ts·parsers.ts parseKeywords와 같은 결과를 낸다(TS의 parsePyLiteral은 ast로 대체).
 """
 

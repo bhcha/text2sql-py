@@ -144,7 +144,7 @@ def label(run: dict, count: int, sample: bool) -> str:
         head = f"BIRD Mini-Dev / SQLite / {str(run.get('archive_sha256') or '')[:8]} / {count}문제"
     else:
         head = f"{run.get('dataset')} / SQLite / {count}문제"
-    text = f"{head} / EX / evidence not_used / 로컬 측정"
+    text = f"{head} / EX / {G.evidence_word(G.evidence_mode(run))} / 로컬 측정"
     if run.get("kind") == "rescore":
         text += f" / 재채점(예측 파일 {str((run.get('source') or {}).get('sha256', ''))[:8]}) / 채점 Python {commit}"
     else:
@@ -158,6 +158,40 @@ def label(run: dict, count: int, sample: bool) -> str:
     if (run.get("llm") or {}).get("backend") == "fake":
         text += " / 가짜 백엔드·점수 아님"
     return text
+
+
+# ── evidence 대조 ────────────────────────────────────────
+
+
+def check_run_evidence(run: Path, meta: dict, expected: list[str]) -> dict:
+    """score.json의 evidence 칸. used면 run의 hints.json이 정답 쪽 원본(expected, 위치 순서)과 글자 그대로 같은지 본다.
+
+    다르면 ScoreError(위치만 넣는다). not_used면 {"mode": "not_used"}, 재채점 run이면 {"mode": None}.
+    """
+    mode = G.evidence_mode(meta)
+    if mode is None:
+        return {"mode": None, "note": "미확인(예측 파일 채점)"}
+    if mode != G.EVIDENCE_USED:
+        return {"mode": mode}
+    ev = meta.get("evidence") or {}
+    path = run / R.HINTS_FILE
+    if not path.is_file() or sha256_file(path) != ev.get("sha256"):
+        raise ScoreError("run의 evidence 파일(hints.json)이 run.json의 sha256과 다릅니다")
+    texts = R.read_json(path)
+    count = int(meta["count"])
+    if not isinstance(texts, list) or len(texts) != count or len(expected) < count:
+        raise ScoreError("run의 evidence 글 수가 분모와 다릅니다")
+    for i in range(count):
+        if texts[i] != expected[i]:
+            raise ScoreError(f"run의 evidence 글이 정답 쪽 원본과 다릅니다(위치 {i})")
+    return {
+        "mode": mode,
+        "source": ev.get("source"),
+        "sha256": ev.get("sha256"),
+        "count": count,
+        "rules": ev.get("rules"),
+        "checked": True,
+    }
 
 
 # ── 채점기 사본·DB ───────────────────────────────────────
@@ -267,6 +301,7 @@ def score(config: Config, run_id: str, *, num_cpus: int = 4, meta_time_out: floa
         )
         if not same:
             raise ScoreError(f"공개 문항과 정답 파일이 어긋납니다(위치 {i})")
+    evidence = check_run_evidence(run, meta, [it.get("evidence") for it in items[:count]])
 
     work = G.work_dir(config.root, run_id)
     shutil.rmtree(work, ignore_errors=True)
@@ -410,6 +445,7 @@ def score(config: Config, run_id: str, *, num_cpus: int = 4, meta_time_out: floa
     summary = {
         "label": label(meta, count, sample),
         "sample": sample,
+        "evidence": evidence,
         "denominator": count,
         "ex_total": {"correct": total_correct, "denominator": count, "percent": None if pct is None else float(pct)},
         "by_difficulty": by_diff,

@@ -1,6 +1,8 @@
-"""BIRD Mini-Dev 받기: zip → 풀기(DB 11 + 정답 2) → 정답 분리 → gold.toml → 공개 문항 → 모델 → 마지막 검사.
+"""BIRD Mini-Dev 받기: zip → 풀기(DB 11 + 정답 2) → 정답 분리 → gold.toml → 공개 문항 → 공개 evidence → 모델 → 마지막 검사.
 
 이미 끝난 단계는 해시만 대조하고 건너뛴다. 열 설명 CSV 75개와 dev_tables.json은 풀지 않는다(퓨어 조건, 파일 배치로 보장).
+공개 evidence 파일(data/bird-minidev/hints.public.json)은 공식 파일에서 위치별 question_id와 evidence 글만 떼어 만들고
+sha256을 고정값과 대조한다. 이미 받은 사람도 다시 부르면 이 파일이 생긴다. 파일 내용은 출력하지 않는다.
 """
 
 from __future__ import annotations
@@ -17,8 +19,11 @@ from t2s.fetch.download import check_file, fetch_file, sha256_file
 from t2s.fetch.model import fetch_model
 from t2s.fetch.public_questions import (
     PublicQuestionsError,
+    build_public_hints,
     build_public_items,
+    check_hints_against_official,
     check_public_against_official,
+    serialize_hints,
     serialize_public,
 )
 from t2s.fetch.steps import FetchStopped, format_summary, hash_mismatch, megabytes, select_members, short_hash
@@ -156,37 +161,66 @@ def write_gold_toml(root: Path, manifest: dict) -> str:
     return f"{GOLD_TOML}: 만듦"
 
 
+def _read_official(root: Path, manifest: dict, step: str) -> list:
+    source = _at(root, manifest["answers"]["questions"]["path"])
+    try:
+        return json.loads(source.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise FetchStopped(step, "공식 문제 파일을 JSON으로 읽지 못했다") from None
+
+
+def _write_checked(root: Path, entry: dict, text: str, step: str) -> str:
+    """.part에 쓰고 sha256을 대조한 뒤 바꿔 넣는다. 이미 있으면 대조만 한다. 돌려주는 것: "만듦" 또는 "유지"."""
+    dest = _at(root, entry["path"])
+    name = dest.name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    part = dest.with_name(name + ".part")
+    part.write_text(text, encoding="utf-8")
+    actual = sha256_file(part)
+    if actual != entry["sha256"]:
+        part.unlink()
+        raise FetchStopped(step, hash_mismatch(name, entry["sha256"], actual))
+    if dest.exists():
+        part.unlink()
+        existing = sha256_file(dest)
+        if existing != entry["sha256"]:
+            raise FetchStopped(step, hash_mismatch(f"이미 있는 {name}", entry["sha256"], existing))
+        return "유지"
+    os.replace(part, dest)
+    return "만듦"
+
+
 def public_questions(root: Path, manifest: dict) -> str:
     step = "5단계"
     entry = manifest["questions_public"]
-    source = _at(root, manifest["answers"]["questions"]["path"])
+    official = _read_official(root, manifest, step)
     try:
-        official = json.loads(source.read_text(encoding="utf-8"))
         items = build_public_items(official)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        raise FetchStopped(step, "공식 문제 파일을 JSON으로 읽지 못했다") from None
     except PublicQuestionsError as e:
         raise FetchStopped(step, str(e)) from None
     errors = check_public_against_official(items, official)
     if errors:
         raise FetchStopped(step, f"공개 문항 유도 검사 실패 {len(errors)}건: {errors[0]}")
-    text = serialize_public(items)
-    dest = _at(root, entry["path"])
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    part = dest.with_name(dest.name + ".part")
-    part.write_text(text, encoding="utf-8")
-    actual = sha256_file(part)
-    if actual != entry["sha256"]:
-        part.unlink()
-        raise FetchStopped(step, hash_mismatch("questions.public.json", entry["sha256"], actual))
-    if dest.exists():
-        part.unlink()
-        existing = sha256_file(dest)
-        if existing != entry["sha256"]:
-            raise FetchStopped(step, hash_mismatch("이미 있는 questions.public.json", entry["sha256"], existing))
-        return f"공개 문항: 유지({len(items)}문항, {short_hash(entry['sha256'])})"
-    os.replace(part, dest)
-    return f"공개 문항: 만듦({len(items)}문항, {short_hash(entry['sha256'])})"
+    done = _write_checked(root, entry, serialize_public(items), step)
+    return f"공개 문항: {done}({len(items)}문항, {short_hash(entry['sha256'])})"
+
+
+def public_hints(root: Path, manifest: dict) -> str:
+    """공개 evidence 파일: 공식 파일에서 위치별 question_id·evidence 글만 떼어 쓴다. 내용은 출력하지 않는다."""
+    step = "5단계"
+    entry = manifest["hints_public"]
+    official = _read_official(root, manifest, step)
+    try:
+        items = build_public_hints(official)
+    except PublicQuestionsError as e:
+        raise FetchStopped(step, str(e)) from None
+    errors = check_hints_against_official(items, official)
+    if errors:
+        raise FetchStopped(step, f"공개 evidence 유도 검사 실패 {len(errors)}건: {errors[0]}")
+    if len(items) != entry["count"]:
+        raise FetchStopped(step, f"공개 evidence 수 {len(items)} (기대 {entry['count']})")
+    done = _write_checked(root, entry, serialize_hints(items), step)
+    return f"공개 evidence: {done}({len(items)}문항, {short_hash(entry['sha256'])})"
 
 
 def final_check(root: Path, manifest: dict) -> str:
@@ -205,12 +239,18 @@ def final_check(root: Path, manifest: dict) -> str:
     pub = manifest["questions_public"]
     check_file(_at(root, pub["path"]), pub["sha256"], pub["size"], "questions.public.json", step)
     n += 1
+    hints = manifest["hints_public"]
+    check_file(_at(root, hints["path"]), hints["sha256"], hints["size"], "hints.public.json", step)
+    n += 1
     for name, sha in manifest["model"]["sha256"].items():
         check_file(_at(root, manifest["model"]["path"]) / name, sha, None, f"모델 {name}", step)
         n += 1
     count = len(json.loads(_at(root, pub["path"]).read_text(encoding="utf-8")))
     if count != pub["count"]:
         raise FetchStopped(step, f"공개 문항 수 {count} (기대 {pub['count']})")
+    hint_count = len(json.loads(_at(root, hints["path"]).read_text(encoding="utf-8")))
+    if hint_count != hints["count"] or hint_count != count:
+        raise FetchStopped(step, f"공개 evidence 수 {hint_count} (기대 {hints['count']})")
     sql_path = _at(root, manifest["answers"]["sql"]["path"])
     sql_lines = sum(1 for line in sql_path.read_text(encoding="utf-8").splitlines() if line.strip())
     if sql_lines != pub["count"]:
@@ -240,6 +280,7 @@ def fetch_bird(root: Path, *, manifest: dict | None = None) -> list[str]:
     steps.append(extract(root, m))
     steps.append(write_gold_toml(root, m))
     steps.append(public_questions(root, m))
+    steps.append(public_hints(root, m))
     steps.append(fetch_model(root, m))
     steps.append(final_check(root, m))
     return format_summary("getbird 완료", steps, m["license_note"])

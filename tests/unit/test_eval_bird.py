@@ -42,7 +42,7 @@ def test_score_four_of_six(mini, tmp_path):
     run_text = "".join(p.read_text(encoding="utf-8") for p in (root / "runs/rs").rglob("*") if p.is_file())
     for secret in (M.GOLD_SQL[4], M.GOLD_SQL[5], *M.EVIDENCE):
         assert secret not in run_text
-    assert bird.score_line(s).startswith("score: BIRD Mini-Dev / SQLite / ab12cd34 / 6문제 / EX / evidence not_used")
+    assert bird.score_line(s).startswith("score: BIRD Mini-Dev / SQLite / ab12cd34 / 6문제 / EX / evidence 미확인")
     assert "→ EX 4/6 (66.67%) · 채점기 대조 True · DB 불변 True" in bird.score_line(s)
 
 
@@ -122,7 +122,7 @@ def test_labels():
     assert bird.label(fake, 5, True).endswith(" / 소표본·점수 아님 / 가짜 백엔드·점수 아님")
     rs = {**BASE, "kind": "rescore", "llm": None, "source": {"sha256": "a4f77df8ffff"}}
     assert bird.label(rs, 500, False) == (
-        "BIRD Mini-Dev / SQLite / cc48ba16 / 500문제 / EX / evidence not_used / 로컬 측정 / "
+        "BIRD Mini-Dev / SQLite / cc48ba16 / 500문제 / EX / evidence 미확인 / 로컬 측정 / "
         "재채점(예측 파일 a4f77df8) / 채점 Python 647f7f0"
     )
     nogit = {**BASE, "git": {"head": None}}

@@ -43,6 +43,10 @@
 | 스터디 Olist 받기 | (오픈소스 없음) TS `harness/fetch-olist.ts`, `benchmarks/olist/manifest.json` | `src/t2s/fetch/olist.py`, `src/t2s/fetch/olist_study.json` | 자체(TS를 옮김). 해시 표 값은 그대로, 규칙 번호만 이 저장소 것으로. 원본은 TS 하네스에서 아직 커밋되지 않은 상태에서 옮김 | 자체. 받는 자료는 CC BY-NC-SA 4.0 |
 | 채점(Olist 스터디 평가셋) | 스터디 저장소 `scripts/run_baseline.py` `extract_sql` 118-121행 가운데 120-121행(끝 `;` 떼기), `ALLOWED` 126행, `connect` 129-140행, `execute` 143-158행, `_same` 163-166행, `_rows_equal` 169-180행, `compare` 183-200행, `run` 391행(실행 오류면 비교 없이 실패) | `src/t2s/eval/study.py` | 복사 후 수정. DB 경로를 받은 그대로 열고 `immutable=1`을 더함, 실행·비교가 이유 코드를 함께 돌려줌(시간 초과·거절을 나눔), 코드 블록 꺼내기는 가져오지 않음, 정답 SQL을 같은 규칙으로 돌려 기대 결과와 대조하는 단계를 더함. 판정 규칙은 그대로 | 원본 저장소에 LICENSE 없음. 사용자 판단으로 복사 후 수정. 파일 머리말에 출처·커밋·줄·바꾼 것 |
 | 스터디 문항 넣기·정답 연결·보고·누설 | (오픈소스 없음) 착안: 스터디 저장소 `scripts/run_baseline.py` `MODEL_FIELDS` 42행(모델 입력 칸 넷), `run` 333행(SQL 문항만 채점) | `src/t2s/dataset/questions.py` `load_study_inputs`·`load_questions_json`, `src/t2s/fetch/olist.py` `write_gold_toml`, `src/t2s/eval/gold.py`, `src/t2s/eval/report.py` `study_sentences`, `src/t2s/eval/leak_audit.py` | 자체. 문항 조건은 읽은 뒤 버림(not_used), SQL 문항이 아니면 멈춤, `gold.toml`은 `fetch/bird.py`와 같은 꼴 | 자체 |
+| evidence used: ② 키워드 힌트 칸 | CHESS `src/workflow/agents/information_retriever/tool_kit/extract_keywords.py` `_run` 24행(HINT 칸에 문항 evidence) | `src/t2s/pipeline/keywords.py`, `src/t2s/pipeline/run.py` | 복사 후 수정한 파일에 갈래를 더함. evidence used run에서만 HINT 칸에 evidence 글을 넣고, 기본(not_used)은 빈 글 그대로. 템플릿 파일은 바꾸지 않음 | Apache-2.0. `keywords.py` 머리말에 적음 |
+| evidence used: ⑥ 주석의 지식 | DAMO-ConvAI `bird/llm/src/gpt_request.py` `generate_comment_prompt` 104행, `collect_response_from_gpt` 179-180행, `knowledge_package` 208-213행, `decouple_question_schema` 218-225행, `--use_knowledge` 261-264행 | `src/t2s/pipeline/prompt.py`(바뀐 코드 없음, 지식 인자에 글을 넘김), `src/t2s/pipeline/run.py` | 복사 후 수정한 파일의 기존 인자를 씀. evidence used면 `-- External Knowledge: <글>`, not_used면 `None` 그대로 | MIT 고지 유지. `prompt.py` 머리말에 적음 |
+| evidence used: ⑪ 고치기 지식 칸 | MAC-SQL `core/const.py` 579행(고치기 템플릿의 evidence 칸), `core/agents.py` `Refiner._refine` 723행·731행, `Refiner.talk` 753-756행 | `src/t2s/pipeline/refine.py` | 재구현(코드·문장 복사 없음). 새로 쓴 템플릿의 `{knowledge}` 칸에 evidence used면 evidence 글, not_used면 빈 글. 템플릿 파일은 바꾸지 않음 | 코드·문장 복사 없음. 읽은 곳은 6절 표 |
+| evidence used: 공개 evidence 파일·문항 조건 잇기·run 기록 | (오픈소스 없음) | `src/t2s/fetch/public_questions.py` `build_public_hints`·`serialize_hints`·`check_hints_against_official`, `src/t2s/fetch/bird.py` `public_hints`, `src/t2s/dataset/hints.py`, `src/t2s/dataset/questions.py` `load_study_inputs(keep_conditions)`, `src/t2s/runner/guard.py` `HINT_GLOBS`, `src/t2s/runner/batch.py`, `src/t2s/cli/run_cmds.py`, `src/t2s/eval/bird.py` `check_run_evidence`, `src/t2s/eval/study.py`, `src/t2s/eval/leak_audit.py`, `src/t2s/eval/report.py` | 자체. 공개 evidence 파일은 공개 문항 파일과 같은 꼴의 규칙(위치 순서, 칸 고정, sha256 고정), Olist 문항 조건은 각 줄 앞뒤 공백만 떼고 `"; "`로 잇기 | 자체 |
 
 ## 4. Python판에서 달라진 동작
 
@@ -98,3 +102,16 @@ DAMO-ConvAI 저장소의 `LICENSE`는 MIT다. 그런데 `bird/README.md`에는 �
 > **License Notation**: Due to large volume of requests, now we change the license to <code>CC BY-SA 4.0</code>.
 
 이 문구가 BIRD 데이터셋에만 해당하는지 `bird/` 아래 코드까지 해당하는지는 그 글만으로 가릴 수 없다(미확인). 이 저장소는 저장소 `LICENSE`(MIT)를 따라 복사 후 수정하고, 이 문구를 여기에 남겨 둔다.
+
+## 6. evidence used 모드에서 다시 읽은 곳
+
+evidence used 모드(문항의 evidence를 모델에 주는 갈래)를 더하면서 원본에서 evidence가 들어가는 자리를 다시 확인했다. 줄 번호는 2절 표의 커밋 기준이고, 받아 둔 사본의 커밋이 2절 표와 같음을 확인했다. 코드를 새로 복사하지 않았고, MAC-SQL은 5절 원칙대로 동작만 따랐다.
+
+| 저장소 | 파일 | 함수·줄 | 읽은 까닭 |
+|---|---|---|---|
+| CHESS | `src/workflow/agents/information_retriever/tool_kit/extract_keywords.py` | `_run` 24행 | 키워드 템플릿의 HINT 칸에 문항 evidence가 들어감 |
+| DAMO-ConvAI | `bird/llm/src/gpt_request.py` | `generate_comment_prompt` 104행, `collect_response_from_gpt` 179-180행, `knowledge_package` 208-213행, `decouple_question_schema` 218-225행, 261-264행 | `--use_knowledge True`일 때 문항 evidence가 `-- External Knowledge:` 줄로 들어감 |
+| MAC-SQL | `core/const.py` | 579행 | 고치기 템플릿의 evidence 칸 자리 |
+| MAC-SQL | `core/agents.py` | `Refiner._refine` 723행·731행, `Refiner.talk` 753-756행 | 고치기 호출이 문항 evidence를 그 칸에 넣음 |
+
+공개 evidence 파일(`data/bird-minidev/hints.public.json`)의 고정값은 sha256 `6505a2b7b4ea068b5aad342d650167ded0200d28c7eb401d4a0ace593e552b9f`, 크기 86215바이트, 500항목이다. 공식 문제 파일(sha256 `4ba5fa8d…c43b`)에서 받기 단계와 같은 규칙으로 메모리에서 만들어 해시·크기만 확인했다(내용은 출력하지 않았다).

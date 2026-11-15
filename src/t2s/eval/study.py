@@ -16,7 +16,9 @@
     any·ignored·not_required·unordered일 때만 행 순서 무시, 수 허용 오차, 1000행 초과 실패)은 그대로.
   - 끝 ';' 떼기만 가져오고 코드 블록 꺼내기는 가져오지 않음(예측은 이미 꺼낸 SQL이다).
   - 정답 대조를 더함: 정답 SQL을 같은 execute·compare로 돌려 기대 결과와 같은지 본다.
-  - 문항 조건(task_conditions)은 모델에 주지 않았다(not_used). 채점에는 쓰지 않는다.
+  - 문항 조건(task_conditions)은 이 하네스의 evidence 자리다. 기본은 모델에 주지 않는다(evidence not_used).
+    evidence used run에서만 각 줄의 앞뒤 공백을 떼고 "; "로 이은 한 줄을 준다. 채점에는 쓰지 않고, used run이면
+    run의 hints.json이 정답 파일의 model_input.task_conditions를 같은 규칙으로 이은 글과 같은지만 대조한다.
 
 정답 글자(정답 SQL, 기대 결과, 이유 글)는 gold/_work/<run_id>/에만 쓴다. run 폴더에는 문항별 0·1, 실행 이유 코드, 요약만.
 datasource를 import할 수 없으므로 DB는 sqlite3로 직접 연다.
@@ -33,9 +35,19 @@ from pathlib import Path
 
 import t2s.runner.records as R
 from t2s.dataset.config import Config
-from t2s.dataset.questions import STUDY_FORMAT, load_public_questions
+from t2s.dataset.hints import join_conditions
+from t2s.dataset.questions import STUDY_FORMAT, QuestionsError, load_public_questions
 from t2s.eval import gold as G
-from t2s.eval.bird import SIDE_SUFFIXES, ScoreError, _generating, db_state, now, official_percent, sha256_file
+from t2s.eval.bird import (
+    SIDE_SUFFIXES,
+    ScoreError,
+    _generating,
+    check_run_evidence,
+    db_state,
+    now,
+    official_percent,
+    sha256_file,
+)
 
 EVALUATOR_ID = "study-run-baseline-290ff9b"
 SOURCE = {
@@ -184,7 +196,8 @@ def label(run: dict, count: int, sample: bool, name: str, answers_sha256: str) -
     commit = (git.get("head") or "")[:7] or "커밋 없음"
     llm = run.get("llm") or {}
     text = (
-        f"{name} / SQLite / {answers_sha256[:8]} / {count}문제 / EX(스터디 결과 비교) / 문항 조건 not_used / 로컬 측정"
+        f"{name} / SQLite / {answers_sha256[:8]} / {count}문제 / EX(스터디 결과 비교)"
+        f" / {G.evidence_word(G.evidence_mode(run))} / 로컬 측정"
         f" / {llm.get('model')}·추론 {llm.get('reasoning_effort')}·{llm.get('backend')} / 1회 실행"
         f" / 구현 Python {commit}"
     )
@@ -198,14 +211,33 @@ def label(run: dict, count: int, sample: bool, name: str, answers_sha256: str) -
 
 
 def leak_texts(gold: G.Gold) -> list[dict]:
-    """누설 검사에 쓰는 정답 글: 위치마다 정답 SQL과 힌트 글(문항 조건 각 줄, 채점 메모). 정규화·길이 거르기는 부르는 쪽."""
+    """누설 검사에 쓰는 정답 글: 위치마다 정답 SQL, 문항 조건 각 줄(conditions), 채점 메모(notes), 둘을 합친 hints,
+    evidence used run에 준 것과 같은 규칙으로 이은 조건 글(evidence). 정규화·길이 거르기는 부르는 쪽."""
     out = []
     for it in G.gold_items(gold):
-        conditions = (it.get("model_input") or {}).get("task_conditions") or []
-        hints = [str(c) for c in conditions if isinstance(c, str)]
-        if isinstance(it.get("note"), str):
-            hints.append(it["note"])
-        out.append({"sql": str(it.get("gold_sql") or ""), "hints": hints})
+        raw = (it.get("model_input") or {}).get("task_conditions") or []
+        conditions = [str(c) for c in raw if isinstance(c, str)]
+        notes = [it["note"]] if isinstance(it.get("note"), str) else []
+        out.append(
+            {
+                "sql": str(it.get("gold_sql") or ""),
+                "conditions": conditions,
+                "notes": notes,
+                "hints": conditions + notes,
+                "evidence": join_conditions(conditions),
+            }
+        )
+    return out
+
+
+def task_condition_texts(items: list[dict]) -> list[str]:
+    """정답 파일의 model_input.task_conditions를 evidence used run과 같은 규칙(dataset/hints.py)으로 이은 글."""
+    out = []
+    for i, it in enumerate(items):
+        try:
+            out.append(join_conditions((it.get("model_input") or {}).get("task_conditions") or []))
+        except QuestionsError:
+            raise ScoreError(f"정답 파일의 문항 조건이 글 목록이 아닙니다(위치 {i})") from None
     return out
 
 
@@ -275,6 +307,9 @@ def score(config: Config, run_id: str, *, meta_time_out: float | None = None, le
         )
         if not same:
             raise ScoreError(f"run의 문항과 정답 파일이 어긋납니다(위치 {i})")
+    mode = G.evidence_mode(meta)
+    expected = task_condition_texts(items[:count]) if mode == G.EVIDENCE_USED else []
+    evidence = check_run_evidence(run, meta, expected)
 
     side_before = _side_files(spec)
     hashes_before, _ = db_state(spec)
@@ -359,7 +394,8 @@ def score(config: Config, run_id: str, *, meta_time_out: float | None = None, le
             "left_untouched": {f: s for f, s in side_after.items() if f in side_before},
         },
         "evaluator": {"id": EVALUATOR_ID, "source": SOURCE, "rules": RULES, "timeout_seconds": timeout_s},
-        "conditions": "not_used",
+        "conditions": mode,
+        "evidence": evidence,
         "per_question": {"file": R.EX_FILE, "method": "eval/study.py: execute·compare", "elapsed_seconds": elapsed},
         "integrity": {
             "records_sha256": sha256_file(run / R.RECORDS_FILE),

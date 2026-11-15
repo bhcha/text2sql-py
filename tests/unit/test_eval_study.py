@@ -83,7 +83,7 @@ def test_score_two_of_four(mini):
     assert s["evaluator"]["timeout_seconds"] == 10.0
     answers = hashlib.sha256((root / "gold/olist/study-v0.3.json").read_bytes()).hexdigest()
     assert s["label"] == (
-        f"Olist 스터디 평가셋 v0.3 / SQLite / {answers[:8]} / 4문제 / EX(스터디 결과 비교) / 문항 조건 not_used"
+        f"Olist 스터디 평가셋 v0.3 / SQLite / {answers[:8]} / 4문제 / EX(스터디 결과 비교) / evidence not_used"
         " / 로컬 측정 / fake·추론 None·fake / 1회 실행 / 구현 Python abcdef1 / 가짜 백엔드·점수 아님"
     )
     rows = R.read_jsonl(run / "ex.jsonl")

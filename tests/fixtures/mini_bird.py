@@ -90,6 +90,23 @@ def make_mini_bird(root: Path, shop_db: Path, *, wal: bool = False) -> Path:
     return root
 
 
+HINTS = "data/mini/hints.public.json"
+
+
+def add_public_hints(root: Path) -> Path:
+    """공개 evidence 파일(위치별 question_id·hint)을 만들고 harness.toml에 hints 칸을 더한다(받기 단계를 대신)."""
+    root = Path(root)
+    items = [{"question_id": 900 + i, "hint": EVIDENCE[i]} for i in range(len(QUESTIONS))]
+    path = root / HINTS
+    path.write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    toml = root / "harness.toml"
+    text = toml.read_text(encoding="utf-8")
+    line = 'questions = "data/mini/questions.public.json"\n'
+    if f'hints = "{HINTS}"' not in text:
+        toml.write_text(text.replace(line, line + f'hints = "{HINTS}"\n'), encoding="utf-8")
+    return path
+
+
 def write_gold_toml(gold: Path) -> None:
     def sha(p: Path) -> str:
         return hashlib.sha256(p.read_bytes()).hexdigest()

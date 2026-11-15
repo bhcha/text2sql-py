@@ -23,8 +23,9 @@ def test_remote_happy_path_then_skip(setup):
     assert lines[1].startswith("1 사전 확인") and "curl 있음" in lines[1]
     assert lines[2].startswith("2 zip: 받음")
     assert lines[3] == "3 풀기: DB 2 + 정답 2, 해시 4 일치"
-    assert "모델: 5파일 받음" in lines[6]
-    assert "해시 11개 일치" in lines[7]
+    assert lines[6].startswith("6 공개 evidence: 만듦(3문항, ")
+    assert "모델: 5파일 받음" in lines[7]
+    assert "해시 12개 일치" in lines[8] and len(lines) == 10
     assert not list(root.rglob("*.part"))
     again = fetch_bird(root, manifest=manifest)
     assert "zip: 건너뜀" in again[2]

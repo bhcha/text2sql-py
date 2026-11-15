@@ -2,7 +2,13 @@
 
 옮긴 TS 코드: engines/pure-fix-h/pack/run.ts `main`(단계 차례, 호출 기록, 실패 처리, 단계별 기록 칸).
 DB 지문 전후 비교, 읽기 감시, 최종 SQL 표시는 부르는 쪽(ask·run)의 일이다.
-힌트·지식을 받는 인자는 두지 않는다(AGENTS 규칙 9). 키워드 힌트는 늘 빈 글, 주석의 지식은 늘 None이다.
+힌트는 `hint` 인자 하나로만 받는다(AGENTS 규칙 9).
+- hint=None(기본, evidence not_used): 키워드 힌트 칸은 빈 글, 주석의 지식은 None(`-- External Knowledge: None`),
+  고치기 지식 칸은 빈 글. 이 갈래의 프롬프트는 힌트 인자를 두기 전과 글자 하나 다르지 않다
+  (tests/unit/test_prompt_regression.py).
+- hint=글(evidence used): 같은 글을 세 자리에 글자 그대로 넣는다. 키워드 힌트 칸(CHESS HINT), 주석의 지식
+  (DAMO `-- External Knowledge: <글>`), 고치기 지식 칸(MAC 고치기 템플릿의 evidence 칸에 해당). 빈 글이면 빈 글 그대로.
+  넣은 글 안의 중괄호는 다시 바꾸지 않는다.
 """
 
 from __future__ import annotations
@@ -24,6 +30,8 @@ from t2s.prep.embed import EmbeddingFailed
 
 if TYPE_CHECKING:
     from t2s.prep.embed import Embedder
+
+HINT_RULES_VERSION = "1.0.0"  # 힌트를 넣는 자리(키워드 힌트 칸, 주석 지식, 고치기 지식 칸)와 넣는 법
 
 
 @dataclass(frozen=True)
@@ -75,6 +83,7 @@ def answer(
     embedder: Embedder | value_search.CachedEmbedder,
     settings: PipelineSettings | None = None,
     calls_dir: Path | None = None,
+    hint: str | None = None,
 ) -> Trace:
     settings = settings or PipelineSettings()
     started = time.monotonic()
@@ -86,6 +95,8 @@ def answer(
         "keyword_rules": keywords.KEYWORD_RULES_VERSION,
         "refine_template_sha256": refine.template_sha256(),
     }
+    if hint is not None:
+        trace.versions["hint_rules"] = HINT_RULES_VERSION
     cached = embedder if isinstance(embedder, value_search.CachedEmbedder) else value_search.CachedEmbedder(embedder)
 
     def ms(t0: float) -> int:
@@ -135,7 +146,7 @@ def answer(
 
         # ② 키워드(읽지 못하면 같은 프롬프트로 다시, 모두 keyword_attempts번)
         t0 = time.monotonic()
-        kw_prompt = keywords.keywords_prompt(question, "")
+        kw_prompt = keywords.keywords_prompt(question, "" if hint is None else hint)
         items: list | None = None
         why: str | None = None
         attempts = 0
@@ -249,8 +260,11 @@ def answer(
         )
 
         # ⑥ ⑦ 주석·결합
-        trace.set_stage("comment", {"knowledge": "None"})
-        gen_prompt = prompt.combined_prompt(profiled.text, question, None, source.dialect.name)
+        if hint is None:
+            trace.set_stage("comment", {"knowledge": "None"})
+        else:
+            trace.set_stage("comment", {"knowledge": "given", "chars": len(hint), "sha256": sha256_text(hint)})
+        gen_prompt = prompt.combined_prompt(profiled.text, question, hint, source.dialect.name)
         trace.set_stage(
             "prompt",
             {"chars": len(gen_prompt), "sha256": sha256_text(gen_prompt), "cot": prompt.COT in gen_prompt},
@@ -298,6 +312,7 @@ def answer(
                 refine.refine_loop(
                     extracted.sql,
                     question=question,
+                    knowledge="" if hint is None else hint,
                     schema_text=profiled.text,
                     tables=schema.tables,
                     source=source,

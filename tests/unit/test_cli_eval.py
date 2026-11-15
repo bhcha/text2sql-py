@@ -72,7 +72,7 @@ def test_run_scores_and_reports(root, capsys):
         and "정답 SQL 0, evidence 0, 다른 문항 정답 0, 프롬프트 누락 0" in lines[0]
     )
     code, lines, _ = cli(capsys, "status")
-    assert lines[0] == "fk · mini · 끝남" and "생성 끝 예 · 채점 끝 예 · 보고 끝 예" in lines
+    assert lines[0] == "fk · mini · evidence not_used · 끝남" and "생성 끝 예 · 채점 끝 예 · 보고 끝 예" in lines
 
 
 def test_report_before_score(root, capsys):

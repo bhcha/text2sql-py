@@ -43,6 +43,7 @@ class DatasetSpec:
     archive_sha256: str | None
     origin: str  # "harness.toml" | "state"
     missing: str | None  # 자료가 없으면 까닭
+    hints: Path | None = None  # 공개 힌트 파일(위치별 question_id·hint). 힌트를 주는 run을 시작할 때만 읽는다
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ def _dataset_from_toml(name: str, raw: dict, root: Path) -> DatasetSpec:
         sources = discover_sources(base, databases) if folder.is_dir() else {}
         missing = None if sources else MISSING_BIRD
         q = raw.get("questions")
+        h = raw.get("hints")
         return DatasetSpec(
             name=name,
             kind=kind,
@@ -104,6 +106,7 @@ def _dataset_from_toml(name: str, raw: dict, root: Path) -> DatasetSpec:
             archive_sha256=raw.get("archive_sha256"),
             origin="harness.toml",
             missing=missing,
+            hints=_resolve(root, str(h)) if h else None,
         )
     if kind == "single":
         sources = _single_sources(name, raw.get("sources", {}), root)

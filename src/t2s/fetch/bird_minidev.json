@@ -95,6 +95,12 @@
     "size": 101922,
     "count": 500
   },
+  "hints_public": {
+    "path": "data/bird-minidev/hints.public.json",
+    "sha256": "6505a2b7b4ea068b5aad342d650167ded0200d28c7eb401d4a0ace593e552b9f",
+    "size": 86215,
+    "count": 500
+  },
   "model": {
     "url_base": "https://huggingface.co/Xenova/all-mpnet-base-v2/resolve/e086c5e0b3a57b0ce46dd6d9c0662948860b35f3/",
     "path": "data/models/Xenova/all-mpnet-base-v2",

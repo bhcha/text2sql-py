@@ -12,6 +12,8 @@ kind = "bird-minidev"
 root = "data/bird-minidev/extracted/minidev/MINIDEV"
 databases = "dev_databases"
 questions = "data/bird-minidev/questions.public.json"
+# 공개 evidence 파일(위치별 question_id와 evidence 글). evidence used run을 시작할 때만 읽는다.
+hints = "data/bird-minidev/hints.public.json"
 archive_sha256 = "cc48ba16838204e4e214512030cb572eeb5f7bcdd999bae4b9b6ff12ec13b92f"
 
 # 사용자 DB는 /connect 가 var/state.json 에 등록한다. 여기에 영구히 두려면:

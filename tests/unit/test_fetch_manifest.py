@@ -31,6 +31,13 @@ def test_paths_match_harness_toml():
     assert raw["datasets"]["bird-minidev"]["root"] == m["extract_root"] + "/minidev/MINIDEV"
 
 
+def test_hints_public_entry():
+    raw = tomllib.loads((REPO / "harness.toml").read_text(encoding="utf-8"))
+    h = load_manifest()["hints_public"]
+    assert raw["datasets"]["bird-minidev"]["hints"] == h["path"] == "data/bird-minidev/hints.public.json"
+    assert h["count"] == 500 and len(h["sha256"]) == 64 and h["size"] > 0
+
+
 def test_olist_manifest_shape():
     from t2s.fetch.olist import load_manifest as load_olist
 

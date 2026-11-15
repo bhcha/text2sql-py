@@ -126,6 +126,7 @@ class RunContext:
     embedder: CachedEmbedder
     model_hashes: dict[str, str]
     backend_factory: Callable[[], LlmBackend] | None = None
+    hints: list[str] | None = None  # 위치 순서의 힌트 글(run 폴더의 hints.json에서). None이면 힌트를 주지 않는다
     stop: threading.Event = field(default_factory=threading.Event)
     halt_reason: str | None = None
     _sources: dict[str, DataSource] = field(default_factory=dict)
@@ -234,6 +235,7 @@ def run_item(q: PublicQuestion, ctx: RunContext, attempt: int) -> dict:
             embedder=ctx.embedder,
             settings=ctx.settings,
             calls_dir=folder / "calls",
+            hint=None if ctx.hints is None else ctx.hints[q.position],
         )
         final = _final_exec(trace, source, ctx.settings)
     except Exception as e:  # noqa: BLE001 — 한 문항의 실패가 다른 문항을 막지 않는다

@@ -8,7 +8,7 @@ import sqlite3
 import zipfile
 from pathlib import Path
 
-from t2s.fetch.public_questions import build_public_items, serialize_public
+from t2s.fetch.public_questions import build_public_hints, build_public_items, serialize_hints, serialize_public
 
 MARK = "LEAKMARK-7Q"  # 정답·문항에 넣는 표식. 어떤 출력에도 나오면 안 된다.
 EXTRACT_ROOT = "data/bird-minidev/extracted"
@@ -68,6 +68,7 @@ def make_fake_source(tmp: Path) -> tuple[Path, dict]:
             zf.writestr(name, data)
     zbytes = zpath.read_bytes()
     public = serialize_public(build_public_items(official)).encode()
+    hints = serialize_hints(build_public_hints(official)).encode()
     model_dir = src / "models/Xenova/all-mpnet-base-v2"
     model_sha = {}
     for f in MODEL_FILES:
@@ -106,6 +107,12 @@ def make_fake_source(tmp: Path) -> tuple[Path, dict]:
             "path": "data/bird-minidev/questions.public.json",
             "sha256": sha(public),
             "size": len(public),
+            "count": 3,
+        },
+        "hints_public": {
+            "path": "data/bird-minidev/hints.public.json",
+            "sha256": sha(hints),
+            "size": len(hints),
             "count": 3,
         },
         "model": {

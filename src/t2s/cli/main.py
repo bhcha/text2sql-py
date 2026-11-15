@@ -19,6 +19,7 @@ EXIT_NO_GOLD = 4
 EXIT_NEEDS_PREP = 5
 # t2s.llm.select.BACKENDS와 같다(채점 프로세스가 llm을 불러오지 않게 여기 따로 둔다. test_select가 대조한다)
 BACKENDS = ("codex-cli", "claude-code", "fake")
+EVIDENCE_MODES = ("used", "not_used")
 
 
 def add_model_arguments(parser) -> None:
@@ -67,6 +68,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-score", dest="no_score", action="store_true", help="생성 뒤 채점·보고를 부르지 않는다")
     p.add_argument("--no-probe", dest="no_probe", action="store_true", help="분리 전 확인 호출을 하지 않는다")
     p.add_argument("--foreground", action="store_true", help="분리하지 않고 그 자리에서 돈다")
+    p.add_argument(
+        "--evidence",
+        choices=EVIDENCE_MODES,
+        default="not_used",
+        help="문항의 evidence(BIRD 공식 evidence, Olist 문항 조건)를 모델에 줄지. 기본 not_used(퓨어 조건)",
+    )
     p.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     add_model_arguments(p)
 

@@ -25,6 +25,7 @@ description: 스터디 저장소(jenn25ng/text-to-sql-study, 비공개)에서 Ol
 ## 받은 뒤
 
 - 평가셋 49문항을 돌리고 채점하려면 /connect olist로 바꾼 뒤 /runset을 부른다(/runset이 모델 입력 파일을 붙이고, 끝나면 스터디 채점 규칙으로 채점한다).
+- evidence used로 돌릴 때는 모델 입력 파일의 문항 조건을 쓴다. 새로 받을 파일은 없다.
 - 이 스킬은 DB 등록·준비(값 색인·열 프로파일)를 하지 않는다. 쓰려면 사용자가 /connect에 `data/olist/olist.db`를 주면, /connect가 밖으로 나가는 것을 알리고 승인을 받은 뒤 등록한다.
 - `data/olist/schema.snapshot.json`의 `notes`·`logical_relations`는 사람이 쓴 설명이라 퓨어 조건(AGENTS 규칙 9)에서는 모델에 주지 않는다.
 

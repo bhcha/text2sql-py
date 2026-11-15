@@ -34,6 +34,10 @@ ONLY_IMPORTER = {"eval": "cli/eval_cmds.py", "fetch": "cli/fetch_cmd.py"}
 GOLD_TEXT_ZONES = ("eval/", "fetch/")
 GOLD_TEXT_EXCEPTION = ("runner/guard.py", "PROTECTED_DIRS")
 GOLD_PATTERNS = (re.compile(r"(^|/)gold(/|$)"), re.compile(r"mini_dev_sqlite"), re.compile(r"evidence"))
+# 'evidence' 글자만 건너뛰는 두 파일(겉의 CLI 인자·출력·run.json 칸). gold 경로·mini_dev_sqlite 금지는 그대로다.
+# 사용자가 승인한 바꿈(AGENTS 규칙 2). 안쪽 생성 패키지는 hint·knowledge라는 말만 쓴다.
+EVIDENCE_WORD = GOLD_PATTERNS[2]
+EVIDENCE_WORD_ALLOWED = ("cli/main.py", "cli/run_cmds.py")
 CONNECT_ALLOWED = ("datasource/sqlite.py",)
 CONNECT_ZONES = ("eval/",)
 HEAVY = {"numpy", "onnxruntime", "tokenizers"}
@@ -119,7 +123,10 @@ def check_source(rel: str, source: str) -> list[str]:
         for node in ast.walk(tree):
             if not (isinstance(node, ast.Constant) and isinstance(node.value, str)) or id(node) in docs:
                 continue
-            if any(p.search(node.value) for p in GOLD_PATTERNS):
+            patterns = (
+                [p for p in GOLD_PATTERNS if p is not EVIDENCE_WORD] if rel in EVIDENCE_WORD_ALLOWED else GOLD_PATTERNS
+            )
+            if any(p.search(node.value) for p in patterns):
                 line = lines[node.lineno - 1] if node.lineno - 1 < len(lines) else ""
                 if rel == GOLD_TEXT_EXCEPTION[0] and GOLD_TEXT_EXCEPTION[1] in line:
                     continue
@@ -333,6 +340,16 @@ def test_self_check_gold_text_batch_eval():
     assert check_source("cli/eval_cmds.py", "P = 'gold/_work'\n")
     assert check_source("cli/run_cmds.py", "P = 'mini_dev_sqlite_gold.sql'\n")
     assert not check_source("eval/bird.py", "P = 'gold/_work'\n")
+
+
+def test_self_check_evidence_word_allowed_only_in_two_files():
+    assert EVIDENCE_WORD_ALLOWED == ("cli/main.py", "cli/run_cmds.py")
+    for rel in EVIDENCE_WORD_ALLOWED:
+        assert not check_source(rel, "K = 'evidence used'\n")
+        assert check_source(rel, "P = 'gold/bird-minidev'\n")
+        assert check_source(rel, "P = 'mini_dev_sqlite.json'\n")
+    for rel in ("cli/ask_cmd.py", "cli/data_cmds.py", "dataset/x.py", "runner/x.py", "pipeline/x.py", "llm/x.py"):
+        assert check_source(rel, "K = 'evidence'\n"), rel
 
 
 def records_imports_t2s(source: str) -> list[str]:

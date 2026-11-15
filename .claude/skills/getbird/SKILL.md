@@ -13,7 +13,7 @@ description: BIRD Mini-Dev 자료(공식 zip 0.8GB, SQLite DB 11개, 정답·문
 
    uv run t2s fetch bird
 
-   이미 있고 해시가 맞는 파일은 건너뛰므로 여러 번 불러도 된다. 끝까지 가면 10줄 이내 요약과 라이선스 표기를 출력한다(zip 0.8GB, 모델 0.4GB 다운로드).
+   이미 있고 해시가 맞는 파일은 건너뛰므로 여러 번 불러도 된다. 끝까지 가면 10줄 이내 요약과 라이선스 표기를 출력한다(zip 0.8GB, 모델 0.4GB 다운로드). 요약에는 공개 evidence 줄(`공개 evidence: 만듦(500문항, …)` 또는 `유지(…)`)이 있다. 공개 evidence 파일(`data/bird-minidev/hints.public.json`)은 공식 문제 파일에서 위치별 question_id와 evidence 글만 떼어 만들고 sha256을 대조한 것이며, evidence used run에서만 쓴다. 이미 BIRD를 받은 사람도 /getbird를 다시 부르면 이 파일이 생긴다(다른 파일은 해시만 대조하고 건너뛴다).
 
 2. 종료 코드 0이면 출력된 요약을 그대로 보여 준다. 줄이거나 해석을 덧붙이지 않는다. 마지막에 "다음: /runset(전체 실행) 또는 /text2sql(질문 하나). 값 색인·프로파일 준비(약 2분)는 처음 부를 때 자동으로 합니다"를 알린다.
 
@@ -24,5 +24,6 @@ description: BIRD Mini-Dev 자료(공식 zip 0.8GB, SQLite DB 11개, 정답·문
 ## 하지 말 것
 
 - `gold/` 아래 파일, `data/bird-minidev/download/` 아래 파일, `.part`·`.rejected-*` 파일을 열어 보거나 내용을 터미널에 출력하지 않는다(정답 SQL·evidence가 들어 있다).
+- 공개 evidence 파일(`data/bird-minidev/hints.public.json`)의 내용을 터미널에 출력하지 않는다.
 - `src/t2s/fetch/bird_minidev.json`의 해시를 고치거나, 해시를 건너뛰는 옵션·환경변수를 더하지 않는다. 해시가 다르면 멈추는 것이 맞는 동작이다.
 - 값 색인·프로파일을 여기서 만들지 않는다. 그것은 /runset·/text2sql이 처음 돌 때, 또는 /connect bird가 한다.

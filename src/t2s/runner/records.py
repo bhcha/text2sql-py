@@ -21,6 +21,7 @@ RUN_FILE = "run.json"
 CONTROL_FILE = "control.json"
 LOG_FILE = "run.log"
 QUESTIONS_FILE = "questions.json"
+HINTS_FILE = "hints.json"  # 힌트를 주는 run만: 위치 순서의 힌트 글 목록(시작한 프로세스가 쓰고 분리 프로세스·resume은 이것만 읽는다)
 MANIFEST_FILE = "manifest.json"
 RECORDS_FILE = "records.jsonl"
 PREDICTIONS_FILE = "predictions.json"
