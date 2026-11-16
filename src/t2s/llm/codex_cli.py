@@ -2,7 +2,9 @@
 
 TS engines/packkit/llm/codex.ts(인자 배열, 끄는 기능 11개, 이벤트 읽기, 실패 분류)를 옮긴 자체 코드다.
 TS와 다른 점(docs/provenance.md 4절에도 적었다):
-- 작업 폴더는 저장소 밖 임시 폴더다(`t2s-llm-` 접두어, 호출 뒤 지운다). TS는 run 폴더 안 `codex-work`였다.
+- 작업 폴더: 호출 폴더가 있으면 TS와 같이 그 안의 `codex-work`(호출 뒤 지운다), 없으면 저장소 밖 임시 폴더
+  (`t2s-llm-` 접두어). 처음에는 늘 저장소 밖 임시 폴더였으나, codex가 작업 폴더 경로를 모델 입력에 넣어 같은
+  프롬프트에서도 답이 달라지는 것을 확인해(2026-11-16, 경로 실험) TS와 같은 자리로 되돌렸다.
 - 이벤트·오류 파일 이름은 `cli-events.jsonl`, `cli-stderr.txt`이고 CLI 판 칸은 `cli_version`이다.
 - 시간 제한 환경변수(TS `BB_LLM_TIMEOUT_SECONDS`)는 없다. 실행 파일 이름만 `T2S_CODEX_BIN`으로 바꿀 수 있다(테스트용).
 """
@@ -38,6 +40,7 @@ BIN_ENV = "T2S_CODEX_BIN"
 EVENTS_FILE = "cli-events.jsonl"
 STDERR_FILE = "cli-stderr.txt"
 WORK_PREFIX = "t2s-llm-"
+WORK_DIR_NAME = "codex-work"  # TS engines/pure-fix/pack/llm.ts callModel의 workDir 이름
 
 
 def codex_bin() -> str:
@@ -151,12 +154,17 @@ class CodexBackend:
 
     def call(self, prompt: str, call_dir: Path | None, *, name: str, attempt: int) -> LlmOutcome:
         bin = codex_bin()
-        work = tempfile.mkdtemp(prefix=WORK_PREFIX)
+        if call_dir is not None:
+            call_dir = Path(call_dir)
+            work_path = call_dir / WORK_DIR_NAME
+            shutil.rmtree(work_path, ignore_errors=True)  # 남은 것이 있으면 빈 폴더로 시작한다
+            work_path.mkdir(parents=True)
+            work = str(work_path)
+        else:
+            work = tempfile.mkdtemp(prefix=WORK_PREFIX)
         scratch = None
         try:
             if call_dir is not None:
-                call_dir = Path(call_dir)
-                call_dir.mkdir(parents=True, exist_ok=True)
                 out_dir = call_dir
             else:
                 scratch = tempfile.mkdtemp(prefix=WORK_PREFIX + "out-")
@@ -208,7 +216,7 @@ class CodexBackend:
                     "tool_items": events["tool_items"],
                     "thread_id": events["thread_id"],
                     "errors": [e[:1000] for e in events["errors"][-3:]],
-                    "work_dir_outside_repo": True,
+                    "work_dir_outside_repo": call_dir is None,
                     "work_dir_files": work_files,
                 }
             )

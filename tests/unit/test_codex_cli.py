@@ -52,7 +52,7 @@ def test_ok(fake, tmp_path, monkeypatch):
     m = out.meta
     assert m["usage"]["input_tokens"] == 100 and m["thread_id"] == "fake-thread" and m["tool_calls"] == 0
     assert m["cli_version"] == "codex-cli fake" and m["exit_code"] == 0 and m["timed_out"] is False
-    assert m["work_dir_outside_repo"] is True and m["work_dir_files"] == 0
+    assert m["work_dir_outside_repo"] is False and m["work_dir_files"] == 0
     assert {p.name for p in d.iterdir()} == {
         "prompt.txt",
         "response.txt",
@@ -67,9 +67,7 @@ def test_ok(fake, tmp_path, monkeypatch):
     assert entry["prompt"] == "PROMPT ü"
     work = Path(entry["cwd"]).resolve()
     assert entry["cwd_files"] == []
-    assert not str(work).startswith(str(REPO))
-    assert work.name.startswith("t2s-llm-")
-    assert str(work).startswith(os.path.realpath(tempfile.gettempdir()))
+    assert work == (d / "codex-work").resolve()  # TS와 같은 자리: 호출 폴더 안 codex-work
     assert not work.exists()
     assert entry["args"][entry["args"].index("-C") + 1] == entry["cwd"] or Path(entry["args"][-2]).resolve() == work
 
@@ -111,6 +109,11 @@ def test_no_call_dir(fake, tmp_path):
     out, _ = call(tmp_path, call_dir=None)
     assert out.response == "SELECT 1"
     assert not (tmp_path / "call").exists()
+    assert out.meta["work_dir_outside_repo"] is True
+    [entry] = read_log(fake)
+    work = Path(entry["cwd"]).resolve()
+    assert work.name.startswith("t2s-llm-") and not str(work).startswith(str(REPO))
+    assert str(work).startswith(os.path.realpath(tempfile.gettempdir())) and not work.exists()
 
 
 def test_events_skip_bad_lines():

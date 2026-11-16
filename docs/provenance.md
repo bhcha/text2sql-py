@@ -65,6 +65,7 @@
 | ⑪ 고치기 템플릿, 0행·NULL 문구 | MAC 원문 템플릿과 원문 문구 | 새로 쓴 템플릿(`templates/refine.txt`)과 문구(`judge.py`) | 5절 원칙. 고치기 프롬프트는 TS와 같지 않다(글자 수 평균 +264) |
 | ① 예시 행 질의 | 이름을 order·by·group만 감싸 실행(따옴표가 필요한 이름이면 SQL 오류) | `sample_rows`가 이름을 늘 감싸 실행. 프롬프트에 적는 질의 글은 원본 그대로 | BIRD 11개 DB에서는 글이 같다(생성 프롬프트 sha256 500/500) |
 | 모델 CLI 작업 폴더 | run 폴더 안 `codex-work`·`claude-work` | 저장소 밖 임시 폴더(`t2s-llm-` 접두어, 호출 뒤 지움) | 위쪽 폴더의 `CLAUDE.md`·`AGENTS.md`·정답 폴더와 떨어뜨려 "빈 작업 폴더"를 글자 그대로 참으로 |
+| 모델 CLI 작업 폴더(2026-11-16 바꿈) | run 폴더 안 `codex-work` | Codex는 호출 폴더 안 `codex-work`(TS와 같은 자리, 호출 뒤 지움). 호출 폴더가 없을 때와 Claude는 그대로 저장소 밖 임시 폴더 | 위 줄의 "저장소 밖 임시 폴더"를 Codex에서는 되돌렸다. codex가 작업 폴더 경로를 모델 입력에 넣어 같은 프롬프트에서도 답이 달라졌다(한쪽만 맞은 54문항 실험에서 TS식 경로 64/108, 임시 폴더 48/108) |
 | 모델 CLI 기록 이름 | `codex-events.jsonl`·`claude-events.jsonl`, CLI 판 칸 `codex_version` | 두 백엔드 모두 `cli-events.jsonl`·`cli-stderr.txt`, 칸 `cli_version` | 백엔드와 상관없이 같은 이름으로 읽게 |
 | 채점 중간 파일 자리 | 난도 파일(`diff.full.json`·`diff.subset.json`)과 소표본 정답(`gold.subset.sql`)을 run 폴더에 씀 | `gold/_work/<run_id>/`에 씀(`diff.jsonl`, `gold.subset.sql`, `ex.raw.jsonl`). run 폴더에는 예측·문항별 0·1·요약만 | 정답 글자가 run 폴더에 생기지 않게 |
 | 소표본 채점 | 공식 채점기를 늘 실행(난도가 빠지면 0으로 나누기 오류) | 앞 N문항에 없는 난도가 있으면 공식 채점기를 건너뛰고 문항별 판정만 냄(교차 대조 `null`) | 오류로 멈추지 않게 |
