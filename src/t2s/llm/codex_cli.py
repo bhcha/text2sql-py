@@ -41,6 +41,15 @@ EVENTS_FILE = "cli-events.jsonl"
 STDERR_FILE = "cli-stderr.txt"
 WORK_PREFIX = "t2s-llm-"
 WORK_DIR_NAME = "codex-work"  # TS engines/pure-fix/pack/llm.ts callModel의 workDir 이름
+# 실험용: 작업 폴더 경로를 바꿔 잰다. {pos}=문항 위치 폴더 이름, {k}=호출 번호 폴더 이름. 값은 호출 기록에 남는다.
+WORK_TEMPLATE_ENV = "T2S_CODEX_WORK_TEMPLATE"
+
+
+def work_path_for(call_dir: Path) -> Path:
+    template = os.environ.get(WORK_TEMPLATE_ENV)
+    if not template:
+        return call_dir / WORK_DIR_NAME
+    return Path(template.format(pos=call_dir.parent.parent.name, k=call_dir.name))
 
 
 def codex_bin() -> str:
@@ -156,9 +165,12 @@ class CodexBackend:
         bin = codex_bin()
         if call_dir is not None:
             call_dir = Path(call_dir)
-            work_path = call_dir / WORK_DIR_NAME
+            call_dir.mkdir(parents=True, exist_ok=True)
+            work_path = work_path_for(call_dir)
             shutil.rmtree(work_path, ignore_errors=True)  # 남은 것이 있으면 빈 폴더로 시작한다
             work_path.mkdir(parents=True)
+            if os.environ.get(WORK_TEMPLATE_ENV) and any(work_path.iterdir()):
+                raise RuntimeError(f"작업 폴더가 비어 있지 않다: {work_path}")
             work = str(work_path)
         else:
             work = tempfile.mkdtemp(prefix=WORK_PREFIX)
@@ -217,6 +229,8 @@ class CodexBackend:
                     "thread_id": events["thread_id"],
                     "errors": [e[:1000] for e in events["errors"][-3:]],
                     "work_dir_outside_repo": call_dir is None,
+                    "work_dir_template": os.environ.get(WORK_TEMPLATE_ENV) if call_dir is not None else None,
+                    "work_dir": work if os.environ.get(WORK_TEMPLATE_ENV) and call_dir is not None else None,
                     "work_dir_files": work_files,
                 }
             )

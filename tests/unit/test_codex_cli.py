@@ -127,3 +127,15 @@ def test_usage_limit_regex():
         assert codex_cli.USAGE_LIMIT.search(s), s
     for s in ("model not found", "exit 1", "4290 rows"):
         assert not codex_cli.USAGE_LIMIT.search(s), s
+
+
+def test_work_template(fake, tmp_path, monkeypatch):
+    base = tmp_path / "zz"
+    monkeypatch.setenv("T2S_CODEX_WORK_TEMPLATE", str(base) + "/{pos}/q{k}/w")
+    d = tmp_path / "items" / "0007" / "calls" / "2"
+    out = CodexBackend(SETTINGS).call("P", d, name="generate_sql", attempt=1)
+    assert out.response == "SELECT 1"
+    [entry] = read_log(fake)
+    assert Path(entry["cwd"]).resolve() == (base / "0007" / "q2" / "w").resolve()
+    assert out.meta["work_dir_template"] == str(base) + "/{pos}/q{k}/w" and out.meta["work_dir"].endswith("0007/q2/w")
+    assert not (base / "0007" / "q2" / "w").exists()
