@@ -43,6 +43,14 @@ WORK_PREFIX = "t2s-llm-"
 WORK_DIR_NAME = "codex-work"  # TS engines/pure-fix/pack/llm.ts callModel의 workDir 이름
 # 실험용: 작업 폴더 경로를 바꿔 잰다. {pos}=문항 위치 폴더 이름, {k}=호출 번호 폴더 이름. 값은 호출 기록에 남는다.
 WORK_TEMPLATE_ENV = "T2S_CODEX_WORK_TEMPLATE"
+# 실험용: codex가 붙이는 하네스 입력을 바꿔 잰다(2026-11-17 하네스 정리 실험). 쉼표로 여러 개.
+# minimal = 기본 지시를 한 줄 파일로 교체 + 환경 블록(작업 폴더 경로) 끔 + 내장 스킬 목록 끔
+# task = 범용 과제 설명을 developer 지시로 더함(문항·DB별 내용 없음)
+HARNESS_ENV = "T2S_CODEX_HARNESS"
+MINIMAL_INSTRUCTIONS_FILE = Path(__file__).with_name("codex_minimal_instructions.txt")
+TASK_CONTEXT = (
+    "You are assisting with a text-to-SQL task over a SQLite database. Follow the instructions in each message."
+)
 
 
 def work_path_for(call_dir: Path) -> Path:
@@ -50,6 +58,32 @@ def work_path_for(call_dir: Path) -> Path:
     if not template:
         return call_dir / WORK_DIR_NAME
     return Path(template.format(pos=call_dir.parent.parent.name, k=call_dir.name))
+
+
+def harness_flags() -> tuple[str, ...]:
+    raw = os.environ.get(HARNESS_ENV) or ""
+    flags = tuple(f.strip() for f in raw.split(",") if f.strip())
+    unknown = [f for f in flags if f not in ("minimal", "task")]
+    if unknown:
+        raise RuntimeError(f"{HARNESS_ENV}에 모르는 값: {', '.join(unknown)}")
+    return flags
+
+
+def harness_args(flags: tuple[str, ...]) -> list[str]:
+    """codex_args 뒤 `-s` 앞에 끼울 설정 인자. 값은 TOML 문자열로 쓴다."""
+    out: list[str] = []
+    if "minimal" in flags:
+        out += [
+            "-c",
+            f"model_instructions_file={json.dumps(str(MINIMAL_INSTRUCTIONS_FILE))}",
+            "-c",
+            "include_environment_context=false",
+            "-c",
+            "skills.include_instructions=false",
+        ]
+    if "task" in flags:
+        out += ["-c", f"developer_instructions={json.dumps(TASK_CONTEXT)}"]
+    return out
 
 
 def codex_bin() -> str:
@@ -185,6 +219,10 @@ class CodexBackend:
             if last_file.exists():
                 last_file.unlink()
             args = codex_args(self.settings, str(last_file), work)
+            flags = harness_flags()
+            if flags:
+                i = args.index("-s")
+                args = args[:i] + harness_args(flags) + args[i:]
             r = _proc.run_cli(
                 [bin, *args], prompt, cwd=Path(work), env=None, timeout_seconds=self.settings.timeout_seconds
             )
@@ -232,6 +270,7 @@ class CodexBackend:
                     "work_dir_template": os.environ.get(WORK_TEMPLATE_ENV) if call_dir is not None else None,
                     "work_dir": work if os.environ.get(WORK_TEMPLATE_ENV) and call_dir is not None else None,
                     "work_dir_files": work_files,
+                    "harness": list(flags),
                 }
             )
             if call_dir is not None:

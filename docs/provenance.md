@@ -116,3 +116,5 @@ evidence used 모드(문항의 evidence를 모델에 주는 갈래)를 더하면
 | MAC-SQL | `core/agents.py` | `Refiner._refine` 723행·731행, `Refiner.talk` 753-756행 | 고치기 호출이 문항 evidence를 그 칸에 넣음 |
 
 공개 evidence 파일(`data/bird-minidev/hints.public.json`)의 고정값은 sha256 `6505a2b7b4ea068b5aad342d650167ded0200d28c7eb401d4a0ace593e552b9f`, 크기 86215바이트, 500항목이다. 공식 문제 파일(sha256 `4ba5fa8d…c43b`)에서 받기 단계와 같은 규칙으로 메모리에서 만들어 해시·크기만 확인했다(내용은 출력하지 않았다).
+
+실험용 codex 하네스 설정(2026-11-17 더함): 환경변수 `T2S_CODEX_HARNESS`(쉼표로 여러 개)가 있을 때만 codex 인자에 설정을 더한다. `minimal`은 기본 지시를 한 줄 파일(`src/t2s/llm/codex_minimal_instructions.txt`, Claude 백엔드 시스템 프롬프트와 같은 글)로 바꾸고(`model_instructions_file`), 작업 폴더 경로가 든 환경 블록(`include_environment_context=false`)과 codex 내장 스킬 목록(`skills.include_instructions=false`)을 끈다. `task`는 범용 과제 설명 한 문장을 `developer_instructions`로 더한다(문항·DB별 내용 없음). 값이 없으면 TS와 같은 인자 그대로다. 쓴 값은 호출 기록 `harness` 칸에 남는다. 짧은 확인 호출 입력 토큰: 없음 13,724 · task 13,747 · minimal 5,493 · minimal,task 5,514(gpt-5.6-terra·medium, codex 0.169.0).

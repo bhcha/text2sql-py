@@ -139,3 +139,26 @@ def test_work_template(fake, tmp_path, monkeypatch):
     assert Path(entry["cwd"]).resolve() == (base / "0007" / "q2" / "w").resolve()
     assert out.meta["work_dir_template"] == str(base) + "/{pos}/q{k}/w" and out.meta["work_dir"].endswith("0007/q2/w")
     assert not (base / "0007" / "q2" / "w").exists()
+
+
+def test_harness_flags(fake, tmp_path, monkeypatch):
+    from t2s.llm.codex_cli import MINIMAL_INSTRUCTIONS_FILE
+
+    monkeypatch.setenv("T2S_CODEX_HARNESS", "minimal,task")
+    d = tmp_path / "items" / "0001" / "calls" / "1"
+    out = CodexBackend(SETTINGS).call("P", d, name="generate_sql", attempt=1)
+    assert out.response == "SELECT 1"
+    [entry] = read_log(fake)
+    args = entry["args"]
+    i = args.index("-s")
+    assert "include_environment_context=false" in args[:i] and "skills.include_instructions=false" in args[:i]
+    assert any(a.startswith("model_instructions_file=") for a in args[:i])
+    assert any(a.startswith("developer_instructions=") for a in args[:i])
+    assert MINIMAL_INSTRUCTIONS_FILE.read_text(encoding="utf-8").strip()
+    assert out.meta["harness"] == ["minimal", "task"]
+
+
+def test_harness_unknown(fake, tmp_path, monkeypatch):
+    monkeypatch.setenv("T2S_CODEX_HARNESS", "nope")
+    with pytest.raises(RuntimeError):
+        CodexBackend(SETTINGS).call("P", tmp_path / "c", name="generate_sql", attempt=1)
