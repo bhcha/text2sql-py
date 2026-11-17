@@ -21,7 +21,13 @@ faf754671f5b850e1b4d1ff870db37a6a2480df6, MIT License, Copyright (c) 2022 Alibab
 
 실험용(2026-11-17, 자체 문장): `plan=True`면 같은 자리에 PLAN을 붙인다. 모델이 쓸 표·조인 경로, 거르는 조건,
 묶음·집계·정렬을 짧게 계획하고 `SQL: ` 뒤에 SQL을 쓴다. 결과 열 목록은 적게 하지 않는다(출력 요구사항 실험에서 열이
-늘어난 것을 피하려고). 켜는 곳은 환경변수 `T2S_GEN_PLAN=1`이다. 둘을 함께 켤 수 없다.
+늘어난 것을 피하려고). 켜는 곳은 환경변수 `T2S_GEN_PLAN=1`이다.
+결과(2026-11-17, terra 500문항): 250 → 220(새로 맞음 8·새로 틀림 38, p < 0.0001). 열 목록을 적게 하지 않았는데도
+열이 더 늘어 쓰지 않기로 했다(파기). 기록 재현을 위해 설정은 남긴다.
+
+실험용(2026-11-17, 자체 문장): `bare_tail=True`면 같은 자리에 BARE_TAIL(`SQL: ` 한 줄)만 붙인다. 위 두 실험에 공통으로
+바뀐 것(원본 CoT 문장과 `SELECT ` 미리 쓰기를 뺀 것)만 따로 재려는 대조다. 켜는 곳은 환경변수 `T2S_GEN_BARE_TAIL=1`이다.
+세 실험 설정은 하나만 켤 수 있다.
 """
 
 from __future__ import annotations
@@ -34,6 +40,7 @@ OUTPUT_SPEC = (
     "\nOne row = <what one row of the result represents>"
     "\nSQL: "
 )
+BARE_TAIL = "\nSQL: "
 PLAN = (
     "\nBefore writing the SQL, briefly plan the query, then write the SQL."
     "\nPlan: <the tables and join path needed, the filter conditions, and any grouping, aggregation, or ordering>"
@@ -63,8 +70,9 @@ def combined_prompt(
     *,
     output_spec: bool = False,
     plan: bool = False,
+    bare_tail: bool = False,
 ) -> str:
-    if output_spec and plan:
-        raise ValueError("output_spec과 plan은 함께 켤 수 없다")
-    tail = OUTPUT_SPEC if output_spec else PLAN if plan else cot_wizard() + TAIL
+    if output_spec + plan + bare_tail > 1:
+        raise ValueError("output_spec·plan·bare_tail은 하나만 켤 수 있다")
+    tail = OUTPUT_SPEC if output_spec else PLAN if plan else BARE_TAIL if bare_tail else cot_wizard() + TAIL
     return schema_text + "\n\n" + comment_prompt(question, knowledge, dialect_name) + tail

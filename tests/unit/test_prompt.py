@@ -57,3 +57,15 @@ def test_plan():
         combined_prompt("SCHEMA", "q", None, plan=True, output_spec=True)
     r = "Plan: join a to b on id; filter x = 1; count rows.\nSQL:\n```sql\nSELECT COUNT(*) FROM a JOIN b ON a.id = b.id;\n```"
     assert extract_sql(r).sql == "SELECT COUNT(*) FROM a JOIN b ON a.id = b.id"
+
+
+def test_bare_tail():
+    import pytest
+
+    from t2s.pipeline.extract import extract_sql
+
+    p = combined_prompt("SCHEMA", "How many?", None, bare_tail=True)
+    assert p == "SCHEMA\n\n" + COMMENT + "\nSQL: " and COT not in p
+    with pytest.raises(ValueError):
+        combined_prompt("SCHEMA", "q", None, bare_tail=True, plan=True)
+    assert extract_sql("```sql\nSELECT 1;\n```").sql == "SELECT 1"
