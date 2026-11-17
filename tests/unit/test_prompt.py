@@ -43,3 +43,17 @@ def test_output_spec_extract():
     assert extract_sql(r).sql == "SELECT name FROM s WHERE x = 1"
     r2 = "Output columns: count of schools\nOne row = the whole result\nSQL: SELECT COUNT(*) FROM s"
     assert extract_sql(r2).sql == "SELECT COUNT(*) FROM s"
+
+
+def test_plan():
+    import pytest
+
+    from t2s.pipeline.extract import extract_sql
+    from t2s.pipeline.prompt import PLAN
+
+    p = combined_prompt("SCHEMA", "How many?", None, plan=True)
+    assert p == "SCHEMA\n\n" + COMMENT + PLAN and p.endswith("\nSQL: ") and "Output columns" not in p
+    with pytest.raises(ValueError):
+        combined_prompt("SCHEMA", "q", None, plan=True, output_spec=True)
+    r = "Plan: join a to b on id; filter x = 1; count rows.\nSQL:\n```sql\nSELECT COUNT(*) FROM a JOIN b ON a.id = b.id;\n```"
+    assert extract_sql(r).sql == "SELECT COUNT(*) FROM a JOIN b ON a.id = b.id"

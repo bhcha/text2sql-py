@@ -16,6 +16,12 @@ faf754671f5b850e1b4d1ff870db37a6a2480df6, MIT License, Copyright (c) 2022 Alibab
 실험용(2026-11-17, 자체 문장): `output_spec=True`면 끝의 CoT 문장과 `SELECT ` 꼬리 대신 OUTPUT_SPEC을 붙인다.
 모델이 결과 열과 한 행의 뜻을 먼저 적고 `SQL: ` 뒤에 SQL을 쓴다(⑨ 꺼내기의 CoT 가르기가 `: SELECT`로 자른다).
 빈 칸 양식뿐이고 문항·DB별 내용은 없다. 켜는 곳은 `pipeline/run.py`의 환경변수 `T2S_GEN_OUTPUT_SPEC=1`이다.
+결과(2026-11-17, terra 500문항): 256 → 233(새로 맞음 14·새로 틀림 37, p 0.002). 모델이 열을 더 내는 쪽으로 움직여
+쓰지 않기로 했다(파기). 기록 재현을 위해 설정은 남긴다.
+
+실험용(2026-11-17, 자체 문장): `plan=True`면 같은 자리에 PLAN을 붙인다. 모델이 쓸 표·조인 경로, 거르는 조건,
+묶음·집계·정렬을 짧게 계획하고 `SQL: ` 뒤에 SQL을 쓴다. 결과 열 목록은 적게 하지 않는다(출력 요구사항 실험에서 열이
+늘어난 것을 피하려고). 켜는 곳은 환경변수 `T2S_GEN_PLAN=1`이다. 둘을 함께 켤 수 없다.
 """
 
 from __future__ import annotations
@@ -26,6 +32,11 @@ OUTPUT_SPEC = (
     "\nBefore writing the SQL, state the expected output of the query, then write the SQL after thinking step by step."
     "\nOutput columns: <the result columns, in order, and what each one is>"
     "\nOne row = <what one row of the result represents>"
+    "\nSQL: "
+)
+PLAN = (
+    "\nBefore writing the SQL, briefly plan the query, then write the SQL."
+    "\nPlan: <the tables and join path needed, the filter conditions, and any grouping, aggregation, or ordering>"
     "\nSQL: "
 )
 
@@ -45,7 +56,15 @@ def cot_wizard() -> str:
 
 
 def combined_prompt(
-    schema_text: str, question: str, knowledge: str | None, dialect_name: str = "SQLite", *, output_spec: bool = False
+    schema_text: str,
+    question: str,
+    knowledge: str | None,
+    dialect_name: str = "SQLite",
+    *,
+    output_spec: bool = False,
+    plan: bool = False,
 ) -> str:
-    tail = OUTPUT_SPEC if output_spec else cot_wizard() + TAIL
+    if output_spec and plan:
+        raise ValueError("output_spec과 plan은 함께 켤 수 없다")
+    tail = OUTPUT_SPEC if output_spec else PLAN if plan else cot_wizard() + TAIL
     return schema_text + "\n\n" + comment_prompt(question, knowledge, dialect_name) + tail
