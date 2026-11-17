@@ -13,6 +13,7 @@ DB 지문 전후 비교, 읽기 감시, 최종 SQL 표시는 부르는 쪽(ask·
 
 from __future__ import annotations
 
+import os
 import platform
 import sqlite3
 import time
@@ -31,6 +32,7 @@ from t2s.prep.embed import EmbeddingFailed
 if TYPE_CHECKING:
     from t2s.prep.embed import Embedder
 
+OUTPUT_SPEC_ENV = "T2S_GEN_OUTPUT_SPEC"  # 실험용: "1"이면 생성 프롬프트가 출력 요구사항을 먼저 적게 한다(prompt.py)
 HINT_RULES_VERSION = "1.0.0"  # 힌트를 넣는 자리(키워드 힌트 칸, 주석 지식, 고치기 지식 칸)와 넣는 법
 
 
@@ -264,10 +266,16 @@ def answer(
             trace.set_stage("comment", {"knowledge": "None"})
         else:
             trace.set_stage("comment", {"knowledge": "given", "chars": len(hint), "sha256": sha256_text(hint)})
-        gen_prompt = prompt.combined_prompt(profiled.text, question, hint, source.dialect.name)
+        output_spec = os.environ.get(OUTPUT_SPEC_ENV) == "1"
+        gen_prompt = prompt.combined_prompt(profiled.text, question, hint, source.dialect.name, output_spec=output_spec)
         trace.set_stage(
             "prompt",
-            {"chars": len(gen_prompt), "sha256": sha256_text(gen_prompt), "cot": prompt.COT in gen_prompt},
+            {
+                "chars": len(gen_prompt),
+                "sha256": sha256_text(gen_prompt),
+                "cot": prompt.COT in gen_prompt,
+                "output_spec": output_spec,
+            },
         )
 
         # ⑧ 모델 호출

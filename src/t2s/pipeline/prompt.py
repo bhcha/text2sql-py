@@ -12,12 +12,22 @@ faf754671f5b850e1b4d1ff870db37a6a2480df6, MIT License, Copyright (c) 2022 Alibab
   `knowledge_package` 208-213행·`decouple_question_schema` 218-225행이 문항의 evidence를 지식으로 넘긴다(179-180행,
   261-264행). 이 하네스는 evidence used run에서만 그렇게 한다.
 문장의 철자(`understading`)는 원본 그대로다. 고치지 않는다.
+
+실험용(2026-11-17, 자체 문장): `output_spec=True`면 끝의 CoT 문장과 `SELECT ` 꼬리 대신 OUTPUT_SPEC을 붙인다.
+모델이 결과 열과 한 행의 뜻을 먼저 적고 `SQL: ` 뒤에 SQL을 쓴다(⑨ 꺼내기의 CoT 가르기가 `: SELECT`로 자른다).
+빈 칸 양식뿐이고 문항·DB별 내용은 없다. 켜는 곳은 `pipeline/run.py`의 환경변수 `T2S_GEN_OUTPUT_SPEC=1`이다.
 """
 
 from __future__ import annotations
 
 COT = "\nGenerate the SQL after thinking step by step: "
 TAIL = "\nSELECT "
+OUTPUT_SPEC = (
+    "\nBefore writing the SQL, state the expected output of the query, then write the SQL after thinking step by step."
+    "\nOutput columns: <the result columns, in order, and what each one is>"
+    "\nOne row = <what one row of the result represents>"
+    "\nSQL: "
+)
 
 
 def comment_prompt(question: str, knowledge: str | None, dialect_name: str = "SQLite") -> str:
@@ -34,5 +44,8 @@ def cot_wizard() -> str:
     return COT
 
 
-def combined_prompt(schema_text: str, question: str, knowledge: str | None, dialect_name: str = "SQLite") -> str:
-    return schema_text + "\n\n" + comment_prompt(question, knowledge, dialect_name) + cot_wizard() + TAIL
+def combined_prompt(
+    schema_text: str, question: str, knowledge: str | None, dialect_name: str = "SQLite", *, output_spec: bool = False
+) -> str:
+    tail = OUTPUT_SPEC if output_spec else cot_wizard() + TAIL
+    return schema_text + "\n\n" + comment_prompt(question, knowledge, dialect_name) + tail

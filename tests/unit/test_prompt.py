@@ -25,3 +25,21 @@ def test_combined():
 
 def test_dialect_name():
     assert "-- Using valid PostgreSQL and understading" in comment_prompt("q", None, "PostgreSQL")
+
+
+def test_output_spec():
+    from t2s.pipeline.prompt import OUTPUT_SPEC
+
+    p = combined_prompt("SCHEMA", "How many?", None, output_spec=True)
+    assert p == "SCHEMA\n\n" + COMMENT + OUTPUT_SPEC
+    assert COT not in p and not p.endswith(TAIL) and p.endswith("\nSQL: ")
+    assert combined_prompt("SCHEMA", "How many?", None, output_spec=False) == "SCHEMA\n\n" + COMMENT + COT + TAIL
+
+
+def test_output_spec_extract():
+    from t2s.pipeline.extract import extract_sql
+
+    r = "Output columns: school name\nOne row = one school\nSQL:\n```sql\nSELECT name FROM s WHERE x = 1;\n```"
+    assert extract_sql(r).sql == "SELECT name FROM s WHERE x = 1"
+    r2 = "Output columns: count of schools\nOne row = the whole result\nSQL: SELECT COUNT(*) FROM s"
+    assert extract_sql(r2).sql == "SELECT COUNT(*) FROM s"
