@@ -162,3 +162,14 @@ def test_harness_unknown(fake, tmp_path, monkeypatch):
     monkeypatch.setenv("T2S_CODEX_HARNESS", "nope")
     with pytest.raises(RuntimeError):
         CodexBackend(SETTINGS).call("P", tmp_path / "c", name="generate_sql", attempt=1)
+
+
+def test_harness_default_and_none(monkeypatch):
+    from t2s.llm.codex_cli import harness_args, harness_flags
+
+    monkeypatch.delenv("T2S_CODEX_HARNESS", raising=False)
+    assert harness_flags() == ("minimal", "task")
+    monkeypatch.setenv("T2S_CODEX_HARNESS", " ")
+    assert harness_flags() == ("minimal", "task")
+    monkeypatch.setenv("T2S_CODEX_HARNESS", "none")
+    assert harness_flags() == () and harness_args(()) == []

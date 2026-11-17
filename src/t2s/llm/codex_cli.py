@@ -7,6 +7,9 @@ TS와 다른 점(docs/provenance.md 4절에도 적었다):
   프롬프트에서도 답이 달라지는 것을 확인해(2026-11-16, 경로 실험) TS와 같은 자리로 되돌렸다.
 - 이벤트·오류 파일 이름은 `cli-events.jsonl`, `cli-stderr.txt`이고 CLI 판 칸은 `cli_version`이다.
 - 시간 제한 환경변수(TS `BB_LLM_TIMEOUT_SECONDS`)는 없다. 실행 파일 이름만 `T2S_CODEX_BIN`으로 바꿀 수 있다(테스트용).
+- 하네스 입력(2026-11-17부터 기본): codex 기본 지시를 한 줄 파일로 바꾸고 환경 블록·내장 스킬 목록을 끄며(minimal),
+  범용 과제 설명 한 문장을 developer 지시로 더한다(task). TS 인자에는 없는 설정이다. 하네스 정리 실험(terra 500문항
+  2×2)에서 task가 점수를 올리고 minimal은 점수는 그대로 입력을 57% 줄였다. `T2S_CODEX_HARNESS=none`이면 TS와 같은 인자다.
 """
 
 from __future__ import annotations
@@ -43,10 +46,11 @@ WORK_PREFIX = "t2s-llm-"
 WORK_DIR_NAME = "codex-work"  # TS engines/pure-fix/pack/llm.ts callModel의 workDir 이름
 # 실험용: 작업 폴더 경로를 바꿔 잰다. {pos}=문항 위치 폴더 이름, {k}=호출 번호 폴더 이름. 값은 호출 기록에 남는다.
 WORK_TEMPLATE_ENV = "T2S_CODEX_WORK_TEMPLATE"
-# 실험용: codex가 붙이는 하네스 입력을 바꿔 잰다(2026-11-17 하네스 정리 실험). 쉼표로 여러 개.
+# codex가 붙이는 하네스 입력. 값이 없으면 DEFAULT_HARNESS, `none`이면 아무것도 더하지 않는다(TS와 같은 인자). 쉼표로 여러 개.
 # minimal = 기본 지시를 한 줄 파일로 교체 + 환경 블록(작업 폴더 경로) 끔 + 내장 스킬 목록 끔
 # task = 범용 과제 설명을 developer 지시로 더함(문항·DB별 내용 없음)
 HARNESS_ENV = "T2S_CODEX_HARNESS"
+DEFAULT_HARNESS = ("minimal", "task")
 MINIMAL_INSTRUCTIONS_FILE = Path(__file__).with_name("codex_minimal_instructions.txt")
 TASK_CONTEXT = (
     "You are assisting with a text-to-SQL task over a SQLite database. Follow the instructions in each message."
@@ -61,7 +65,11 @@ def work_path_for(call_dir: Path) -> Path:
 
 
 def harness_flags() -> tuple[str, ...]:
-    raw = os.environ.get(HARNESS_ENV) or ""
+    raw = os.environ.get(HARNESS_ENV)
+    if raw is None or not raw.strip():
+        return DEFAULT_HARNESS
+    if raw.strip() == "none":
+        return ()
     flags = tuple(f.strip() for f in raw.split(",") if f.strip())
     unknown = [f for f in flags if f not in ("minimal", "task")]
     if unknown:
