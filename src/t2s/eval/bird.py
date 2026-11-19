@@ -150,6 +150,8 @@ def label(run: dict, count: int, sample: bool) -> str:
     else:
         llm = run.get("llm") or {}
         text += f" / {llm.get('model')}·추론 {llm.get('reasoning_effort')}·{llm.get('backend')} / 1회 실행"
+        if llm.get("strategy") == "route":
+            text += f" / 배분 측정({llm.get('profile')}, 위 모델은 배분자)"
         text += f" / 구현 Python {commit}"
     if git.get("dirty"):
         text += " / (미커밋 코드)"
