@@ -10,6 +10,9 @@ TS와 다른 점(docs/provenance.md 4절에도 적었다):
 - 하네스 입력(2026-11-17부터 기본): codex 기본 지시를 한 줄 파일로 바꾸고 환경 블록·내장 스킬 목록을 끄며(minimal),
   범용 과제 설명 한 문장을 developer 지시로 더한다(task). TS 인자에는 없는 설정이다. 하네스 정리 실험(terra 500문항
   2×2)에서 task가 점수를 올리고 minimal은 점수는 그대로 입력을 57% 줄였다. `T2S_CODEX_HARNESS=none`이면 TS와 같은 인자다.
+- bare(배분 측정용, route 브랜치): 환경 블록·내장 스킬 목록만 끄고 기본 지시는 그대로 둔다. 형제 저장소
+  text2sql-model-baseline의 단일 호출 인자와 같은 설정이다. 생성자의 `harness`로 백엔드마다 정하며, 주지 않으면
+  지금처럼 환경변수·기본값을 따른다.
 """
 
 from __future__ import annotations
@@ -49,8 +52,10 @@ WORK_TEMPLATE_ENV = "T2S_CODEX_WORK_TEMPLATE"
 # codex가 붙이는 하네스 입력. 값이 없으면 DEFAULT_HARNESS, `none`이면 아무것도 더하지 않는다(TS와 같은 인자). 쉼표로 여러 개.
 # minimal = 기본 지시를 한 줄 파일로 교체 + 환경 블록(작업 폴더 경로) 끔 + 내장 스킬 목록 끔
 # task = 범용 과제 설명을 developer 지시로 더함(문항·DB별 내용 없음)
+# bare = 환경 블록 끔 + 내장 스킬 목록 끔(기본 지시는 codex 기본 그대로). minimal과 함께 쓰지 않는다
 HARNESS_ENV = "T2S_CODEX_HARNESS"
 DEFAULT_HARNESS = ("minimal", "task")
+HARNESS_FLAGS = ("minimal", "task", "bare")
 MINIMAL_INSTRUCTIONS_FILE = Path(__file__).with_name("codex_minimal_instructions.txt")
 TASK_CONTEXT = (
     "You are assisting with a text-to-SQL task over a SQLite database. Follow the instructions in each message."
@@ -71,7 +76,7 @@ def harness_flags() -> tuple[str, ...]:
     if raw.strip() == "none":
         return ()
     flags = tuple(f.strip() for f in raw.split(",") if f.strip())
-    unknown = [f for f in flags if f not in ("minimal", "task")]
+    unknown = [f for f in flags if f not in HARNESS_FLAGS]
     if unknown:
         raise RuntimeError(f"{HARNESS_ENV}에 모르는 값: {', '.join(unknown)}")
     return flags
@@ -89,6 +94,10 @@ def harness_args(flags: tuple[str, ...]) -> list[str]:
             "-c",
             "skills.include_instructions=false",
         ]
+    if "bare" in flags:
+        if "minimal" in flags:
+            raise RuntimeError("bare와 minimal은 함께 쓰지 않는다")
+        out += ["-c", "include_environment_context=false", "-c", "skills.include_instructions=false"]
     if "task" in flags:
         out += ["-c", f"developer_instructions={json.dumps(TASK_CONTEXT)}"]
     return out
@@ -200,8 +209,13 @@ def shown_command(bin: str, args: list[str], call_dir: Path | None, work_dir: st
 class CodexBackend:
     id = "codex-cli"
 
-    def __init__(self, settings: LlmSettings) -> None:
+    def __init__(self, settings: LlmSettings, harness: tuple[str, ...] | None = None) -> None:
         self.settings = settings
+        if harness is not None:
+            unknown = [f for f in harness if f not in HARNESS_FLAGS]
+            if unknown:
+                raise RuntimeError(f"모르는 하네스 값: {', '.join(unknown)}")
+        self.harness = harness  # None이면 harness_flags()(환경변수·기본값)
 
     def call(self, prompt: str, call_dir: Path | None, *, name: str, attempt: int) -> LlmOutcome:
         bin = codex_bin()
@@ -227,7 +241,7 @@ class CodexBackend:
             if last_file.exists():
                 last_file.unlink()
             args = codex_args(self.settings, str(last_file), work)
-            flags = harness_flags()
+            flags = harness_flags() if self.harness is None else tuple(self.harness)
             if flags:
                 i = args.index("-s")
                 args = args[:i] + harness_args(flags) + args[i:]

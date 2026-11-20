@@ -90,7 +90,9 @@ def answer(
     settings: PipelineSettings | None = None,
     calls_dir: Path | None = None,
     hint: str | None = None,
+    call_offset: int = 0,
 ) -> Trace:
+    """call_offset: 호출 번호(calls/<k>/)를 이만큼 밀어 쓴다(배분 측정에서 calls/1이 배분 호출일 때 1). 기본 0."""
     settings = settings or PipelineSettings()
     started = time.monotonic()
     trace = Trace(question=question)
@@ -109,7 +111,7 @@ def answer(
         return round((time.monotonic() - t0) * 1000)
 
     def ask(name: str, text: str, attempt: int, parse) -> tuple[str, int]:
-        k = len(trace.calls) + 1
+        k = call_offset + len(trace.calls) + 1
         outcome = llm.call(
             text, Path(calls_dir) / str(k) if calls_dir is not None else None, name=name, attempt=attempt
         )

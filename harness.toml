@@ -46,3 +46,13 @@ keyword_attempts = 3
 exec_timeout_seconds = 120
 refine_rounds = 3
 refine_template = "builtin"
+
+# 배분 측정(route 브랜치): gpt-6-astra xhigh가 문항마다 후보 하나를 고른다(후보 표는 src/t2s/pipeline/route.py).
+# timeout_seconds는 배분 호출의 제한이다. 후보 호출의 제한은 후보 표에 있다.
+[profiles.route-astra]
+backend = "codex-cli"
+model = "gpt-6-astra"
+reasoning_effort = "xhigh"
+strategy = "route"
+timeout_seconds = 300
+item_timeout_seconds = 2100
