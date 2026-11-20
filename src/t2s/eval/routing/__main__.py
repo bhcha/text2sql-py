@@ -2,6 +2,7 @@
 
 새 모델 호출이 없다. 기존 run 기록을 읽고, 예측 SQL과 정답 SQL을 읽기 전용으로 다시 실행해 신호와 행 F1을 만든다.
 결과는 gold/_work/routing-step1/(있으면 -2, -3 …)에만 쓴다. 터미널에는 요약만 낸다(SQL·행 내용을 내지 않는다).
+정답 SQL 실행 결과는 디스크에 status·행 수·NULL 여부만 남긴다(--reuse-cache여도 정답 SQL은 다시 실행한다).
 """
 
 from __future__ import annotations
@@ -129,15 +130,17 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"정답 SQL 위치 {q['position']}의 db_id가 공개 문제 파일과 다릅니다")
         gold_sql.append(sql)
 
-    # 3. 실행(읽기 전용, 캐시)
+    # 3. 실행(읽기 전용, 캐시). 정답 SQL은 캐시를 쓰지 않고 늘 다시 실행한다. 캐시 파일의 정답 쪽 항목은
+    # status·행 수·NULL 여부만 남긴다(정답 행 해시는 메모리에서만 쓴다).
+    gold_keys = frozenset(X.sql_key(q["db_id"], gold_sql[q["position"]]) for q in questions)
     out = out_dir(root)
     out.mkdir(parents=True)
     cache_path = out / "exec-cache.jsonl"
     cache: dict = {}
     if args.reuse_cache:
         src = G.work_dir(root, args.reuse_cache) / "exec-cache.jsonl"
-        cache = X.load_cache(src)
-        X.append_cache(cache_path, cache)
+        cache = X.load_cache(src, drop=gold_keys)
+        X.append_cache(cache_path, cache, gold_keys)
     all_runs = list(combos.values()) + [r for c in repeats.values() for r in c.values() if r["name"] not in combos]
     tasks: dict[int, dict[str, str]] = {}
     for q in questions:
@@ -158,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
     ) as pool:
         for res in pool.imap_unordered(X.work, todo, chunksize=1):
             cache.update(res)
-            X.append_cache(cache_path, res)
+            X.append_cache(cache_path, res, gold_keys)
             done += len(res)
             if done and done % 1000 < len(res):
                 print(f"  실행 {done}/{n_exec} ({time.monotonic() - t0:.0f}초)", flush=True)

@@ -1,7 +1,9 @@
 """예측 SQL과 정답 SQL을 읽기 전용으로 다시 실행해 실행 결과 신호(오류·0행·NULL)와 행 해시를 얻는다.
 
 AGENTS 규칙 10: 연결은 t2s.eval.study.connect(mode=ro&immutable=1, query_only, authorizer)로만, 한 번에 한 문장,
-실행 앞뒤 DB sha256 비교는 호출하는 쪽(__main__)이 bird.db_state로 한다. 행 내용은 디스크에 쓰지 않고 행 해시만 쓴다.
+실행 앞뒤 DB sha256 비교는 호출하는 쪽(__main__)이 bird.db_state로 한다. 행 내용은 디스크에 쓰지 않는다.
+예측 SQL 쪽은 캐시에 행 해시를 쓴다(F1용). 정답 SQL 쪽은 캐시에 status·행 수·NULL 여부만 쓰고, 정답 행 해시나
+거기서 나온 값(set_digest 등)은 디스크에 쓰지 않는다. 정답 행 해시는 실행할 때마다 메모리에서만 만든다.
 """
 
 from __future__ import annotations
@@ -172,19 +174,37 @@ def signals(res: dict) -> dict:
     return {"error": err, "empty": res["status"] == "empty", "null": (not err) and bool(res["null_head"])}
 
 
-def load_cache(path: Path) -> dict:
+GOLD_FIELDS = ("status", "row_count", "null_head", "null_any")  # 정답 쪽 캐시 항목에 남기는 칸(이것뿐)
+
+
+def gold_entry(res: dict) -> dict:
+    """정답 SQL 실행 결과의 디스크용 판: status·행 수·NULL 여부만. 행 해시와 거기서 나온 값은 없다."""
+    return {"side": "gold", **{k: res[k] for k in GOLD_FIELDS}}
+
+
+def load_cache(path: Path, drop: frozenset | set = frozenset()) -> dict:
+    """캐시를 읽는다. 정답 쪽 항목(side=gold)과 drop에 든 키(정답 SQL 키)는 버린다. 정답은 늘 다시 실행한다."""
     out = {}
     if path.is_file():
         for line in path.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 row = json.loads(line)
-                out[row.pop("key")] = row
+                key = row.pop("key")
+                if row.get("side") == "gold" or key in drop:
+                    continue
+                out[key] = row
     return out
 
 
-def append_cache(path: Path, entries: dict) -> None:
+def append_cache(path: Path, entries: dict, gold_keys: frozenset | set = frozenset()) -> None:
+    """캐시에 덧붙인다. gold_keys에 든 키(정답 SQL 키, 예측 SQL이 정답과 글자까지 같을 때도)는 gold_entry 판으로 쓴다."""
     with open(path, "a", encoding="utf-8") as f:
         f.writelines(
-            json.dumps({"key": key, **row}, ensure_ascii=False, separators=(",", ":")) + "\n"
+            json.dumps(
+                {"key": key, **(gold_entry(row) if key in gold_keys else row)},
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            + "\n"
             for key, row in entries.items()
         )

@@ -1,4 +1,5 @@
 import hashlib
+import json
 import sqlite3
 from collections import Counter
 
@@ -79,4 +80,24 @@ def test_row_hashes_feed_f1(tmp_path):
     r = f1_counters(Counter(b["hashes"]), Counter(a["hashes"]))
     assert (r["precision"], r["recall"]) == (1.0, 0.5)
     assert X.set_digest(a["hashes"]) != X.set_digest(b["hashes"])
+    ex.close()
+
+
+def test_gold_entries_keep_no_hashes(tmp_path):
+    db = tmp_path / "x.sqlite"
+    make_db(db)
+    ex = X.Executor({"x": db})
+    gold_sql, pred_sql = "SELECT a, b FROM t", "SELECT a FROM t"
+    ex.run("x", gold_sql)
+    ex.run("x", pred_sql)
+    gk, pk = X.sql_key("x", gold_sql), X.sql_key("x", pred_sql)
+    path = tmp_path / "cache.jsonl"
+    X.append_cache(path, ex.cache, frozenset({gk}))
+    rows = {r["key"]: r for r in map(json.loads, path.read_text(encoding="utf-8").splitlines())}
+    assert set(rows[gk]) == {"key", "side", *X.GOLD_FIELDS}
+    assert rows[gk]["row_count"] == 7 and rows[gk]["null_any"] is True and rows[gk]["status"] == "rows"
+    assert "hashes" in rows[pk]  # 예측 쪽은 F1용 행 해시를 남긴다
+    loaded = X.load_cache(path)
+    assert gk not in loaded and pk in loaded  # 정답 쪽 항목은 읽지 않는다(늘 다시 실행)
+    assert pk not in X.load_cache(path, drop=frozenset({pk}))
     ex.close()
