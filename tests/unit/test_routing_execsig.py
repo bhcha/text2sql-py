@@ -94,7 +94,7 @@ def test_gold_entries_keep_no_hashes(tmp_path):
     path = tmp_path / "cache.jsonl"
     X.append_cache(path, ex.cache, frozenset({gk}))
     rows = {r["key"]: r for r in map(json.loads, path.read_text(encoding="utf-8").splitlines())}
-    assert set(rows[gk]) == {"key", "side", *X.GOLD_FIELDS}
+    assert set(rows[gk]) == {"key", "side", "status", "row_count", "null_head", "null_any"}
     assert rows[gk]["row_count"] == 7 and rows[gk]["null_any"] is True and rows[gk]["status"] == "rows"
     assert "hashes" in rows[pk]  # 예측 쪽은 F1용 행 해시를 남긴다
     loaded = X.load_cache(path)
