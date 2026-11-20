@@ -203,13 +203,24 @@ def tables(S: dict) -> str:
     L.append(f"기준 총 토큰 {_n(B['base_tok'])}, 문항당 {B['base_mean']:,.0f}")
     L += [
         "",
-        "| 배분(완벽한 배분 상한) | 정답 | 상위 비율 f | 배정 토큰 | d_max(문항당 배분 판단 토큰 상한) |",
+        "| 배분(완벽한 배분) | 정답 | 상위 비율 f | 배정 토큰 | 그 배분의 d_max(문항당) |",
         "|---|---:|---:|---:|---:|",
     ]
     for r in B["rows"]:
         L.append(
             f"| {mark(r['low'], flags_of)} → sol62-pure | {r['correct']} | {r['f_high']:.3f} | {_n(r['assigned_tok'])} | {r['d_max']:,.0f} |"
         )
+    lb = B.get("loss_bound")
+    if lb:
+        L += ["", f"정답 {lb['min_correct']} 이상을 지키는 배분 가운데 배정 토큰 최소(완벽한 배분 가정):", ""]
+        L += ["| 조합 | 정답 | 배정 토큰 | 토큰 미기록(0) 문항 | d_max(문항당) |", "|---|---:|---:|---:|---:|"]
+        for r in lb["rows"]:
+            if "d_max" not in r:
+                L.append(f"| {r['low']} | 정답 하한에 못 미침 | - | - | - |")
+                continue
+            L.append(
+                f"| {r['low']} | {r['correct']} | {_n(r['assigned_tok'])} | {r['zero_tok_items']} | {r['d_max']:,.0f} |"
+            )
     L += ["", "비율 격자(배정이 무작위일 때의 기대값):", ""]
     lows = list(B["grid"])
     L += ["| f | " + " | ".join(lows) + " |", "|---:|" + "---:|" * len(lows)]

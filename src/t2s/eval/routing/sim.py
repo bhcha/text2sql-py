@@ -168,11 +168,10 @@ def compare_to_base(T: dict, base: str, final: dict) -> dict:
 
 
 def sentence(cmp: dict, n: int) -> str:
-    """AGENTS 규칙 6 문장. 묶음은 13×n/500, 500문항은 13."""
+    """AGENTS 규칙 6 문장. 묶음·500문항 모두 차이 13 이하 또는 p ≥ 0.05면 차이 없음."""
     a, b, p = cmp["newly_correct"], cmp["regressed"], cmp["p"]
-    limit = allowed_loss(n)
     head = f"새로 맞음 {a}, 새로 틀림 {b}, |차이|={abs(a - b)}, p={p:.3f}"
-    if abs(a - b) <= limit or p >= 0.05:
+    if abs(a - b) <= VARIATION_LIMIT or p >= 0.05:
         return head + " → 차이 없음(변동 범위)"
     return head + " → 변동 범위 밖(기존 run 재조합, 새 측정 아님. 낫다·못하다로 읽지 않는다)"
 
@@ -294,9 +293,10 @@ def direction(T: dict, pairs: dict, tune: list[int], conf: list[int], base_name:
     out["fail_reason"] = (
         None
         if out["pass"]
-        else ("확인용 손실 초과" if not cs["loss_ok"] else "")
-        + (" 확인용 절감 15% 미만" if not cs["saving_ok"] else "")
-    ).strip()
+        else (
+            ("확인용 손실 초과" if not cs["loss_ok"] else "") + (" 확인용 절감 15% 미만" if not cs["saving_ok"] else "")
+        ).strip()
+    )
     if len(cand["chain"]) > 1 and seeds:
         rb = random_baseline(T, pairs, cand, conf, rates_of(conf_r), seeds)
         rb["beats_random"] = cs["correct"] > rb["correct_p97_5"]
@@ -408,6 +408,32 @@ def perfect_split(T: dict, low: str, high: str, positions: list[int]) -> dict:
     correct = sum(T[c]["ex"][i] for i, c in final.items())
     f = sum(1 for c in final.values() if c == high) / len(positions)
     return {"low": low, "high": high, "correct": correct, "f_high": f, "assigned_tok": tok, "final": final}
+
+
+def min_tok_split(T: dict, combos: list[str], positions: list[int], min_correct: int) -> dict | None:
+    """정답 min_correct 이상을 지키는 배분 가운데 배정 토큰이 가장 적은 것(완벽한 배분 가정).
+
+    문항마다 가장 싼 조합에서 출발해, 정답이 모자라면 '가장 싼 맞힌 조합'으로 바꾸는
+    추가 토큰이 적은 문항부터 바꾼다. 문항마다 정답 기여가 0 또는 1이라 이 탐욕이 최소다.
+    토큰 미기록(0) 문항도 0으로 센다. 정답 하한에 못 미치면 None.
+    """
+    final, ups = {}, []
+    for i in positions:
+        c0 = min(combos, key=lambda x: (T[x]["tok"][i], not T[x]["ex"][i], x))
+        final[i] = c0
+        right = [c for c in combos if T[c]["ex"][i]]
+        if not T[c0]["ex"][i] and right:
+            c1 = min(right, key=lambda x: (T[x]["tok"][i], x))
+            ups.append((T[c1]["tok"][i] - T[c0]["tok"][i], i, c1))
+    need = min_correct - sum(T[c]["ex"][i] for i, c in final.items())
+    if need > len(ups):
+        return None
+    for _, i, c1 in sorted(ups)[: max(need, 0)]:
+        final[i] = c1
+    tok = sum(T[c]["tok"][i] for i, c in final.items())
+    correct = sum(T[c]["ex"][i] for i, c in final.items())
+    zero = sum(1 for i, c in final.items() if T[c]["tok"][i] == 0)
+    return {"correct": correct, "assigned_tok": tok, "zero_tok_items": zero, "final": final}
 
 
 def grid(base_mean: float, low_mean: float, high_mean: float, target: float = SAVING_MIN) -> list[dict]:

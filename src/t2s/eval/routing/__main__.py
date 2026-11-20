@@ -357,6 +357,14 @@ def main(argv: list[str] | None = None) -> int:
         "items": len(present),
     }
     breakeven = {"base_tok": base_tok, "base_mean": base_mean, "rows": be_rows, "grid": grids, "floor": floor}
+    min_correct = sum(T[sources.BASELINE]["ex"]) - int(sim.allowed_loss(N))
+    breakeven["loss_bound"] = {"min_correct": min_correct, "rows": []}
+    for name, combos_ in (("min-tok-4", pure), ("min-tok-8", list(T))):
+        r = sim.min_tok_split(T, combos_, positions, min_correct)
+        if r is not None:
+            r.pop("final")
+            r["d_max"] = sim.breakeven(base_tok, r["assigned_tok"], N)
+        breakeven["loss_bound"]["rows"].append({"low": name, **(r or {})})
 
     # 9. 신호의 질·F1·기록 일치
     quality = {}

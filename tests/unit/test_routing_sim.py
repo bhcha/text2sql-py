@@ -192,3 +192,31 @@ def test_breakeven():
 def test_missing_tokens_count_as_zero():
     T2 = {"base": row("pure", [1, 0], [0, 100])}  # 위치 0 토큰 미기록(0)
     assert sim.evaluate(T2, {}, sim.fixed("base"), [0, 1])["tok"] == 100
+
+
+def test_direction_pass_has_no_fail_reason():
+    T2 = {"base": row("pure", [1, 0, 1, 0], [100] * 4), "cheap": row("pure", [1, 0, 1, 0], [10] * 4)}
+    r = sim.direction(T2, {}, [0, 1], [2, 3], "base", seeds=())
+    assert r["pass"] is True and r["fail_reason"] is None
+    T3 = {"base": row("pure", [1, 1, 1, 1], [100] * 4), "cheap": row("pure", [0, 0, 0, 0], [10] * 4)}
+    r3 = sim.direction(T3, {}, [0, 1], [2, 3], "base", seeds=())
+    assert r3["pass"] is False and isinstance(r3["fail_reason"], str) and r3["fail_reason"]
+
+
+def test_sentence_uses_agents_rule6_limit():
+    s = sim.sentence({"newly_correct": 0, "regressed": 10, "p": 0.002}, 249)
+    assert s.endswith("차이 없음(변동 범위)")
+    s2 = sim.sentence({"newly_correct": 0, "regressed": 14, "p": 0.0001}, 249)
+    assert "차이 없음" not in s2
+
+
+def test_min_tok_split():
+    T2 = {
+        "a": row("pure", [0, 0, 1, 0], [10, 10, 10, 10]),
+        "b": row("pure", [1, 1, 1, 0], [50, 30, 50, 50]),
+    }
+    r = sim.min_tok_split(T2, ["a", "b"], [0, 1, 2, 3], 2)
+    # 위치 2는 a가 싸고 맞힘, 하나 더 필요하면 추가 토큰이 적은 위치 1(20)을 b로
+    assert r["correct"] == 2 and r["assigned_tok"] == 10 + 30 + 10 + 10
+    assert r["final"][1] == "b" and r["final"][0] == "a"
+    assert sim.min_tok_split(T2, ["a", "b"], [0, 1, 2, 3], 4) is None
