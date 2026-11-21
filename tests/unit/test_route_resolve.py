@@ -311,11 +311,19 @@ def test_model_name_default_medium_without_record_goes_full():
     d = by_name(profiles(), model="gpt-5.6-sol", effort_source="default-medium")
     assert (d.applied, d.source, d.reason, d.profile) == ("harness", "default", "no_profile", None)
     assert d.to_json()["assumed_effort"] == "medium"
-    assert RT.shown_route_lines(d) == []
+    # 기록이 없어 전체 P3로 도는 것과 추론 단계를 기본값으로 본 것이 화면에 나온다
+    no_record = ["경로 harness(전체 P3) · 까닭 프로필 없이 정한 모델 · 추론 단계는 기본값 medium으로 봄"]
+    assert RT.shown_route_lines(d) == no_record
     # 기본값으로 본 medium의 기록이 없고 high 기록만 있으면 전체 P3
     d = by_name(profiles(reasoning_effort="high", route_basis=[basis(reasoning_effort="high")]),
                 effort_source="default-medium")  # fmt: skip
     assert (d.applied, d.source, d.reason) == ("harness", "default", "no_profile")
+    assert RT.shown_route_lines(d) == no_record
+    # 맞는 프로필에 경로가 없어도 기본값 표시와 함께 보인다
+    d = by_name(profiles(route=None, route_basis=[basis()]), effort_source="default-medium")
+    assert RT.shown_route_lines(d) == [
+        "경로 harness(전체 P3) · 까닭 프로필에 경로 없음 · 추론 단계는 기본값 medium으로 봄"
+    ]
     # 근거가 맞지 않는 기록뿐이면 전체 P3(그 까닭과 기본값 표시)
     d = by_name(profiles(route_basis=[basis(model="gpt-5.6-luna-2")]), effort_source="default-medium")
     assert (d.applied, d.reason) == ("harness", "basis_mismatch")
