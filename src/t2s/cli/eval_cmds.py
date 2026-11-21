@@ -1,4 +1,4 @@
-"""명령 score·report·leak-audit. t2s.eval을 import하는 유일한 파일이다.
+"""명령 score·report·leak-audit·route-judge. t2s.eval을 import하는 유일한 파일이다.
 
 이 프로세스는 읽기 감시를 걸지 않는다(정답을 읽어야 한다). 정답 폴더·파일 이름은 여기 쓰지 않고 eval 안의 함수가
 설정 루트에서 만든다. 종료 코드: 0 성공, 1 실패(대조 불일치·DB 바뀜·누설 포함), 2 쓰임새, 4 정답 없음(채점 생략).
@@ -10,7 +10,7 @@ import sys
 
 from t2s.dataset.config import ConfigError, find_root, load_config
 from t2s.dataset.state import StateError, current_dataset, load_state
-from t2s.eval import bird, leak_audit, report, study
+from t2s.eval import bird, leak_audit, report, route_judge, study
 from t2s.eval import gold as G
 from t2s.runner import records as R
 
@@ -42,7 +42,9 @@ def run(args) -> int:
     if setup is None:
         return EXIT_FAIL
     _, state, config = setup
-    handler = {"score": cmd_score, "report": cmd_report, "leak-audit": cmd_leak}[args.command]
+    handler = {"score": cmd_score, "report": cmd_report, "leak-audit": cmd_leak, "route-judge": cmd_route_judge}[
+        args.command
+    ]
     try:
         return handler(args, state, config)
     except G.NoGold:
@@ -51,7 +53,7 @@ def run(args) -> int:
     except report.NotReady as e:
         out(str(e))
         return EXIT_FAIL
-    except (G.GoldError, bird.ScoreError, report.ReportError) as e:
+    except (G.GoldError, bird.ScoreError, report.ReportError, route_judge.JudgeError) as e:
         err(f"오류: {e}")
         return EXIT_FAIL
 
@@ -123,3 +125,11 @@ def cmd_leak(args, state, config) -> int:
     result = leak_audit.audit(config, run_id)
     out(leak_audit.leak_summary(result))
     return EXIT_FAIL if leak_audit.leaked(result) else EXIT_OK
+
+
+def cmd_route_judge(args, state, config) -> int:
+    """짝 run 두 개(또는 --harness·--candidate)를 견주어 경로를 판정하고 하네스 run 폴더에 판정 파일을 쓴다."""
+    lines, _, code = route_judge.judge(config, args.pair, args.harness, args.candidate)
+    for line in lines:
+        out(line)
+    return code
