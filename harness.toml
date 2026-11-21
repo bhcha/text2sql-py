@@ -46,3 +46,39 @@ keyword_attempts = 3
 exec_timeout_seconds = 120
 refine_rounds = 3
 refine_template = "builtin"
+
+[profiles.gpt-6-2-astra-medium]
+backend = "codex-cli"
+model = "gpt-6.2-astra"
+reasoning_effort = "medium"
+timeout_seconds = 150
+item_timeout_seconds = 1530
+route = "single"
+
+[[profiles.gpt-6-2-astra-medium.route_basis]]
+route = "single"
+verdict = "no_difference"
+rule = "route-judge/1"
+backend = "codex-cli"
+model = "gpt-6.2-astra"
+reasoning_effort = "medium"
+dataset = "bird-minidev"
+dataset_id = "cc48ba16"
+evidence = "not_used"
+questions = 500
+harness_run = "20261121-bird-minidev-665ae5-harness"
+single_run = "20261121-bird-minidev-665ae5-single"
+harness_correct = 268
+single_correct = 262
+new_right = 24
+new_wrong = 18
+p = 0.440799
+harness_input_tokens = 9196858
+harness_output_tokens = 62209
+single_input_tokens = 6258991
+single_output_tokens = 42622
+harness_seconds = 6977.5
+single_seconds = 5342.6
+measured = "2026-11-21"
+cli = "codex-cli 0.170.0"
+commit = "45476c0"
