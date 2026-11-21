@@ -231,3 +231,25 @@ def latest_pair(runs_dir: Path) -> str | None:
     if not pairs:
         return None
     return max(pairs, key=lambda k: (pairs[k]["started_at"], k))
+
+
+JUDGMENT_PREFIX = "route-judgment-"  # 경로 판정 파일: 하네스 run 폴더의 route-judgment-<후보 run>.json
+
+
+def judgment_path(runs_dir: Path, harness_run: str, candidate_run: str) -> Path:
+    return run_dir(runs_dir, harness_run) / f"{JUDGMENT_PREFIX}{candidate_run}.json"
+
+
+def pick_pair_runs(runs_dir: Path, pair: str | None) -> tuple[str, str, str]:
+    """짝 이름(없으면 가장 최근 짝) → (하네스 run, 후보 run, 짝 이름). 없거나 꼴이 틀리면 ValueError."""
+    pairs = list_pairs(runs_dir)
+    name = pair or latest_pair(runs_dir)
+    if name is None:
+        raise ValueError("판정할 짝(route-start)이 없습니다")
+    if name not in pairs:
+        raise ValueError(f"짝이 없습니다: {name}")
+    runs = pairs[name]["runs"]
+    others = [r for role, r in runs.items() if role != HARNESS_ROUTE]
+    if HARNESS_ROUTE not in runs or len(others) != 1:
+        raise ValueError(f"짝 {name}의 run이 하네스 하나·후보 하나가 아닙니다")
+    return runs[HARNESS_ROUTE], others[0], name

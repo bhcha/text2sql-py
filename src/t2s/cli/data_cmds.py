@@ -1,4 +1,7 @@
-"""명령 datasets, use, register, prepare. 첫머리에서 읽기 감시를 건다."""
+"""명령 datasets, use, register, prepare, route-apply. 첫머리에서 읽기 감시를 건다.
+
+route-apply는 하네스 run 폴더의 경로 판정 파일(t2s route-judge가 쓴 것)만 읽고, --yes가 있을 때만 harness.toml에 쓴다.
+"""
 
 from __future__ import annotations
 
@@ -9,14 +12,17 @@ import shutil
 import sqlite3
 import sys
 import time
+import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 
+from t2s.dataset import route_store
 from t2s.dataset.config import Config, ConfigError, DatasetSpec, find_root, load_config
 from t2s.dataset.state import State, StateError, current_dataset, load_state, save_state
 from t2s.datasource.base import DataSourceError
 from t2s.datasource.factory import open_source
 from t2s.prep import assets, embed
+from t2s.runner import records as R
 from t2s.runner.guard import install_guard
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_APPROVAL = 0, 1, 2, 3
@@ -52,7 +58,13 @@ def run(args) -> int:
     except (ConfigError, StateError) as e:
         err(f"오류: {e}")
         return EXIT_FAIL
-    handler = {"datasets": cmd_datasets, "use": cmd_use, "register": cmd_register, "prepare": cmd_prepare}[args.command]
+    handler = {
+        "datasets": cmd_datasets,
+        "use": cmd_use,
+        "register": cmd_register,
+        "prepare": cmd_prepare,
+        "route-apply": cmd_route_apply,
+    }[args.command]
     try:
         return handler(args, config, state)
     except (DataSourceError, assets.PrepFailed, ConfigError, StateError) as e:
@@ -259,5 +271,59 @@ def cmd_prepare(args, config: Config, state: State) -> int:
     out(
         f"합계: 소스 {len(chosen)}(만듦 {built}, 건너뜀 {skipped}), 값 {values}, 프로파일 열 {columns}, "
         f"{time.monotonic() - started:.1f}초"
+    )
+    return EXIT_OK
+
+
+# ── route-apply ──────────────────────────────────────────
+
+
+def cmd_route_apply(args, config: Config, state: State) -> int:
+    """판정 파일을 읽어 harness.toml에 더할 글을 보인다. --yes가 없으면 쓰지 않고 종료 코드 3."""
+    if args.harness or args.candidate:
+        if not (args.harness and args.candidate):
+            err("--harness와 --candidate는 함께 준다")
+            return EXIT_USAGE
+        h_id, c_id = args.harness, args.candidate
+    else:
+        try:
+            h_id, c_id, _ = R.pick_pair_runs(config.runs_dir, args.pair)
+        except ValueError as e:
+            err(str(e))
+            return EXIT_FAIL
+    path = R.judgment_path(config.runs_dir, h_id, c_id)
+    judgment = R.read_json_if(path)
+    if judgment is None:
+        err(f"판정 파일이 없습니다: 먼저 t2s route-judge ({h_id} · {c_id})")
+        return EXIT_FAIL
+    if not judgment.get("usable"):
+        err("기록에 쓸 수 없는 판정입니다: " + ", ".join(judgment.get("reasons") or ["까닭 기록 없음"]))
+        return EXIT_FAIL
+    route = judgment.get("route")
+    basis = judgment.get("basis") or {}
+    if route not in R.ROUTES or basis.get("route") != route:
+        err("판정 파일의 경로 값이 틀렸습니다(쓰지 않음)")
+        return EXIT_FAIL
+    meta = R.read_json_if(R.run_dir(config.runs_dir, h_id) / R.RUN_FILE) or {}
+    llm = meta.get("llm") or {}
+    toml_path = config.root / "harness.toml"
+    text = toml_path.read_text(encoding="utf-8")
+    try:
+        profiles = tomllib.loads(text).get("profiles", {})
+        name, new = route_store.choose_profile(profiles, llm, args.profile)
+        plan = route_store.plan(text, profile=name, new_profile=new, llm=llm, route=route, basis=basis)
+    except (route_store.StoreError, ValueError) as e:
+        err(f"쓰지 않음: {e}")
+        return EXIT_FAIL
+    out(f"harness.toml에 더할 글(프로필 {name}, {'새 프로필' if new else '있는 프로필'}, 경로 {route}):")
+    for line in plan.shown:
+        out(f"  {line}")
+    if not args.yes:
+        out("승인하면 --yes를 붙여 다시 실행: t2s route-apply --yes")
+        return EXIT_NEEDS_APPROVAL
+    route_store.write(toml_path, plan.text)
+    out(
+        f"harness.toml에 썼습니다(프로필 {name}, route = {route}). 커밋하기 전의 run에는 (미커밋 코드)가 붙습니다. "
+        "커밋은 말씀하실 때 합니다"
     )
     return EXIT_OK
