@@ -38,7 +38,7 @@ def profiles(**prof):
 
 
 def resolve(profs, *, name="luna", backend="codex-cli", model="gpt-5.6-luna", effort="medium", source="conversation",
-            model_arg=None, forced=None, dataset="bird-minidev", cli=CLI):  # fmt: skip
+            model_arg=None, forced=None, dataset="bird-minidev", cli=CLI, effort_source="conversation"):  # fmt: skip
     return RT.resolve_route(
         profile_name=name,
         profiles=profs,
@@ -47,6 +47,7 @@ def resolve(profs, *, name="luna", backend="codex-cli", model="gpt-5.6-luna", ef
         llm_model=model,
         llm_effort=effort,
         llm_model_source=source,
+        llm_effort_source=effort_source,
         model_arg=model_arg,
         forced=forced,
         dataset=dataset,
@@ -70,7 +71,10 @@ def test_session_alias_and_full_name_go_full():
     assert resolve(p, name="session", source="session-transcript").reason == "session"
     d = resolve(p, name=None, model_arg="luna")
     assert (d.applied, d.reason) == ("harness", "alias")
-    assert resolve(p, name=None, model_arg="gpt-5.6-luna").reason == "no_profile"
+    # 전체 이름이라도 추론 단계를 대화로 정하지 않았으면 맞추지 않는다. 맞는 프로필이 없는 모델은 전체 P3
+    d = resolve(p, name=None, model_arg="gpt-5.6-luna", effort_source="default-medium")
+    assert (d.applied, d.source, d.reason) == ("harness", "default", "no_effort")
+    assert resolve(p, name=None, model="gpt-5.6-sol", model_arg="gpt-5.6-sol").reason == "no_profile"
     assert resolve(p, name=None, backend="fake", model="fake-model").reason == "no_profile"
     d = resolve(p, name=None, source="session-self")
     assert d.applied == "harness" and d.source == "default" and d.settings == BASE
@@ -211,3 +215,144 @@ def test_partial_overrides_must_match_basis():
     d = resolve(profiles(route="partial", pipeline=pipe, route_basis=[basis(route="partial", overrides=same)]))
     assert (d.applied, d.source, d.reason) == ("partial", "profile", "measured")
     assert d.overrides == {"example_rows": 0, "value_search": False} and d.basis["overrides"] == same
+
+
+# ── 모델 이름으로 맞추기(차례 2-2) ─────────────────────────
+
+
+def by_name(profs, **kw):
+    kw.setdefault("model_arg", kw.get("model", "gpt-5.6-luna"))
+    return resolve(profs, name=None, **kw)
+
+
+def test_model_name_exact_match_follows_profile_route():
+    d = by_name(profiles())
+    assert (d.applied, d.source, d.reason, d.profile, d.warnings) == ("single", "profile-match", "measured", "luna", [])
+    assert d.basis["model"] == "gpt-5.6-luna" and d.settings == BASE and d.matches == ["luna"]
+    j = d.to_json()
+    assert j["source"] == "profile-match" and j["profile"] == "luna" and j["matches"] == ["luna"]
+    assert j["single_rules"] == "single/1"
+    assert RT.shown_route_lines(d) == [
+        "경로 single(단일 호출) · 프로필 luna(모델 이름으로 맞춤) · 근거 2026-11-21 bird-minidev"
+    ]
+    # 이름으로 고른 것과 경로·근거·경고가 같다
+    named = resolve(profiles())
+    assert (named.applied, named.basis, named.warnings) == (d.applied, d.basis, d.warnings)
+
+
+def test_model_name_other_effort_or_backend_goes_full():
+    for kw in ({"effort": "high"}, {"backend": "claude-code"}, {"model": "gpt-5.6-luna-x"}):
+        d = by_name(profiles(), **kw)
+        assert (d.applied, d.source, d.reason, d.profile) == ("harness", "default", "no_profile", None), kw
+        assert RT.shown_route_lines(d) == []
+
+
+def test_model_name_alias_session_fake_go_full():
+    p = profiles()
+    assert by_name(p, model_arg="luna").reason == "alias"
+    assert by_name(p, model_arg="gpt-5.6-luna-latest", model="gpt-5.6-luna").reason == "alias"
+    for source in ("session-self", "session-transcript", "config-default"):
+        d = by_name(p, source=source)
+        assert (d.applied, d.source, d.reason) == ("harness", "default", "session")
+    d = by_name(p, backend="fake", model="fake-model", model_arg=None)
+    assert (d.applied, d.reason) == ("harness", "no_profile")
+    d = by_name(p, backend="fake")
+    assert (d.applied, d.reason) == ("harness", "no_profile")
+    # --model 없이(기본 프로필 등) 정한 모델은 맞추지 않는다
+    assert resolve(p, name=None, model_arg=None).reason == "no_profile"
+
+
+def test_model_name_needs_effort_from_conversation():
+    for es in ("default-medium", "config-default", "session-env"):
+        d = by_name(profiles(), effort_source=es)
+        assert (d.applied, d.reason) == ("harness", "no_effort")
+
+
+def test_model_name_match_without_valid_basis_goes_full_with_reason():
+    d = by_name(profiles(route_basis=[basis(model="gpt-5.6-luna-2")]))
+    assert (d.applied, d.source, d.reason, d.requested, d.profile) == (
+        "harness", "default", "basis_mismatch", "single", "luna"
+    )  # fmt: skip
+    assert RT.shown_route_lines(d) == ["경로 harness(전체 P3) · 까닭 근거와 백엔드·모델·추론 단계가 다름"]
+    assert by_name(profiles(route_basis=[])).reason == "no_basis"
+    d = by_name(profiles(route=None, route_basis=[basis()]))
+    assert (d.applied, d.reason) == ("harness", "no_route") and RT.shown_route_lines(d) == []
+
+
+def _two(route_b, **b_kw):
+    p = profiles()
+    second = {"backend": "codex-cli", "model": "gpt-5.6-luna", "reasoning_effort": "medium", "route": route_b}
+    second.update(b_kw)
+    second.setdefault("route_basis", [basis(route=route_b)])
+    return {"luna": p["luna"], "luna-2": second, "session": p["session"]}
+
+
+def test_model_name_two_matches_with_different_routes_go_full():
+    d = by_name(_two("harness"))
+    assert (d.applied, d.source, d.reason, d.profile) == ("harness", "default", "ambiguous", None)
+    assert d.matches == ["luna", "luna-2"] and d.to_json()["matches"] == ["luna", "luna-2"]
+    assert RT.shown_route_lines(d) == ["경로 harness(전체 P3) · 까닭 맞는 프로필 여럿의 경로가 다름(luna, luna-2)"]
+    over = {"value_search": False}
+    import json as _json
+
+    text = _json.dumps(over, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    d = by_name(_two("partial", pipeline=over, route_basis=[basis(route="partial", overrides=text)]))
+    assert (d.applied, d.reason) == ("harness", "ambiguous")
+
+
+def test_model_name_two_matches_with_same_route_pick_first_in_file():
+    d = by_name(_two("single", route_basis=[basis(measured="2026-12-01")]))
+    assert (d.applied, d.source, d.profile, d.matches) == ("single", "profile-match", "luna", ["luna", "luna-2"])
+    assert d.basis["measured"] == "2026-11-21"
+    # 근거가 맞지 않는 프로필은 견주는 데 세지 않는다
+    d = by_name(_two("harness", route_basis=[basis(route="harness", reasoning_effort="high")]))
+    assert (d.applied, d.source, d.profile, d.matches) == ("single", "profile-match", "luna", ["luna"])
+
+
+def test_model_name_only_harness_record():
+    p = {"h": {"backend": "codex-cli", "model": "gpt-5.6-luna", "route": "harness",
+               "route_basis": [basis(route="harness")]}}  # fmt: skip
+    d = by_name(p)
+    assert (d.applied, d.source, d.reason, d.profile) == ("harness", "profile-match", "measured", "h")
+    assert RT.shown_route_lines(d) == [
+        "경로 harness(전체 P3) · 프로필 h(모델 이름으로 맞춤) · 근거 2026-11-21 bird-minidev"
+    ]
+
+
+def test_model_name_stale_cli_keeps_route_and_warns():
+    d = by_name(profiles(), cli="codex-cli 0.300.0", dataset="olist")
+    assert (d.applied, d.source) == ("single", "profile-match")
+    assert d.warnings == [
+        f"경로 근거가 낡았습니다(CLI {CLI} → codex-cli 0.300.0)",
+        "근거 데이터셋이 다릅니다(bird-minidev → olist). 잠정 경로입니다",
+    ]
+    assert RT.shown_route_lines(d)[1] == (
+        f"주의: 경로 근거가 낡았습니다(CLI {CLI} → codex-cli 0.300.0). 경로는 그대로 single입니다. 다시 재려면 /newmodel"
+    )
+
+
+def test_model_name_never_matches_reference_profile():
+    ref = {"backend": "codex-cli", "model": "gpt-5.6-terra", "reasoning_effort": "medium", "route": "single",
+           "route_basis": [basis(model="gpt-5.6-terra")]}  # fmt: skip
+    d = by_name({"p3-ref": ref}, model="gpt-5.6-terra")
+    assert (d.applied, d.reason) == ("harness", "no_profile")
+
+
+def test_model_name_partial_match():
+    over = {"refine_rounds": 0}
+    import json as _json
+
+    text = _json.dumps(over, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    d = by_name(profiles(route="partial", pipeline=over, route_basis=[basis(route="partial", overrides=text)]))
+    assert (d.applied, d.source, d.overrides) == ("partial", "profile-match", over)
+    assert d.settings.refine_rounds == 0
+
+
+def test_model_name_bad_route_value_in_matching_profile_is_error():
+    with pytest.raises(RT.RouteError):
+        by_name(profiles(route="fast"))
+
+
+def test_forced_ignores_model_name_match():
+    d = by_name(profiles(), forced="harness")
+    assert (d.applied, d.source, d.reason) == ("harness", "forced", "forced")

@@ -48,3 +48,20 @@ def test_no_section_sign():
     for where in (".claude", ".agents"):
         for name in SKILLS:
             assert "§" not in _text(where, name), (where, name)
+
+
+def test_newmodel_saves_recordable_judgment_without_asking():
+    """newmodel은 기록할 수 있는 판정이면 묻지 않고 route-apply --yes로 저장한다. 기록할 수 없는 판정은 쓰지 않는다."""
+    text = _text(".claude", "newmodel")
+    assert "uv run t2s route-apply --yes" in text
+    assert "묻지 않고 바로" in text and "기록할 수 없는 판정" in text
+    assert "기록에 쓸 수 없음" in text and "p3-ref" in text and "커밋하지 않는다" in text
+    assert "사용자 승인 없이" not in text and "승인했을 때만" not in text
+
+
+def test_model_name_skills_mark_unstated_effort():
+    """모델 이름으로 경로를 맞출 때 추론 단계를 말하지 않은 경우를 명령이 알 수 있게 표시한다."""
+    for name in ("text2sql", "runset"):
+        text = _text(".claude", name)
+        assert "`--effort medium --effort-source default-medium`" in text, name
+        assert "모델 이름과 추론 단계를 말했을 때도" in text and "`--profile p3-ref`" in text, name

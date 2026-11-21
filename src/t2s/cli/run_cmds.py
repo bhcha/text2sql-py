@@ -231,6 +231,7 @@ def _decide(args, config: Config, name: str, llm: select.ResolvedLlm, forced: st
         llm_model=llm.model,
         llm_effort=llm.reasoning_effort,
         llm_model_source=llm.model_source,
+        llm_effort_source=llm.effort_source,
         model_arg=getattr(args, "model", None),
         forced=forced,
         dataset=name,
@@ -238,7 +239,7 @@ def _decide(args, config: Config, name: str, llm: select.ResolvedLlm, forced: st
     )
     mode = EVIDENCE_USED if used else EVIDENCE_NOT_USED
     then = (decision.basis or {}).get("evidence")
-    if decision.source == "profile" and then != mode:
+    if decision.source in ("profile", RT.MATCH_SOURCE) and then != mode:
         decision.warnings.append(f"근거 evidence 조건이 다릅니다({then or '기록 없음'} → {mode}). 잠정 경로입니다")
     return decision
 

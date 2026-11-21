@@ -167,3 +167,93 @@ def test_ask_and_run_follow_profile_route(root, capsys, monkeypatch):
     assert meta["route"]["warnings"] == ["근거 evidence 조건이 다릅니다(기록 없음 → not_used). 잠정 경로입니다"]
     code, lines, _ = cli(capsys, "status", "--run-id", "pf")
     assert any(x.startswith("경로 single(단일 호출) · 주의 1건") for x in lines) and len(lines) <= 10
+
+
+NAMED_PROFILE = """
+[profiles.nm]
+backend = "codex-cli"
+model = "gpt-test-9"
+reasoning_effort = "medium"
+route = "single"
+
+[[profiles.nm.route_basis]]
+route = "single"
+backend = "codex-cli"
+model = "gpt-test-9"
+reasoning_effort = "medium"
+dataset = "mini"
+evidence = "not_used"
+measured = "2026-11-21"
+cli = "codex-cli 9.9.9"
+"""
+NAMED_ARGS = ("--backend", "codex-cli", "--model", "gpt-test-9", "--effort", "medium", "--model-source", "conversation")
+NAMED_LINE = "경로 single(단일 호출) · 프로필 nm(모델 이름으로 맞춤) · 근거 2026-11-21 mini"
+
+
+def test_ask_run_and_route_start_by_model_name(root, capsys, monkeypatch):
+    """모델 이름으로 불러도 글자 그대로 같은 기록이 있으면 ask·run이 그 경로를 따른다. route-start는 강제 그대로다.
+    모델 호출은 가짜 백엔드로 바꿔 끼운다(경로 판정은 codex-cli 조합 그대로 본다)."""
+    import json
+
+    from t2s.cli import ask_cmd
+    from t2s.llm import select
+    from t2s.llm.fake import FakeBackend
+    from t2s.runner import batch
+
+    monkeypatch.setattr(ask_cmd, "install_guard", lambda root: None)
+    monkeypatch.setattr(select, "backend_for", lambda llm, single=False: FakeBackend())
+    monkeypatch.setattr(batch, "backend_for", lambda llm, single=False: FakeBackend())
+    monkeypatch.setattr(select, "backend_bin", lambda backend: None)
+    monkeypatch.setattr(batch, "cli_version", lambda backend: "codex-cli 9.9.9")
+    (root / "harness.toml").write_text((root / "harness.toml").read_text() + NAMED_PROFILE, encoding="utf-8")
+
+    code, lines, _ = cli(capsys, "ask", *NAMED_ARGS, "--source", "shop", "How many products?")
+    assert code == 0, lines
+    assert (
+        lines[0].startswith("모델 gpt-test-9 · 추론 medium · 백엔드 codex-cli · 출처 대화") and lines[1] == NAMED_LINE
+    )
+    folder = root / lines[-1].split(": ", 1)[1]
+    route = json.loads((folder / "ask.json").read_text(encoding="utf-8"))["route"]
+    assert (route["applied"], route["source"], route["profile"], route["matches"]) == (
+        "single", "profile-match", "nm", ["nm"]
+    )  # fmt: skip
+    assert route["basis"]["cli"] == "codex-cli 9.9.9" and route["warnings"] == []
+    assert sorted(p.name for p in (folder / "calls").iterdir()) == ["1"]
+
+    # 추론 단계를 말하지 않으면(기본 medium) 맞추지 않는다
+    code, lines, _ = cli(capsys, "ask", *NAMED_ARGS[:4], "--model-source", "conversation", "--source", "shop", "Hi?")
+    assert code == 0 and not any(x.startswith("경로 ") for x in lines)
+    folder = root / lines[-1].split(": ", 1)[1]
+    route = json.loads((folder / "ask.json").read_text(encoding="utf-8"))["route"]
+    assert (route["applied"], route["reason"]) == ("harness", "no_effort")
+
+    code, lines, _ = cli(
+        capsys, "run", "--foreground", *NAMED_ARGS, "--no-probe", "--no-score", "--run-id", "nm1", "--limit", "2"
+    )
+    assert code == 0 and NAMED_LINE in lines, lines
+    meta = R.read_json(root / "runs/nm1/run.json")
+    assert (meta["route"]["applied"], meta["route"]["source"], meta["route"]["profile"]) == (
+        "single", "profile-match", "nm"
+    )  # fmt: skip
+    assert meta["route"]["warnings"] == []
+    rows = R.read_jsonl(root / "runs/nm1/records.jsonl")
+    assert all(r["llm"]["call_count"] == 1 for r in rows)
+
+    # 근거의 CLI 판만 다르면 경로는 그대로이고 경고가 남는다
+    monkeypatch.setattr(batch, "cli_version", lambda backend: "codex-cli 10.0.0")
+    code, lines, _ = cli(capsys, "ask", *NAMED_ARGS, "--source", "shop", "How many products?")
+    assert code == 0 and lines[1] == NAMED_LINE
+    assert lines[2].startswith("주의: 경로 근거가 낡았습니다(CLI codex-cli 9.9.9 → codex-cli 10.0.0)")
+
+    # 측정(route-start)은 기록에 끌려가지 않고 두 경로를 강제한다
+    class _P:
+        pid = 424242
+
+    monkeypatch.setattr(run_cmds, "_popen", lambda cmd, **kw: _P())
+    code, lines, _ = cli(capsys, "route-start", *NAMED_ARGS, "--no-probe", "--limit", "2")
+    assert code == 0, lines
+    assert lines.count("경로 harness(전체 P3) · 측정용 강제") == 1 and "경로 single(단일 호출) · 측정용 강제" in lines
+    assert NAMED_LINE not in lines
+    pairs = sorted((root / "runs").glob("*-harness")) + sorted((root / "runs").glob("*-single"))
+    sources = {R.read_json(r / "run.json")["route"]["source"] for r in pairs}
+    assert len(pairs) == 2 and sources == {"forced"}

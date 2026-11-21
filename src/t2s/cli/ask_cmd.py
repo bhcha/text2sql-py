@@ -165,6 +165,7 @@ def run(args) -> int:
             llm_model=llm.model,
             llm_effort=llm.reasoning_effort,
             llm_model_source=llm.model_source,
+            llm_effort_source=llm.effort_source,
             model_arg=args.model,
             forced=None,
             dataset=name,
