@@ -71,8 +71,10 @@ def test_session_alias_and_full_name_go_full():
     assert resolve(p, name="session", source="session-transcript").reason == "session"
     d = resolve(p, name=None, model_arg="luna")
     assert (d.applied, d.reason) == ("harness", "alias")
-    # 전체 이름이라도 추론 단계를 대화로 정하지 않았으면 맞추지 않는다. 맞는 프로필이 없는 모델은 전체 P3
+    # 추론 단계를 말하지 않았으면 기본값 medium으로 보고 맞춘다. 맞는 프로필이 없는 모델은 전체 P3
     d = resolve(p, name=None, model_arg="gpt-5.6-luna", effort_source="default-medium")
+    assert (d.applied, d.source, d.reason, d.assumed_effort) == ("single", "profile-match", "measured", "medium")
+    d = resolve(p, name=None, model_arg="gpt-5.6-luna", effort_source="config-default")
     assert (d.applied, d.source, d.reason) == ("harness", "default", "no_effort")
     assert resolve(p, name=None, model="gpt-5.6-sol", model_arg="gpt-5.6-sol").reason == "no_profile"
     assert resolve(p, name=None, backend="fake", model="fake-model").reason == "no_profile"
@@ -262,10 +264,73 @@ def test_model_name_alias_session_fake_go_full():
     assert resolve(p, name=None, model_arg=None).reason == "no_profile"
 
 
-def test_model_name_needs_effort_from_conversation():
-    for es in ("default-medium", "config-default", "session-env"):
+def test_model_name_needs_effort_from_conversation_or_default():
+    for es in ("config-default", "session-env"):
         d = by_name(profiles(), effort_source=es)
         assert (d.applied, d.reason) == ("harness", "no_effort")
+        assert d.assumed_effort is None and d.to_json()["assumed_effort"] is None
+    # default-medium인데 추론 단계가 medium이 아니면(앞뒤가 맞지 않음) 맞추지 않는다
+    d = by_name(profiles(), effort="high", effort_source="default-medium")
+    assert (d.applied, d.reason, d.assumed_effort) == ("harness", "no_effort", None)
+
+
+def test_model_name_default_medium_single_record():
+    d = by_name(profiles(), effort_source="default-medium")
+    assert (d.applied, d.source, d.reason, d.profile, d.matches) == (
+        "single", "profile-match", "measured", "luna", ["luna"]
+    )  # fmt: skip
+    assert d.assumed_effort == "medium" and d.to_json()["assumed_effort"] == "medium"
+    assert RT.shown_route_lines(d) == [
+        (
+            "경로 single(단일 호출) · 프로필 luna(모델 이름으로 맞춤) · 근거 2026-11-21 bird-minidev"
+            " · 추론 단계는 기본값 medium으로 봄"
+        )
+    ]
+    # 추론 단계를 대화로 정한 때는 기본값 표시가 없다
+    d = by_name(profiles())
+    assert d.assumed_effort is None and d.to_json()["assumed_effort"] is None
+    assert "기본값" not in RT.shown_route_lines(d)[0]
+
+
+def test_model_name_default_medium_harness_record():
+    p = {"h": {"backend": "codex-cli", "model": "gpt-5.6-luna", "reasoning_effort": "medium", "route": "harness",
+               "route_basis": [basis(route="harness")]}}  # fmt: skip
+    d = by_name(p, effort_source="default-medium")
+    assert (d.applied, d.source, d.reason, d.profile, d.assumed_effort) == (
+        "harness", "profile-match", "measured", "h", "medium"
+    )  # fmt: skip
+    assert RT.shown_route_lines(d) == [
+        (
+            "경로 harness(전체 P3) · 프로필 h(모델 이름으로 맞춤) · 근거 2026-11-21 bird-minidev"
+            " · 추론 단계는 기본값 medium으로 봄"
+        )
+    ]
+
+
+def test_model_name_default_medium_without_record_goes_full():
+    d = by_name(profiles(), model="gpt-5.6-sol", effort_source="default-medium")
+    assert (d.applied, d.source, d.reason, d.profile) == ("harness", "default", "no_profile", None)
+    assert d.to_json()["assumed_effort"] == "medium"
+    assert RT.shown_route_lines(d) == []
+    # 기본값으로 본 medium의 기록이 없고 high 기록만 있으면 전체 P3
+    d = by_name(profiles(reasoning_effort="high", route_basis=[basis(reasoning_effort="high")]),
+                effort_source="default-medium")  # fmt: skip
+    assert (d.applied, d.source, d.reason) == ("harness", "default", "no_profile")
+    # 근거가 맞지 않는 기록뿐이면 전체 P3(그 까닭과 기본값 표시)
+    d = by_name(profiles(route_basis=[basis(model="gpt-5.6-luna-2")]), effort_source="default-medium")
+    assert (d.applied, d.reason) == ("harness", "basis_mismatch")
+    assert RT.shown_route_lines(d) == [
+        "경로 harness(전체 P3) · 까닭 근거와 백엔드·모델·추론 단계가 다름 · 추론 단계는 기본값 medium으로 봄"
+    ]
+
+
+def test_model_name_explicit_effort_differs_from_record_goes_full():
+    d = by_name(profiles(), effort="high")
+    assert (d.applied, d.source, d.reason, d.profile, d.assumed_effort) == (
+        "harness", "default", "no_profile", None, None
+    )  # fmt: skip
+    d = by_name(profiles(), effort="low", effort_source="conversation")
+    assert (d.applied, d.reason) == ("harness", "no_profile")
 
 
 def test_model_name_match_without_valid_basis_goes_full_with_reason():

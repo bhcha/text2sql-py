@@ -60,8 +60,11 @@ def test_newmodel_saves_recordable_judgment_without_asking():
 
 
 def test_model_name_skills_mark_unstated_effort():
-    """모델 이름으로 경로를 맞출 때 추론 단계를 말하지 않은 경우를 명령이 알 수 있게 표시한다."""
-    for name in ("text2sql", "runset"):
-        text = _text(".claude", name)
-        assert "`--effort medium --effort-source default-medium`" in text, name
-        assert "모델 이름과 추론 단계를 말했을 때도" in text and "`--profile p3-ref`" in text, name
+    """모델 이름으로 경로를 맞출 때 추론 단계를 말하지 않은 경우를 명령이 알 수 있게 표시하고, 그때도 medium으로 보고 맞춘다."""
+    for home in (".claude", ".agents"):
+        for name in ("text2sql", "runset"):
+            text = _text(home, name)
+            assert "`--effort medium --effort-source default-medium`" in text, (home, name)
+            assert "추론 단계를 기본값 medium으로 보고 아래의 모델 이름 맞추기를 한다" in text, (home, name)
+            assert "추론 단계를 말하지 않았으면 medium으로 보고" in text and "`--profile p3-ref`" in text, (home, name)
+            assert "맞추기를 하지 않는다" not in text, (home, name)

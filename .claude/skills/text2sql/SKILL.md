@@ -38,9 +38,9 @@ description: 지금 연결된 데이터셋에 자연어 질문 하나를 보내 
    - 아스트라, astra → `--backend codex-cli --model astra`
    - 그 밖의 전체 모델 이름은 그대로 `--model`에 넣는다. `claude-`로 시작하면 `--backend claude-code`, `gpt-`로 시작하면 `--backend codex-cli`.
 
-   추론 단계를 말했으면(low·medium·high·xhigh·max) `--effort` 그 값, 말하지 않았으면 `--effort medium --effort-source default-medium`(추론 단계를 말하지 않았다는 표시. 이때는 아래의 모델 이름 맞추기를 하지 않는다). 조합이 gpt-5.6-terra·medium·codex-cli면 위 인자 대신 `--profile p3-ref`를 쓴다(원본 재현 조건). 이 경우들에 `--model-source conversation`을 붙인다.
+   추론 단계를 말했으면(low·medium·high·xhigh·max) `--effort` 그 값, 말하지 않았으면 `--effort medium --effort-source default-medium`(추론 단계를 말하지 않았다는 표시. 이때는 추론 단계를 기본값 medium으로 보고 아래의 모델 이름 맞추기를 한다. newmodel이 같은 규칙으로 재고 저장한다). 조합이 gpt-5.6-terra·medium·codex-cli면 위 인자 대신 `--profile p3-ref`를 쓴다(원본 재현 조건). 이 경우들에 `--model-source conversation`을 붙인다.
 
-   사용자가 harness.toml의 프로필 이름을 말했으면("p3-claude로", "<이름> 프로필로") 위 인자 대신 `--profile <이름>`과 `--model-source conversation`을 쓴다. 프로필의 경로(single·harness·partial, /newmodel로 정한 것)는 프로필을 이름으로 골랐을 때 따르고, 모델 이름과 추론 단계를 말했을 때도 백엔드·모델·추론 단계가 글자 그대로 같고 근거가 맞는 프로필이 있으면 따른다(명령이 맞춘다. 맞는 프로필 여럿의 경로가 다르면 전체 P3). 추론 단계를 말하지 않았거나 세션 모델이면 전체 P3다. `p3-ref`는 경로를 갖지 않으므로 위의 p3-ref 규칙은 그대로다. 첫 줄 아래에 "경로 …" 줄이 나오면 그대로 보여 준다.
+   사용자가 harness.toml의 프로필 이름을 말했으면("p3-claude로", "<이름> 프로필로") 위 인자 대신 `--profile <이름>`과 `--model-source conversation`을 쓴다. 프로필의 경로(single·harness·partial, /newmodel로 정한 것)는 프로필을 이름으로 골랐을 때 따르고, 모델 이름을 말했을 때도(추론 단계를 말하지 않았으면 medium으로 보고) 백엔드·모델·추론 단계가 글자 그대로 같고 근거가 맞는 프로필이 있으면 따른다(명령이 맞춘다. 맞는 프로필 여럿의 경로가 다르면 전체 P3. 추론 단계를 기본값 medium으로 보았으면 "경로 …" 줄 끝에 그렇다고 나온다). 세션 모델이면 전체 P3다. `p3-ref`는 경로를 갖지 않으므로 위의 p3-ref 규칙은 그대로다. 첫 줄 아래에 "경로 …" 줄이 나오면 그대로 보여 준다.
 2. 모델 말이 없으면 지금 네가 돌고 있는 모델을 `--model <전체 이름>`으로 반드시 명시하고 `--model-source session-self`를 붙인다.
    Claude Code 세션이면 `--backend claude-code`. 추론 단계는 적지 않는다(명령이 세션 설정에서 읽는다).
    Codex 세션이면 `--backend codex-cli`. 추론 단계를 알면 `--effort`로 적고, 모르면 적지 않는다(명령이 설정 파일 값을 쓴다).

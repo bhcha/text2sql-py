@@ -220,12 +220,22 @@ def test_ask_run_and_route_start_by_model_name(root, capsys, monkeypatch):
     assert route["basis"]["cli"] == "codex-cli 9.9.9" and route["warnings"] == []
     assert sorted(p.name for p in (folder / "calls").iterdir()) == ["1"]
 
-    # 추론 단계를 말하지 않으면(기본 medium) 맞추지 않는다
+    # 추론 단계를 말하지 않으면 기본값 medium으로 보고 맞추고, 그 사실을 경로 줄과 route 칸에 남긴다
     code, lines, _ = cli(capsys, "ask", *NAMED_ARGS[:4], "--model-source", "conversation", "--source", "shop", "Hi?")
+    assert code == 0 and lines[1] == NAMED_LINE + " · 추론 단계는 기본값 medium으로 봄", lines
+    folder = root / lines[-1].split(": ", 1)[1]
+    route = json.loads((folder / "ask.json").read_text(encoding="utf-8"))["route"]
+    assert (route["applied"], route["source"], route["reason"], route["profile"], route["assumed_effort"]) == (
+        "single", "profile-match", "measured", "nm", "medium"
+    )  # fmt: skip
+    assert json.loads((folder / "ask.json").read_text(encoding="utf-8"))["llm"]["effort_source"] == "default-medium"
+    assert sorted(p.name for p in (folder / "calls").iterdir()) == ["1"]
+    # 추론 단계 출처가 설정 기본값이면 맞추지 않는다
+    code, lines, _ = cli(capsys, "ask", *NAMED_ARGS, "--effort-source", "config-default", "--source", "shop", "Hi?")
     assert code == 0 and not any(x.startswith("경로 ") for x in lines)
     folder = root / lines[-1].split(": ", 1)[1]
     route = json.loads((folder / "ask.json").read_text(encoding="utf-8"))["route"]
-    assert (route["applied"], route["reason"]) == ("harness", "no_effort")
+    assert (route["applied"], route["reason"], route["assumed_effort"]) == ("harness", "no_effort", None)
 
     code, lines, _ = cli(
         capsys, "run", "--foreground", *NAMED_ARGS, "--no-probe", "--no-score", "--run-id", "nm1", "--limit", "2"

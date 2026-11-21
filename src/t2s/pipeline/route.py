@@ -5,13 +5,15 @@
 1. 측정용 강제(`--route`)면 그 경로.
 2. 프로필을 이름(`--profile`)으로 고르지 않았으면 2-1~2-3.
    2-1. 가짜 백엔드·세션 모델·별칭이면 전체 P3.
-   2-2. 대화로 정한 모델(`--model` 전체 이름, 출처 conversation)이고 추론 단계도 대화로 정했으면 모델 이름으로 맞춘다:
+   2-2. 대화로 정한 모델(`--model` 전체 이름, 출처 conversation)이고 추론 단계를 대화로 정했거나 말하지 않았으면
+        (default-medium, 추론 단계는 기본값 medium으로 본다. newmodel이 같은 규칙으로 재고 저장한다) 모델 이름으로 맞춘다:
         참조 프로필(p3-ref)·backend auto를 뺀 프로필 가운데 백엔드·모델·추론 단계가 글자 그대로 같은 프로필마다
         3~7을 이름으로 고른 것처럼 따져, 근거가 맞는 기록(route harness인 기록도 센다)만 남긴다.
         하나도 없으면 맞춘 프로필이 없을 때는 전체 P3(no_profile), 있을 때는 파일에서 먼저 나오는 맞춘 프로필의 까닭.
         남은 기록의 경로(partial이면 바꾼 칸까지)가 모두 같으면 파일에서 먼저 나오는 프로필(route-apply가 고르는 프로필과
         같은 차례)의 경로, 서로 다르면 전체 P3(ambiguous). 출처는 profile-match로 남긴다.
-        추론 단계를 대화로 정하지 않았으면(기본 medium·설정 기본값) 맞추지 않고 전체 P3(no_effort).
+        추론 단계를 기본값 medium으로 보았으면 route 칸 assumed_effort와 화면 경로 줄에 남긴다.
+        추론 단계의 출처가 그 밖(설정 기본값·세션 환경)이면 맞추지 않고 전체 P3(no_effort).
    2-3. 그 밖에는 전체 P3(no_profile).
 3. 고른 프로필에 `route`가 없거나 harness면 전체 P3.
 4. 프로필의 모델 이름이 별칭이거나 `latest`를 품으면 전체 P3.
@@ -52,6 +54,8 @@ REASON_TEXT = {
 }
 REFERENCE_PROFILE = "p3-ref"  # t2s.llm.select.REFERENCE_PROFILE과 같다. 경로를 갖지 않는다(모델 이름으로 맞추지 않음)
 MATCH_SOURCE = "profile-match"
+DEFAULT_EFFORT_SOURCE = "default-medium"  # t2s.llm.select가 대화 모델에 추론 단계 말이 없을 때 남기는 출처
+DEFAULT_EFFORT = "medium"
 
 
 class RouteError(ValueError):
@@ -70,6 +74,7 @@ class RouteDecision:
     overrides: dict | None = None
     settings: PipelineSettings | None = None  # 적용할 설정(single이면 공통 설정, 최종 실행 시간 제한에만 씀)
     matches: list[str] | None = None  # 모델 이름으로 맞출 때 근거가 맞은 프로필 이름들(파일 차례)
+    assumed_effort: str | None = None  # 추론 단계 말이 없어 기본값으로 보고 모델 이름으로 맞췄을 때 그 값(medium)
 
     def to_json(self) -> dict:
         return {
@@ -84,6 +89,7 @@ class RouteDecision:
             "single_rules": SINGLE_RULES_VERSION if self.applied == SINGLE else None,
             "pair": None,
             "matches": None if self.matches is None else list(self.matches),
+            "assumed_effort": self.assumed_effort,
         }
 
 
@@ -158,9 +164,13 @@ def resolve_route(
         if model_arg is not None and _is_alias(model_arg):
             return full("alias")
         if profile is None and model_arg is not None and llm_model_source == "conversation":
-            if llm_effort_source != "conversation":
+            assumed = llm_effort_source == DEFAULT_EFFORT_SOURCE and llm_effort == DEFAULT_EFFORT
+            if llm_effort_source != "conversation" and not assumed:
                 return full("no_effort")
-            return _match(profiles, now, base, dataset, cli)
+            decision = _match(profiles, now, base, dataset, cli)
+            if assumed:
+                decision.assumed_effort = DEFAULT_EFFORT
+            return decision
         return full("no_profile")
 
     return _from_profile(profile_name, profile, requested, "profile", now, base, dataset, cli)
@@ -275,6 +285,8 @@ def route_lines(d: RouteDecision) -> list[str]:
         head = f"경로 {name} · 까닭 {REASON_TEXT['ambiguous']}({', '.join(d.matches or [])})"
     else:
         head = f"경로 {name} · 까닭 {REASON_TEXT.get(d.reason, d.reason)}"
+    if d.assumed_effort:
+        head += f" · 추론 단계는 기본값 {d.assumed_effort}으로 봄"
     tail = [f"주의: {w}. 경로는 그대로 {d.applied}입니다. 다시 재려면 /newmodel" for w in d.warnings]
     return [head, *tail]
 
