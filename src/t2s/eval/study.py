@@ -199,7 +199,7 @@ def label(run: dict, count: int, sample: bool, name: str, answers_sha256: str) -
         f"{name} / SQLite / {answers_sha256[:8]} / {count}문제 / EX(스터디 결과 비교)"
         f" / {G.evidence_word(G.evidence_mode(run))} / 로컬 측정"
         f" / {llm.get('model')}·추론 {llm.get('reasoning_effort')}·{llm.get('backend')} / 1회 실행"
-        f" / 구현 Python {commit}"
+        f"{R.route_label(run)} / 구현 Python {commit}"
     )
     if git.get("dirty"):
         text += " / (미커밋 코드)"

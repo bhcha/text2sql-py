@@ -7,6 +7,11 @@ TS 하네스(text2sql-harness) harness/allbird.ts(분리 실행, 제어 파일, 
 evidence(`--evidence used|not_used`, 기본 not_used): used면 run을 시작하는 이 프로세스만 읽기 감시를 allow_hints=True로
 걸어 공개 evidence 파일(BIRD) 또는 스터디 모델 입력 파일의 문항 조건(Olist)을 읽고, 위치별 글을 run 폴더의 hints.json에
 쓴다. 분리된 프로세스와 resume은 hints.json만 읽는다(run.json의 sha256과 대조).
+
+경로(run.json `route`): `pipeline/route.py`가 정한다. `--route`(내부 인자)는 측정용 강제다.
+`route-start`는 같은 확인을 한 번 하고 하네스·단일 호출 run 둘을 짝(`route.pair`)으로 만들어 함께 띄운다. 짝 run은 서로를
+"이미 도는 run"으로 막지 않는다. 채점은 차례를 지킨다(단일 호출 run은 하네스 run의 생성이 끝난 뒤, 하네스 run은 단일 호출
+run이 끝난 뒤). 채점기가 DB를 일반 연결로 열기 때문에 같은 데이터셋의 생성·채점이 겹치지 않게 한다.
 """
 
 from __future__ import annotations
@@ -18,13 +23,13 @@ import signal
 import subprocess
 import sys
 import time
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
 from t2s.cli.data_cmds import err, out
 from t2s.dataset import hints as H
-from t2s.dataset.config import Config, ConfigError, find_root, load_config
+from t2s.dataset.config import Config, ConfigError, DatasetSpec, find_root, load_config
 from t2s.dataset.questions import (
     PublicQuestion,
     QuestionsError,
@@ -38,6 +43,7 @@ from t2s.datasource.base import DataSourceError
 from t2s.datasource.factory import open_source
 from t2s.llm import select
 from t2s.pipeline import refine
+from t2s.pipeline import route as RT
 from t2s.pipeline.run import PipelineSettings
 from t2s.pipeline.value_search import CachedEmbedder
 from t2s.prep import assets, embed
@@ -48,11 +54,13 @@ from t2s.runner.guard import install_guard
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
 OUTGOING = "질문, CREATE 원문·예시 3행, 질문과 비슷한 값, 열 프로파일, 실행 오류 글"
 OUTGOING_EVIDENCE = "문항 evidence 글"
+OUTGOING_SINGLE = "질문, CREATE 원문"  # 단일 호출 경로(지금 목록의 부분집합)
 EVIDENCE_USED, EVIDENCE_NOT_USED = "used", "not_used"
 NEEDS_GETBIRD = "먼저 /getbird(다시 부르면 evidence 파일을 만든다)"
-PHASE_NAMES = {"generate": "생성", "score": "채점", "report": "보고"}
+PHASE_NAMES = {"generate": "생성", "waiting": "채점 차례 기다림", "score": "채점", "report": "보고"}
 HALT_NAMES = {"usage_limit": "사용량 한도", "consecutive_failures": "연속 실패", "stop": "stop"}
 STOP_WAIT_SECONDS = 10
+PAIR_POLL_SECONDS = 5.0  # 짝 run의 채점 차례를 기다릴 때 control.json을 다시 보는 간격(테스트가 줄인다)
 
 
 def _rel(root: Path, p: Path) -> str:
@@ -98,13 +106,22 @@ def _setup(allow_hints: bool = False):
 
 def run(args) -> int:
     allow_hints = (
-        args.command == "run" and not args.worker and getattr(args, "evidence", EVIDENCE_NOT_USED) == EVIDENCE_USED
+        args.command in ("run", "route-start")
+        and not getattr(args, "worker", False)
+        and getattr(args, "evidence", EVIDENCE_NOT_USED) == EVIDENCE_USED
     )
     setup = _setup(allow_hints)
     if setup is None:
         return EXIT_FAIL
     root, state, config = setup
-    handler = {"run": cmd_run, "status": cmd_status, "stop": cmd_stop, "resume": cmd_resume}[args.command]
+    handler = {
+        "run": cmd_run,
+        "status": cmd_status,
+        "stop": cmd_stop,
+        "resume": cmd_resume,
+        "route-start": cmd_route_start,
+        "route-status": cmd_route_status,
+    }[args.command]
     try:
         return handler(args, root, state, config)
     except (DataSourceError, QuestionsError, ConfigError, StateError) as e:
@@ -115,8 +132,11 @@ def run(args) -> int:
 # ── run ──────────────────────────────────────────────────
 
 
-def _running_run(config: Config) -> str | None:
+def _running_run(config: Config, skip: tuple[str, ...] = ()) -> str | None:
+    """돌고 있는 run 이름. skip은 건너뛸 이름(짝 run의 resume에서 다른 짝 run)."""
     for name in R.list_runs(config.runs_dir):
+        if name in skip:
+            continue
         c = R.read_json_if(R.run_dir(config.runs_dir, name) / R.CONTROL_FILE) or {}
         if c.get("state") == "running" and R.pid_alive(c.get("pid")):
             return name
@@ -181,9 +201,50 @@ def _evidence_texts(
     )
 
 
-def cmd_run(args, root: Path, state, config: Config) -> int:
-    if args.worker:
-        return work(root, config, args.run_id)
+@dataclass
+class _Prepared:
+    """run을 만들기 전에 마친 확인의 결과(cmd_run과 cmd_route_start가 함께 쓴다)."""
+
+    name: str
+    spec: DatasetSpec
+    questions: list[PublicQuestion]
+    given: Path | None
+    extra: dict | None
+    total: int
+    count: int
+    used: bool
+    hint_texts: list[str] | None
+    evidence_source: dict
+    llm: select.ResolvedLlm
+    db_ids: list[str]
+    decisions: list[RT.RouteDecision]
+
+
+def _decide(args, config: Config, name: str, llm: select.ResolvedLlm, forced: str | None, used: bool):
+    """경로를 정하고(pipeline/route.py), 근거의 evidence 방식이 이번과 다르면 경고를 더한다(이 비교만 여기서 한다)."""
+    base = PipelineSettings.from_mapping(config.pipeline)
+    decision = RT.resolve_route(
+        profile_name=getattr(args, "profile", None),
+        profiles=config.profiles,
+        base=base,
+        llm_backend=llm.backend,
+        llm_model=llm.model,
+        llm_effort=llm.reasoning_effort,
+        llm_model_source=llm.model_source,
+        model_arg=getattr(args, "model", None),
+        forced=forced,
+        dataset=name,
+        cli_version=batch.cli_version,
+    )
+    mode = EVIDENCE_USED if used else EVIDENCE_NOT_USED
+    then = (decision.basis or {}).get("evidence")
+    if decision.source == "profile" and then != mode:
+        decision.warnings.append(f"근거 evidence 조건이 다릅니다({then or '기록 없음'} → {mode}). 잠정 경로입니다")
+    return decision
+
+
+def _prepare_run(args, root: Path, state, config: Config, forced: tuple[str | None, ...]) -> _Prepared | int:
+    """데이터셋·문항·evidence·모델·경로·자산·실행 파일·도는 run을 확인한다. 막히면 종료 코드를 돌려준다."""
     name, _ = current_dataset(config, state)
     if not name or name not in config.datasets:
         err("데이터셋을 정하지 않았습니다(/connect)")
@@ -227,6 +288,14 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         err(str(e))
         return EXIT_USAGE
     out(select.first_line(llm))
+    try:
+        decisions = [_decide(args, config, name, llm, f, used) for f in forced]
+    except ValueError as e:
+        err(f"오류: {e}")
+        return EXIT_USAGE
+    for d in decisions:
+        for line in RT.shown_route_lines(d):
+            out(line)
     if not select.is_reference(llm):
         out("원본 재현 비교 아님(모델이 다름)")
 
@@ -255,71 +324,94 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
     if busy:
         err(f"이미 도는 run이 있습니다: {busy}")
         return EXIT_FAIL
-    run_id = args.run_id or f"{datetime.now().strftime('%Y%m%d')}-{name}-{secrets.token_hex(3)}"
-    run = R.run_dir(config.runs_dir, run_id)
-    if run.exists() or run_id == R.ASK_DIR:
-        err(f"이미 있는 run 이름입니다: {run_id}")
-        return EXIT_USAGE
+    return _Prepared(
+        name, spec, questions, given, extra, total, count, used, hint_texts, evidence_source, llm, db_ids, decisions
+    )
 
-    if llm.backend != "fake" and not args.no_probe:
-        outcome = select.backend_for(llm).call("Reply with OK.", None, name="generate_sql", attempt=0)
+
+def _probe(prep: _Prepared, args, *, single: bool) -> int:
+    if prep.llm.backend != "fake" and not args.no_probe:
+        outcome = select.backend_for(prep.llm, single=single).call(
+            "Reply with OK.", None, name="generate_sql", attempt=0
+        )
         if outcome.failure is not None:
             err(f"모델 호출 확인 실패: {outcome.failure.type}: {outcome.failure.message[:300]}")
             return EXIT_FAIL
+    return EXIT_OK
 
-    if llm.backend == "fake":
+
+def _outgoing(prep: _Prepared, routes: list[str]) -> None:
+    if prep.llm.backend == "fake":
         out("밖으로 나가는 것 없음(가짜 백엔드)")
-    else:
-        outgoing = f"{OUTGOING}, {OUTGOING_EVIDENCE}" if used else OUTGOING
-        out(f"밖으로 나감({select.provider_name(llm.backend)}): {outgoing}")
+        return
+    base = OUTGOING_SINGLE if all(r == RT.SINGLE for r in routes) else OUTGOING
+    outgoing = f"{base}, {OUTGOING_EVIDENCE}" if prep.used else base
+    out(f"밖으로 나감({select.provider_name(prep.llm.backend)}): {outgoing}")
 
+
+def _new_run_dir(config: Config, run_id: str) -> Path | None:
+    run = R.run_dir(config.runs_dir, run_id)
+    if run.exists() or run_id == R.ASK_DIR:
+        err(f"이미 있는 run 이름입니다: {run_id}")
+        return None
+    return run
+
+
+def _create_run(
+    root: Path, config: Config, args, prep: _Prepared, run: Path, decision: RT.RouteDecision, pair: dict | None
+) -> str:
+    """run 폴더·run.json·control.json을 만든다. evidence 방식을 돌려준다."""
+    run_id = run.name
     run.mkdir(parents=True)
-    if given is not None:
+    if prep.given is not None:
         qpath = run / R.QUESTIONS_FILE
-        R.write_json_atomic(qpath, to_public_json(questions))
+        R.write_json_atomic(qpath, to_public_json(prep.questions))
     else:
-        qpath = Path(spec.questions)
+        qpath = Path(prep.spec.questions)
     evidence: dict = {"mode": EVIDENCE_NOT_USED}
-    if hint_texts is not None:
+    if prep.hint_texts is not None:
         hpath = run / R.HINTS_FILE
-        R.write_json_atomic(hpath, hint_texts)
+        R.write_json_atomic(hpath, prep.hint_texts)
+        src = prep.evidence_source
         evidence = {
             "mode": EVIDENCE_USED,
-            "source": evidence_source["source"],
+            "source": src["source"],
             "path": _rel(root, hpath),
             "sha256": R.sha256_file(hpath),
-            "source_path": evidence_source["source_path"],
-            "source_sha256": evidence_source["source_sha256"],
-            "count": len(hint_texts),
+            "source_path": src["source_path"],
+            "source_sha256": src["source_sha256"],
+            "count": len(prep.hint_texts),
             "rules": H.HINT_RULES_VERSION,
-            **({"join": evidence_source["join"]} if "join" in evidence_source else {}),
+            **({"join": src["join"]} if "join" in src else {}),
         }
-    settings = PipelineSettings.from_mapping(config.pipeline)
+    settings = decision.settings or PipelineSettings.from_mapping(config.pipeline)
+    route = {**decision.to_json(), "pair": pair}
     git = batch.git_info(root)
     run_meta = {
         "format": R.RUN_FORMAT,
         "run_id": run_id,
         "kind": "generate",
-        "dataset": name,
-        "dataset_kind": spec.kind,
-        "archive_sha256": spec.archive_sha256,
+        "dataset": prep.name,
+        "dataset_kind": prep.spec.kind,
+        "archive_sha256": prep.spec.archive_sha256,
         "questions": {
             "path": _rel(root, qpath),
             "sha256": R.sha256_file(qpath),
-            "total": total,
-            "given": None if given is None else str(given),
-            **(extra or {}),
+            "total": prep.total,
+            "given": None if prep.given is None else str(prep.given),
+            **(prep.extra or {}),
         },
-        "count": count,
+        "count": prep.count,
         "limit": args.limit,
-        "sample": count != total,
+        "sample": prep.count != prep.total,
         "evidence": evidence,
         "workers": args.workers,
-        "llm": llm.to_json(),
+        "llm": prep.llm.to_json(),
+        "route": route,
         "pipeline": {**asdict(settings), "refine_template_sha256": refine.template_sha256()},
         "git": git,
         "versions_start": batch.versions(),
-        "databases": batch.fingerprints(spec, db_ids),
+        "databases": batch.fingerprints(prep.spec, prep.db_ids),
         "score_after": not args.no_score,
         "started_at": batch.now(),
         "command": list(sys.argv),
@@ -329,11 +421,64 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         run / R.CONTROL_FILE,
         {"run_id": run_id, "pid": None, "started_at": run_meta["started_at"], "state": "starting", "sessions": []},
     )
-    what = f"{name} {count}문항 · 동시 {args.workers} · evidence {evidence['mode']}"
+    return evidence["mode"]
+
+
+def cmd_run(args, root: Path, state, config: Config) -> int:
+    if args.worker:
+        return work(root, config, args.run_id)
+    prep = _prepare_run(args, root, state, config, (getattr(args, "route", None),))
+    if isinstance(prep, int):
+        return prep
+    [decision] = prep.decisions
+    run_id = args.run_id or f"{datetime.now().strftime('%Y%m%d')}-{prep.name}-{secrets.token_hex(3)}"
+    run = _new_run_dir(config, run_id)
+    if run is None:
+        return EXIT_USAGE
+    code = _probe(prep, args, single=decision.applied == RT.SINGLE)
+    if code != EXIT_OK:
+        return code
+    _outgoing(prep, [decision.applied])
+    mode = _create_run(root, config, args, prep, run, decision, None)
+    what = f"{prep.name} {prep.count}문항 · 동시 {args.workers} · evidence {mode}"
+    if decision.applied != RT.HARNESS:
+        what += f" · 경로 {decision.applied}"
     return _launch(root, config, run, run_id, args.foreground, what)
 
 
-def _launch(root: Path, config: Config, run: Path, run_id: str, foreground: bool, what: str) -> int:
+# ── route-start(하네스·단일 호출 두 run을 함께) ──────────
+
+
+def cmd_route_start(args, root: Path, state, config: Config) -> int:
+    """같은 확인을 한 번 하고 run 둘(하네스, 단일 호출)을 만들어 분리 프로세스 둘로 함께 띄운다."""
+    roles = (RT.HARNESS, RT.SINGLE)
+    prep = _prepare_run(args, root, state, config, roles)
+    if isinstance(prep, int):
+        return prep
+    pair_id = f"{datetime.now().strftime('%Y%m%d')}-{prep.name}-{secrets.token_hex(3)}"
+    ids = {role: f"{pair_id}-{role}" for role in roles}
+    runs = {role: _new_run_dir(config, rid) for role, rid in ids.items()}
+    if any(r is None for r in runs.values()):
+        return EXIT_USAGE
+    code = _probe(prep, args, single=False)
+    if code != EXIT_OK:
+        return code
+    _outgoing(prep, list(roles))
+    for role, decision in zip(roles, prep.decisions, strict=True):
+        other = ids[roles[1] if role == roles[0] else roles[0]]
+        _create_run(root, config, args, prep, runs[role], decision, {"id": pair_id, "role": role, "other": other})
+    mode = EVIDENCE_USED if prep.used else EVIDENCE_NOT_USED
+    code = EXIT_OK
+    for role in roles:
+        what = f"{prep.name} {prep.count}문항 · 동시 {args.workers} · evidence {mode} · 경로 {role}"
+        code = max(code, _launch(root, config, runs[role], ids[role], False, what, quiet=True))
+    out(f"짝 {pair_id} · 진행: t2s route-status · 판정: t2s route-judge (두 run을 함께 돌리므로 시간은 함께 잰 값)")
+    return code
+
+
+def _launch(
+    root: Path, config: Config, run: Path, run_id: str, foreground: bool, what: str, quiet: bool = False
+) -> int:
     if foreground:
         R.update_control(run, pid=os.getpid(), state="running", phase="generate")
         out(f"시작: {run_id} (pid {os.getpid()}, 앞에서 돎) · {what}")
@@ -348,7 +493,8 @@ def _launch(root: Path, config: Config, run: Path, run_id: str, foreground: bool
     if not caffeinate:
         out("caffeinate가 없어 잠자기 막기 없이 띄웠습니다")
     out(f"시작: {run_id} (pid {pid}) · {what}")
-    out(f"진행: t2s status · 로그: {_rel(root, run / R.LOG_FILE)}")
+    if not quiet:
+        out(f"진행: t2s status · 로그: {_rel(root, run / R.LOG_FILE)}")
     return EXIT_OK
 
 
@@ -391,6 +537,7 @@ def work(root: Path, config: Config, run_id: str) -> int:
         model_hashes=model_hashes,
         backend_factory=BACKEND_FACTORY,
         hints=hint_texts,
+        route=R.route_of(meta),
     )
     done = R.read_item_records(run)
     attempts = {q.position: _next_attempt(run, q.position) for q in questions}
@@ -415,12 +562,37 @@ def work(root: Path, config: Config, run_id: str) -> int:
         out(f"멈춤: {HALT_NAMES.get(manifest['halted']['reason'], manifest['halted']['reason'])} · 채점하지 않음")
         return code
     if meta.get("score_after"):
+        _wait_for_partner(config, run, meta)
         code = max(code, _score_and_report(root, run, run_id))
     R.update_control(run, state="finished", phase="done")
     return code
 
 
 BACKEND_FACTORY = None  # 테스트가 바꿔치기한다(문항마다 부를 백엔드를 만드는 함수)
+
+
+def _partner_busy(control: dict) -> bool:
+    alive = R.pid_alive(control.get("pid")) or R.pid_alive(control.get("worker_pid"))
+    return control.get("state") in ("running", "starting") and alive
+
+
+def _wait_for_partner(config: Config, run: Path, meta: dict) -> None:
+    """짝 run의 채점 차례. 하네스 run은 짝 run이 끝날 때까지, 다른 쪽은 하네스 run의 생성이 끝날 때까지 기다린다."""
+    pair = R.pair_of(meta)
+    if pair is None:
+        return
+    other = R.run_dir(config.runs_dir, pair["other"])
+    R.update_control(run, phase="waiting")
+    while True:
+        c = R.read_json_if(other / R.CONTROL_FILE) or {}
+        if not _partner_busy(c):
+            return
+        phase = c.get("phase", "generate")
+        if pair["role"] == RT.HARNESS and phase == "done":
+            return
+        if pair["role"] != RT.HARNESS and phase != "generate":
+            return
+        time.sleep(PAIR_POLL_SECONDS)
 
 
 def evidence_mode(meta: dict) -> str | None:
@@ -520,6 +692,9 @@ def cmd_status(args, root: Path, state, config: Config) -> int:
         out("재채점 run(생성 없음)")
     else:
         out(select.first_line(select.ResolvedLlm.from_json(meta["llm"])))
+    route_line = route_status_line(meta)
+    if route_line:
+        out(route_line)
     started = control.get("started_at") or meta.get("started_at")
     finished = (R.read_json_if(run / R.MANIFEST_FILE) or {}).get("finished_at")
     try:
@@ -551,9 +726,63 @@ def cmd_status(args, root: Path, state, config: Config) -> int:
     out(f"생성 끝 {yn(R.MANIFEST_FILE)} · 채점 끝 {yn(R.SCORE_FILE)} · 보고 끝 {yn(R.REPORT_FILE)}")
     log = run / R.LOG_FILE
     if log.is_file():
-        tail = [x for x in log.read_text(encoding="utf-8", errors="replace").splitlines() if x.strip()][-2:]
+        keep = 1 if route_line else 2  # 10줄 안
+        tail = [x for x in log.read_text(encoding="utf-8", errors="replace").splitlines() if x.strip()][-keep:]
         for x in tail:
             out(f"로그: {x[:200]}")
+    return EXIT_OK
+
+
+def route_status_line(meta: dict) -> str | None:
+    """경로가 harness가 아니거나 경고가 있을 때만 한 줄."""
+    applied = R.route_of(meta)
+    warnings = R.route_warnings(meta)
+    if applied == RT.HARNESS and not warnings:
+        return None
+    line = f"경로 {RT.route_name(applied, (meta.get('route') or {}).get('overrides'))}"
+    if warnings:
+        line += f" · 주의 {len(warnings)}건: {warnings[0]}"
+    return line
+
+
+# ── route-status ─────────────────────────────────────────
+
+
+def cmd_route_status(args, root: Path, state, config: Config) -> int:
+    pairs = R.list_pairs(config.runs_dir)
+    pair = args.pair or R.latest_pair(config.runs_dir)
+    if pair is None:
+        out("시작한 짝(route-start)이 없습니다")
+        return EXIT_OK
+    if pair not in pairs:
+        err(f"짝이 없습니다: {pair}")
+        return EXIT_FAIL
+    runs = pairs[pair]["runs"]
+    metas = {role: R.read_json(R.run_dir(config.runs_dir, rid) / R.RUN_FILE) for role, rid in runs.items()}
+    first = next(iter(metas.values()))
+    out(f"짝 {pair} · {first.get('dataset')} · evidence {evidence_mode(first)} · {first.get('count')}문항")
+    out(select.first_line(select.ResolvedLlm.from_json(first["llm"])))
+    scored = 0
+    for role in sorted(runs, key=lambda r: (r != RT.HARNESS, r)):
+        rid = runs[role]
+        run = R.run_dir(config.runs_dir, rid)
+        items = R.read_item_records(run)
+        counts = {
+            s: sum(1 for r in items.values() if r.get("status") == s) for s in ("generated", "no_sql", "exception")
+        }
+        done = (run / R.SCORE_FILE).is_file()
+        scored += done
+        out(f"{role} {rid} · {state_word(run)} · 진행 {len(items)}/{metas[role].get('count')}")
+        out(
+            "  상태 "
+            + " · ".join(f"{k} {v}" for k, v in counts.items())
+            + f" · 생성 끝 {'예' if (run / R.MANIFEST_FILE).is_file() else '아니오'}"
+            + f" · 채점 끝 {'예' if done else '아니오'}"
+        )
+    if len(runs) != 2:
+        out(f"짝 run이 {len(runs)}개입니다(2개여야 판정한다)")
+    elif scored == 2:
+        out("두 run 모두 채점 끝: t2s route-judge")
     return EXIT_OK
 
 
@@ -633,7 +862,8 @@ def cmd_resume(args, root: Path, state, config: Config) -> int:
         return refuse("evidence 파일(hints.json)이 run.json과 다릅니다")
     if batch.fingerprints(spec, list(meta.get("databases", {}))) != meta.get("databases"):
         return refuse("DB 지문이 다릅니다")
-    busy = _running_run(config)
+    pair = R.pair_of(meta)
+    busy = _running_run(config, skip=(pair["other"],) if pair else ())
     if busy:
         return refuse(f"이미 도는 run이 있습니다: {busy}")
 

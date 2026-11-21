@@ -5,6 +5,7 @@ SQL 바뀜 세기), harness/allbird.ts report(보고 줄). 원 논문·리더보
 
 evidence 방식(used·not_used)이 다른 run·기준선끼리는 견주지 않는다(새로 맞음·새로 틀림도 내지 않는다, AGENTS 규칙 6).
 방식을 모르는 쪽(ex.jsonl, 칸 없는 기준선·옛 run, 재채점 run)은 not_used로 본다.
+경로(run.json `route`)가 기준과 다르면(기준선·옛 run·ex.jsonl은 harness로 본다) "경로가 달라 재현 비교 아님"을 붙인다.
 """
 
 from __future__ import annotations
@@ -96,6 +97,7 @@ class Side:
     rows: dict[int, dict]
     summary: dict = field(default_factory=dict)
     evidence: str | None = G.EVIDENCE_NOT_USED  # None이면 알 수 없음(ex.jsonl, 재채점 run)
+    route: str = R.HARNESS_ROUTE  # 기준선·ex.jsonl·옛 run은 harness
 
 
 def _run_evidence(meta: dict | None, score: dict | None) -> str | None:
@@ -139,8 +141,9 @@ def load_side(config: Config, ref: str) -> Side:
         pos = int(r["position"])
         rows[pos] = {**r, "sql_sha256": sql_digest(sqls.get(pos))}
     ex = score["ex_total"]
-    evidence = _run_evidence(R.read_json_if(run / R.RUN_FILE), score)
-    return Side(ref, f"run {ref} (EX {ex['correct']}/{ex['denominator']})", rows, score, evidence)
+    meta = R.read_json_if(run / R.RUN_FILE)
+    evidence = _run_evidence(meta, score)
+    return Side(ref, f"run {ref} (EX {ex['correct']}/{ex['denominator']})", rows, score, evidence, R.route_of(meta))
 
 
 def compare(a_rows: dict[int, dict], b_rows: dict[int, dict]) -> dict:
@@ -305,6 +308,8 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
             is_reference=is_ref,
             backend_differs=(not rescore) and llm.get("backend") != "codex-cli",
         )
+        if R.route_of(meta) != side.route:
+            lines.append("경로가 달라 재현 비교 아님")
         if not rescore:
             fixed = {p for p, r in records.items() if r.get("refine_calls")}
             nc = sum(1 for p in comparison["newly_correct"] if p in fixed)
@@ -321,6 +326,7 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
     lines.append(vline)
     if warn:
         lines.append(warn)
+    lines += [f"주의: {w}" for w in R.route_warnings(meta)]
     lines.append(os.path.relpath(run, config.root))
 
     md: list[str] = []
@@ -346,6 +352,7 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
         "against_evidence": None if side is None else side.evidence,
         "comparison_refused": refused,
         "leak": leak_audit.short(leak),
+        "route": meta.get("route"),
     }
     _write(run, lines, data, md)
     refused_by_user = refused is not None and bool(against)

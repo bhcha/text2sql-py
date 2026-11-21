@@ -2,6 +2,7 @@
 
 TS benchmarks/benchkit/run.ts(HALT_AFTER = 5, 다시 돌 수 있는 실패, 문항마다 바로 기록)를 옮긴 자체 코드다.
 TS와 다른 점: 팩 프로세스 대신 한 프로세스의 스레드로 돌고, 모델 호출 실패가 종류와 상관없이 연달아 20번이면 멈춘다.
+경로(RunContext.route)가 single이면 문항마다 단일 호출 하나(pipeline/single.py)만 부르고 자산을 싣지 않는다.
 정답을 모른다(eval을 import하지 않는다).
 """
 
@@ -27,6 +28,7 @@ from t2s.llm import _proc
 from t2s.llm.base import LlmBackend, is_usage_limit, usage_totals
 from t2s.llm.select import ResolvedLlm, backend_for
 from t2s.pipeline.run import PipelineSettings, answer
+from t2s.pipeline.single import answer_single
 from t2s.pipeline.trace import Trace
 from t2s.pipeline.value_search import CachedEmbedder
 from t2s.prep import assets
@@ -64,6 +66,15 @@ def git_info(root: Path) -> dict:
         "src_tree": tree.stdout.strip() if tree is not None and tree.returncode == 0 else None,
         "dirty": bool(status.stdout.strip()) if status is not None else None,
     }
+
+
+def cli_version(backend: str) -> str | None:
+    """백엔드 CLI의 `--version` 첫 줄(versions()의 codex·claude 칸과 같은 값). 가짜 백엔드는 None."""
+    if backend == "codex-cli":
+        return _cli_version_fresh(os.environ.get("T2S_CODEX_BIN") or "codex")
+    if backend == "claude-code":
+        return _cli_version_fresh(os.environ.get("T2S_CLAUDE_BIN") or "claude")
+    return None
 
 
 def _cli_version_fresh(bin: str) -> str | None:
@@ -127,6 +138,7 @@ class RunContext:
     model_hashes: dict[str, str]
     backend_factory: Callable[[], LlmBackend] | None = None
     hints: list[str] | None = None  # 위치 순서의 힌트 글(run 폴더의 hints.json에서). None이면 힌트를 주지 않는다
+    route: str = R.HARNESS_ROUTE  # single이면 단일 호출, harness·partial이면 answer(settings에 덮어쓴 값이 들어 있다)
     stop: threading.Event = field(default_factory=threading.Event)
     halt_reason: str | None = None
     _sources: dict[str, DataSource] = field(default_factory=dict)
@@ -152,11 +164,12 @@ class RunContext:
     def backend(self) -> LlmBackend:
         if self.backend_factory is not None:
             return self.backend_factory()
+        single = self.route == "single"
         if self.llm.backend == "fake":
-            return backend_for(self.llm)  # 가짜 백엔드는 문항마다 새로(호출 기록을 갖고 있다)
+            return backend_for(self.llm, single=single)  # 가짜 백엔드는 문항마다 새로(호출 기록을 갖고 있다)
         with self._lock:
             if self._shared_backend is None:
-                self._shared_backend = backend_for(self.llm)
+                self._shared_backend = backend_for(self.llm, single=single)
             return self._shared_backend
 
 
@@ -226,17 +239,21 @@ def run_item(q: PublicQuestion, ctx: RunContext, attempt: int) -> dict:
     final = None
     try:
         source = ctx.source(q.db_id)
-        loaded = ctx.assets_for(q.db_id)
-        trace = answer(
-            q.question,
-            source,
-            loaded,
-            ctx.backend(),
-            embedder=ctx.embedder,
-            settings=ctx.settings,
-            calls_dir=folder / "calls",
-            hint=None if ctx.hints is None else ctx.hints[q.position],
-        )
+        hint = None if ctx.hints is None else ctx.hints[q.position]
+        if ctx.route == "single":
+            trace = answer_single(q.question, source, ctx.backend(), calls_dir=folder / "calls", hint=hint)
+        else:
+            loaded = ctx.assets_for(q.db_id)
+            trace = answer(
+                q.question,
+                source,
+                loaded,
+                ctx.backend(),
+                embedder=ctx.embedder,
+                settings=ctx.settings,
+                calls_dir=folder / "calls",
+                hint=hint,
+            )
         final = _final_exec(trace, source, ctx.settings)
     except Exception as e:  # noqa: BLE001 — 한 문항의 실패가 다른 문항을 막지 않는다
         exception = {"type": type(e).__name__, "message": str(e)[:2000]}

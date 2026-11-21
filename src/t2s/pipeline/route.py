@@ -203,3 +203,10 @@ def route_lines(d: RouteDecision) -> list[str]:
         head = f"경로 {name} · 까닭 {REASON_TEXT.get(d.reason, d.reason)}"
     tail = [f"주의: {w}. 경로는 그대로 {d.applied}입니다. 다시 재려면 /newmodel" for w in d.warnings]
     return [head, *tail]
+
+
+def shown_route_lines(d: RouteDecision) -> list[str]:
+    """화면에 보일 줄. 경로를 따로 정하지 않은 전체 P3(프로필에 경로 요청이 없고 경고도 없음)는 아무 줄도 더하지 않는다
+    (기존 run·ask 출력이 그대로다). 까닭은 run.json·ask.json의 route 칸에 늘 남는다."""
+    plain = d.applied == HARNESS and d.source == "default" and d.requested in (None, HARNESS) and not d.warnings
+    return [] if plain else route_lines(d)

@@ -201,3 +201,33 @@ def _route_value(v) -> str:
 def route_warnings(meta: dict | None) -> list[str]:
     route = (meta or {}).get("route")
     return [str(w) for w in (route.get("warnings") or [])] if isinstance(route, dict) else []
+
+
+def pair_of(meta: dict | None) -> dict | None:
+    """route-start로 함께 만든 짝 run이면 {"id", "role", "other"}, 아니면 None."""
+    route = (meta or {}).get("route")
+    pair = route.get("pair") if isinstance(route, dict) else None
+    if isinstance(pair, dict) and all(isinstance(pair.get(k), str) for k in ("id", "role", "other")):
+        return pair
+    return None
+
+
+def list_pairs(runs_dir: Path) -> dict[str, dict]:
+    """짝 이름 → {"runs": {역할: run 이름}, "started_at": 가장 이른 시작}."""
+    out: dict[str, dict] = {}
+    for name in list_runs(runs_dir):
+        meta = read_json_if(Path(runs_dir) / name / RUN_FILE) or {}
+        pair = pair_of(meta)
+        if pair is None:
+            continue
+        entry = out.setdefault(pair["id"], {"runs": {}, "started_at": str(meta.get("started_at", ""))})
+        entry["runs"][pair["role"]] = name
+        entry["started_at"] = min(entry["started_at"], str(meta.get("started_at", "")))
+    return out
+
+
+def latest_pair(runs_dir: Path) -> str | None:
+    pairs = list_pairs(runs_dir)
+    if not pairs:
+        return None
+    return max(pairs, key=lambda k: (pairs[k]["started_at"], k))

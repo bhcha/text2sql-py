@@ -150,6 +150,7 @@ def label(run: dict, count: int, sample: bool) -> str:
     else:
         llm = run.get("llm") or {}
         text += f" / {llm.get('model')}·추론 {llm.get('reasoning_effort')}·{llm.get('backend')} / 1회 실행"
+        text += R.route_label(run)  # 경로가 harness면 빈 글(라벨이 바뀌지 않는다)
         text += f" / 구현 Python {commit}"
     if git.get("dirty"):
         text += " / (미커밋 코드)"

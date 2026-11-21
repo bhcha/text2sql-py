@@ -2,6 +2,7 @@
 
 TS 하네스(text2sql-harness) harness/ask.ts의 출력 줄을 옮겼다. 데이터셋을 고르는 인자는 두지 않는다(t2s use).
 종료 코드: 0 성공, 1 실패(예외, DB 지문 다름), 2 쓰임새(소스·모델을 정해야 함), 5 준비 필요.
+경로는 run과 같은 규칙(pipeline/route.py)을 따르고 ask.json에 `route` 칸을 남긴다. single이면 단일 호출 하나만 부른다.
 """
 
 from __future__ import annotations
@@ -22,22 +23,26 @@ from t2s.datasource.base import DataSourceError
 from t2s.datasource.factory import open_source
 from t2s.llm import select
 from t2s.llm.base import usage_totals
+from t2s.pipeline import route as RT
 from t2s.pipeline.run import PipelineSettings, answer
+from t2s.pipeline.single import answer_single
 from t2s.prep import assets, embed
+from t2s.runner import batch
 from t2s.runner.guard import install_guard
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
 OUTGOING = "질문, CREATE 원문·예시 3행, 질문과 비슷한 값, 열 프로파일, 실행 오류 글"
+OUTGOING_SINGLE = "질문, CREATE 원문"
 SQL_MAX_LINES = 12
 SHOW_ROWS = 10
 CELL_MAX = 60
 LINE_MAX = 200
 
 
-def outgoing_line(backend: str) -> str:
+def outgoing_line(backend: str, route: str = RT.HARNESS) -> str:
     if backend == "fake":
         return "밖으로 나가는 것 없음(가짜 백엔드)"
-    return f"밖으로 나감({select.provider_name(backend)}): {OUTGOING}"
+    return f"밖으로 나감({select.provider_name(backend)}): {OUTGOING_SINGLE if route == RT.SINGLE else OUTGOING}"
 
 
 def cell(value) -> str:
@@ -82,7 +87,7 @@ def stage_line(trace) -> str:
 
 
 def reported_model(trace, calls_dir: Path) -> str:
-    gen = next((c for c in trace.calls if c.name == "generate_sql"), None)
+    gen = next((c for c in trace.calls if c.name in ("generate_sql", "single_sql")), None)
     if gen is None:
         return "기록 없음"
     try:
@@ -151,6 +156,25 @@ def run(args) -> int:
         err(str(e))
         return EXIT_USAGE
     out(select.first_line(llm))
+    try:
+        decision = RT.resolve_route(
+            profile_name=args.profile,
+            profiles=config.profiles,
+            base=PipelineSettings.from_mapping(config.pipeline),
+            llm_backend=llm.backend,
+            llm_model=llm.model,
+            llm_effort=llm.reasoning_effort,
+            llm_model_source=llm.model_source,
+            model_arg=args.model,
+            forced=None,
+            dataset=name,
+            cli_version=batch.cli_version,
+        )
+    except ValueError as e:
+        err(f"오류: {e}")
+        return EXIT_USAGE
+    for line in RT.shown_route_lines(decision):
+        out(line)
 
     s = spec.sources[sname]
     source = open_source(s.kind, path=str(s.path))
@@ -163,7 +187,7 @@ def run(args) -> int:
         return EXIT_NEEDS_PREP
 
     out(f"데이터셋 {name} · 소스 {sname} · {source.describe()}")
-    out(outgoing_line(llm.backend))
+    out(outgoing_line(llm.backend, decision.applied))
     side_before = source.side_files()
     if side_before:
         out(
@@ -175,18 +199,21 @@ def run(args) -> int:
     run_dir = config.runs_dir / "ask" / f"{stamp}-{secrets.token_hex(3)}"
     calls_dir = run_dir / "calls"
     run_dir.mkdir(parents=True, exist_ok=False)
-    settings = PipelineSettings.from_mapping(config.pipeline)
+    settings = decision.settings or PipelineSettings.from_mapping(config.pipeline)
     try:
-        embedder = embed.load_embedder(config.embedding_model_dir)
-        trace = answer(
-            args.question,
-            source,
-            loaded,
-            select.backend_for(llm),
-            embedder=embedder,
-            settings=settings,
-            calls_dir=calls_dir,
-        )
+        if decision.applied == RT.SINGLE:
+            trace = answer_single(args.question, source, select.backend_for(llm, single=True), calls_dir=calls_dir)
+        else:
+            embedder = embed.load_embedder(config.embedding_model_dir)
+            trace = answer(
+                args.question,
+                source,
+                loaded,
+                select.backend_for(llm),
+                embedder=embedder,
+                settings=settings,
+                calls_dir=calls_dir,
+            )
     except (embed.EmbeddingFailed, embed.EmbeddingModelMissing, DataSourceError, sqlite3.Error) as e:
         err(f"실행 실패: {type(e).__name__}: {e}")
         return EXIT_FAIL
@@ -209,6 +236,7 @@ def run(args) -> int:
     record = {
         "format": "t2s-ask/1",
         "llm": llm.to_json(),
+        "route": decision.to_json(),
         "dataset": name,
         "source": sname,
         "database": source.describe(),

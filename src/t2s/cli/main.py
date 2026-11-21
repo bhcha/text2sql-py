@@ -77,7 +77,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="문항의 evidence(BIRD 공식 evidence, Olist 문항 조건)를 모델에 줄지. 기본 not_used(퓨어 조건)",
     )
     p.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--route", choices=ROUTES, help="측정용으로 경로를 강제한다(내부 인자). 없으면 프로필의 경로 규칙")
     add_model_arguments(p)
+
+    p = sub.add_parser("route-start", help="하네스(전체 P3)·단일 호출 두 run을 짝으로 함께 돌린다(분리 실행)")
+    p.add_argument("--limit", type=int, metavar="N", help="앞 N문항만")
+    p.add_argument("--workers", type=int, default=4, help="run마다 동시 작업 수")
+    p.add_argument("--questions", metavar="파일", help="공개 문항 꼴 JSON 또는 질문이 한 줄에 하나씩 든 텍스트")
+    p.add_argument("--no-score", dest="no_score", action="store_true", help="생성 뒤 채점·보고를 부르지 않는다")
+    p.add_argument("--no-probe", dest="no_probe", action="store_true", help="분리 전 확인 호출을 하지 않는다")
+    p.add_argument(
+        "--evidence",
+        choices=EVIDENCE_MODES,
+        default="not_used",
+        help="문항의 evidence를 두 run 모두에 줄지. 기본 not_used",
+    )
+    add_model_arguments(p)
+
+    p = sub.add_parser("route-status", help="짝 run 두 개의 진행 상태(10줄 안)")
+    p.add_argument("--pair", metavar="이름", help="없으면 가장 최근 짝")
+
+    p = sub.add_parser("route-judge", help="짝 run 두 개를 위치별로 견주어 경로를 판정한다")
+    p.add_argument("--pair", metavar="이름", help="없으면 가장 최근 짝")
+    p.add_argument("--harness", metavar="run", help="하네스(전체 P3) run. --candidate와 함께")
+    p.add_argument("--candidate", metavar="run", help="후보(single 또는 partial) run")
+
+    p = sub.add_parser("route-apply", help="경로 판정을 harness.toml 프로필에 더한다(--yes가 없으면 보이기만)")
+    p.add_argument("--pair", metavar="이름", help="없으면 가장 최근 짝")
+    p.add_argument("--harness", metavar="run", help="하네스(전체 P3) run. --candidate와 함께")
+    p.add_argument("--candidate", metavar="run", help="후보(single 또는 partial) run")
+    p.add_argument(
+        "--profile", metavar="이름", help="쓸 프로필. 없으면 백엔드·모델·추론 단계가 같은 프로필 또는 새 프로필"
+    )
+    p.add_argument("--yes", action="store_true", help="보인 글을 승인함")
 
     p = sub.add_parser("status", help="run 진행 상태(10줄 안)")
     p.add_argument("--run-id", dest="run_id", metavar="이름")
@@ -128,11 +160,11 @@ def main(argv: list[str] | None = None) -> int:
             from t2s.cli import ask_cmd
 
             return ask_cmd.run(args)
-        if args.command in ("run", "status", "stop", "resume"):
+        if args.command in ("run", "status", "stop", "resume", "route-start", "route-status"):
             from t2s.cli import run_cmds
 
             return run_cmds.run(args)
-        if args.command in ("score", "report", "leak-audit"):
+        if args.command in ("score", "report", "leak-audit", "route-judge"):
             from t2s.cli import eval_cmds
 
             return eval_cmds.run(args)
