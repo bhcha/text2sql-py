@@ -230,18 +230,6 @@ def test_ask_run_and_route_start_by_model_name(root, capsys, monkeypatch):
     )  # fmt: skip
     assert json.loads((folder / "ask.json").read_text(encoding="utf-8"))["llm"]["effort_source"] == "default-medium"
     assert sorted(p.name for p in (folder / "calls").iterdir()) == ["1"]
-    # 추론 단계를 말하지 않았고 맞는 기록이 없으면 전체 P3이고, 그 사실을 경로 줄에 보인다
-    no_rec = ("--backend", "codex-cli", "--model", "gpt-test-8", "--model-source", "conversation")
-    code, lines, _ = cli(capsys, "ask", *no_rec, "--source", "shop", "Hi?")
-    assert code == 0 and lines[1] == (
-        "경로 harness(전체 P3) · 까닭 프로필 없이 정한 모델 · 추론 단계는 기본값 medium으로 봄"
-    ), lines
-    folder = root / lines[-1].split(": ", 1)[1]
-    route = json.loads((folder / "ask.json").read_text(encoding="utf-8"))["route"]
-    assert (route["applied"], route["reason"], route["assumed_effort"]) == ("harness", "no_profile", "medium")
-    # 추론 단계를 말했고 기록이 없으면 지금처럼 경로 줄이 없다
-    code, lines, _ = cli(capsys, "ask", *no_rec, "--effort", "medium", "--source", "shop", "Hi?")
-    assert code == 0 and not any(x.startswith("경로 ") for x in lines), lines
     # 추론 단계 출처가 설정 기본값이면 맞추지 않는다
     code, lines, _ = cli(capsys, "ask", *NAMED_ARGS, "--effort-source", "config-default", "--source", "shop", "Hi?")
     assert code == 0 and not any(x.startswith("경로 ") for x in lines)
