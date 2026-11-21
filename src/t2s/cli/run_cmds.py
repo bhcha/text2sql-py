@@ -449,6 +449,11 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
 # ── route-start(하네스·단일 호출 두 run을 함께) ──────────
 
 
+def _dirty_full_measurement(backend: str, count: int, total: int, git: dict) -> bool:
+    """가짜 백엔드가 아닌 전체 측정을 미커밋 코드(또는 커밋 기록 없음)에서 시작하려 하는가(AGENTS 규칙 5)."""
+    return backend != "fake" and count == total and git.get("dirty") is not False
+
+
 def cmd_route_start(args, root: Path, state, config: Config) -> int:
     """같은 확인을 한 번 하고 run 둘(하네스, 단일 호출)을 만들어 분리 프로세스 둘로 함께 띄운다."""
     roles = (RT.HARNESS, RT.SINGLE)
@@ -460,6 +465,9 @@ def cmd_route_start(args, root: Path, state, config: Config) -> int:
     runs = {role: _new_run_dir(config, rid) for role, rid in ids.items()}
     if any(r is None for r in runs.values()):
         return EXIT_USAGE
+    if _dirty_full_measurement(prep.llm.backend, prep.count, prep.total, batch.git_info(root)):
+        err("미커밋 코드 상태에서는 전체 측정을 시작하지 않습니다: 커밋한 뒤 돌리거나 --limit N으로 소표본을 씁니다")
+        return EXIT_FAIL
     code = _probe(prep, args, single=False)
     if code != EXIT_OK:
         return code

@@ -68,7 +68,11 @@ def choose_profile(profiles: Mapping[str, Mapping], llm: Mapping, given: str | N
             raise StoreError(f"참조 프로필 {REFERENCE_PROFILE}에는 쓰지 않습니다(검증 측정 프로필은 고정)")
         if not NAME_RE.match(given):
             raise StoreError(f"프로필 이름은 영문 소문자·숫자·-만 씁니다: {given!r}")
-        return given, given not in profiles
+        p = profiles.get(given)
+        got = None if p is None else (p.get("backend"), p.get("model"), p.get("reasoning_effort", "medium"))
+        if got is not None and got != (llm.get("backend"), llm.get("model"), llm.get("reasoning_effort")):
+            raise StoreError(f"프로필 {given}의 백엔드·모델·추론 단계가 판정과 다릅니다: {got}")
+        return given, p is None
     want = (llm.get("backend"), llm.get("model"), llm.get("reasoning_effort"))
     for name, p in profiles.items():
         if name == REFERENCE_PROFILE or p.get("backend", "auto") == "auto":

@@ -131,7 +131,11 @@ def test_other_dataset_warns():
 
 
 def test_partial_overrides():
-    p = profiles(route="partial", pipeline={"value_search": False, "example_rows": 0})
+    p = profiles(
+        route="partial",
+        pipeline={"value_search": False, "example_rows": 0},
+        route_basis=[basis(route="partial", overrides='{"example_rows":0,"value_search":false}')],
+    )
     d = resolve(p)
     assert d.applied == "partial" and d.overrides == {"example_rows": 0, "value_search": False}
     assert d.settings.value_search is False and d.settings.example_rows == 0 and d.settings.refine_rounds == 3
@@ -181,6 +185,29 @@ def test_records_route_helpers():
     assert R.route_label({"route": {"applied": "single"}}) == " / 경로 single(단일 호출)"
     meta = {"route": {"applied": "partial", "overrides": {"example_rows": 0, "column_profile": False}}}
     assert R.route_label(meta) == " / 경로 partial(example_rows=0, column_profile=false)"
-    d = resolve(profiles(route="partial", pipeline={"example_rows": 0, "column_profile": False}))
+    d = resolve(
+        profiles(
+            route="partial",
+            pipeline={"example_rows": 0, "column_profile": False},
+            route_basis=[basis(route="partial", overrides='{"column_profile":false,"example_rows":0}')],
+        )
+    )
     assert R.route_label({"route": d.to_json()}) == " / 경로 " + RT.route_name(d.applied, d.overrides)
     assert R.route_warnings({"route": {"warnings": ["a"]}}) == ["a"] and R.route_warnings({}) == []
+
+
+def test_partial_overrides_must_match_basis():
+    pipe = {"value_search": False, "example_rows": 0}
+    d = resolve(profiles(route="partial", pipeline=pipe))  # 근거에 overrides 칸 없음
+    assert (d.applied, d.source, d.reason, d.overrides) == ("harness", "default", "basis_mismatch", None)
+    for other in (
+        '{"example_rows":1,"value_search":false}',
+        '{"example_rows":0}',
+        '{"example_rows": 0, "value_search": false}',
+    ):
+        d = resolve(profiles(route="partial", pipeline=pipe, route_basis=[basis(route="partial", overrides=other)]))
+        assert (d.applied, d.reason) == ("harness", "basis_mismatch") and d.settings == BASE
+    same = '{"example_rows":0,"value_search":false}'
+    d = resolve(profiles(route="partial", pipeline=pipe, route_basis=[basis(route="partial", overrides=same)]))
+    assert (d.applied, d.source, d.reason) == ("partial", "profile", "measured")
+    assert d.overrides == {"example_rows": 0, "value_search": False} and d.basis["overrides"] == same

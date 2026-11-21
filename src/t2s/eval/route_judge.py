@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -77,6 +78,12 @@ def _load(config: Config, run_id: str) -> RunSide:
     manifest = R.read_json_if(run / R.MANIFEST_FILE)
     if manifest is None:
         raise REP.NotReady(f"아직 생성 중입니다: {run_id} (t2s route-status)")
+    if manifest.get("halted") is not None:
+        raise REP.NotReady(f"멈춘 run입니다: {run_id} (한도가 풀린 뒤 이어 돌리기: t2s resume --run-id {run_id})")
+    control = R.read_json_if(run / R.CONTROL_FILE) or {}
+    alive = R.pid_alive(control.get("pid")) or R.pid_alive(control.get("worker_pid"))
+    if control.get("state") in ("running", "starting") and alive:
+        raise REP.NotReady(f"아직 도는 중입니다: {run_id} (t2s route-status)")
     score = R.read_json_if(run / R.SCORE_FILE)
     if score is None or not (run / R.EX_FILE).is_file():
         raise REP.NotReady(f"아직 채점 전입니다: t2s score --run {run_id}")
@@ -231,6 +238,15 @@ def judge(config: Config, pair: str | None, harness: str | None, candidate: str 
     if he != ce:
         lines.append(f"evidence 조건이 달라 견주지 않는다(하네스 {he}, 후보 {ce})")
         return lines, {}, 1
+    h_llm, c_llm = h.meta.get("llm") or {}, c.meta.get("llm") or {}
+    differs = [k for k in ("backend", "model", "reasoning_effort") if h_llm.get(k) != c_llm.get(k)]
+    if (h.meta.get("git") or {}).get("head") != (c.meta.get("git") or {}).get("head"):
+        differs.append("git head")
+    if differs:
+        lines.append(
+            f"두 run의 {', '.join(differs)}이(가) 달라 견주지 않는다(같은 백엔드·모델·추론 단계·커밋만 견준다)"
+        )
+        return lines, {}, 1
     study = str((h.score.get("evaluator") or {}).get("id") or "").startswith(G.STUDY_PREFIX)
     cmp = REP.compare(h.rows, c.rows)
     hn, sn = len(cmp["newly_correct"]), len(cmp["regressed"])
@@ -263,6 +279,8 @@ def judge(config: Config, pair: str | None, harness: str | None, candidate: str 
     path = R.judgment_path(config.runs_dir, h_id, c_id)
     hl = h.meta.get("llm") or {}
     finished = max(str(h.manifest.get("finished_at") or ""), str(c.manifest.get("finished_at") or ""))
+    over = (c.meta.get("route") or {}).get("overrides")
+    over_text = json.dumps(over, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     basis = {
         "route": route,
         "verdict": v,
@@ -290,6 +308,7 @@ def judge(config: Config, pair: str | None, harness: str | None, candidate: str 
         "measured": finished[:10] or None,
         "cli": _cli(h.meta, h.manifest)[0],
         "commit": ((h.meta.get("git") or {}).get("head") or "")[:7] or None,
+        "overrides": over_text if cand_route == "partial" else None,
     }
     data = {
         "format": FORMAT,

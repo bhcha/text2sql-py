@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 
@@ -164,6 +165,8 @@ def resolve_route(
         warnings.append(f"근거 데이터셋이 다릅니다({basis.get('dataset')} → {dataset}). 잠정 경로입니다")
     if requested == PARTIAL:
         over = partial_overrides(profile)
+        if basis.get("overrides") != json.dumps(over, sort_keys=True, ensure_ascii=False, separators=(",", ":")):
+            return full("basis_mismatch")
         return RouteDecision(
             PARTIAL,
             requested,

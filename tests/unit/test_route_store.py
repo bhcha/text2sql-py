@@ -193,7 +193,10 @@ def test_apply_needs_yes(root, capsys):
     code, lines, _ = cli(capsys, "route-apply")
     assert code == 3
     assert lines[0] == "harness.toml에 더할 글(프로필 p3-claude, 있는 프로필, 경로 single):"
-    assert lines[-1] == "승인하면 --yes를 붙여 다시 실행: t2s route-apply --yes"
+    assert (
+        lines[-1]
+        == "승인하면 --yes를 붙여 다시 실행: t2s route-apply --harness 20261121-bird-minidev-000001-harness --candidate 20261121-bird-minidev-000001-single --profile p3-claude --yes"
+    )
     assert hashlib.sha256((root / "harness.toml").read_bytes()).hexdigest() == digest
     code, lines, _ = cli(capsys, "route-apply", "--yes")
     assert code == 0 and lines[-1].startswith("harness.toml에 썼습니다(프로필 p3-claude, route = single)")
@@ -219,3 +222,62 @@ def test_apply_refuses_unusable_or_held(root, capsys):
     code, _, err = cli(capsys, "route-apply", "--profile", "p3-ref", "--yes")
     assert code == 1 and "참조 프로필 p3-ref에는 쓰지 않습니다" in err
     assert tomllib.loads((root / "harness.toml").read_text()) == tomllib.loads(TOML)
+
+
+def test_apply_hint_names_runs_and_profile(root, capsys):
+    h, c = "20261121-bird-minidev-000001-harness", "20261121-bird-minidev-000001-single"
+    digest = hashlib.sha256((root / "harness.toml").read_bytes()).hexdigest()
+    code, lines, _ = cli(capsys, "route-apply", "--profile", "mine")
+    assert code == 3 and lines[0] == "harness.toml에 더할 글(프로필 mine, 새 프로필, 경로 single):"
+    hint = lines[-1]
+    assert f"--harness {h}" in hint and f"--candidate {c}" in hint and "--profile mine --yes" in hint
+    assert hashlib.sha256((root / "harness.toml").read_bytes()).hexdigest() == digest
+    prefix = "승인하면 --yes를 붙여 다시 실행: t2s "
+    assert hint.startswith(prefix)
+    code, lines, err = cli(capsys, *hint.removeprefix(prefix).split())
+    assert code == 0, err
+    assert lines[-1].startswith("harness.toml에 썼습니다(프로필 mine, route = single)")
+    profiles = tomllib.loads((root / "harness.toml").read_text())["profiles"]
+    assert profiles["mine"]["route"] == "single" and profiles["mine"]["route_basis"] == [basis()]
+    assert "route" not in profiles["p3-claude"]
+
+
+def test_choose_profile_rejects_other_model_profile():
+    profiles = tomllib.loads(TOML)["profiles"]
+    terra = {**LLM, "backend": "codex-cli", "model": "gpt-5.6-terra"}
+    for llm in (terra, {**LLM, "reasoning_effort": "high"}):
+        with pytest.raises(S.StoreError, match="p3-claude"):
+            S.choose_profile(profiles, llm, "p3-claude")
+    assert S.choose_profile(profiles, LLM, "p3-claude") == ("p3-claude", False)
+    mine = {**profiles, "mine": {"backend": "claude-code", "model": "claude-opus-5-5"}}  # 추론 단계 없음은 medium
+    assert S.choose_profile(mine, LLM, "mine") == ("mine", False)
+
+
+def test_apply_partial_requires_measured_overrides(root, capsys):
+    h, c = "20261121-bird-minidev-000001-harness", "20261121-bird-minidev-000001-single"
+    measured = '{"example_rows":0,"value_search":false}'
+    b = {**basis(route="partial"), "overrides": measured}
+    R.write_json_atomic(
+        R.judgment_path(root / "runs", h, c), {"usable": True, "reasons": [], "route": "partial", "basis": b}
+    )
+    toml = root / "harness.toml"
+
+    def with_table(lines):
+        return TOML.replace("[profiles.session]", f"[profiles.p3-claude.pipeline]\n{lines}\n\n[profiles.session]")
+
+    # (a) pipeline 표가 없는 프로필
+    code, _, err = cli(capsys, "route-apply", "--yes")
+    assert code == 1 and "쓰지 않음: partial 판정은" in err and toml.read_text(encoding="utf-8") == TOML
+    # (b) pipeline 표가 다른 프로필
+    other = with_table("example_rows = 1\nvalue_search = false")
+    toml.write_text(other, encoding="utf-8")
+    code, _, err = cli(capsys, "route-apply", "--yes")
+    assert code == 1 and "쓰지 않음: partial 판정은" in err and toml.read_text(encoding="utf-8") == other
+    # (c) 같은 표
+    toml.write_text(with_table("value_search = false\nexample_rows = 0"), encoding="utf-8")
+    code, lines, err = cli(capsys, "route-apply", "--yes")
+    assert code == 0, err
+    assert lines[-1].startswith("harness.toml에 썼습니다(프로필 p3-claude, route = partial)")
+    prof = tomllib.loads(toml.read_text(encoding="utf-8"))["profiles"]["p3-claude"]
+    assert prof["route"] == "partial" and prof["pipeline"] == {"value_search": False, "example_rows": 0}
+    assert prof["route_basis"][-1]["overrides"] == measured

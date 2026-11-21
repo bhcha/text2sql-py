@@ -5,6 +5,7 @@ route-apply는 하네스 run 폴더의 경로 판정 파일(t2s route-judge가 �
 
 from __future__ import annotations
 
+import json
 import os
 import platform
 import re
@@ -311,6 +312,14 @@ def cmd_route_apply(args, config: Config, state: State) -> int:
     try:
         profiles = tomllib.loads(text).get("profiles", {})
         name, new = route_store.choose_profile(profiles, llm, args.profile)
+        if route == "partial":
+            table = None if new else profiles[name].get("pipeline")
+            if not isinstance(table, dict) or basis.get("overrides") != json.dumps(
+                table, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+            ):
+                raise route_store.StoreError(
+                    f"partial 판정은 측정한 pipeline 표와 같은 표가 있는 프로필에만 씁니다: {name}"
+                )
         plan = route_store.plan(text, profile=name, new_profile=new, llm=llm, route=route, basis=basis)
     except (route_store.StoreError, ValueError) as e:
         err(f"쓰지 않음: {e}")
@@ -319,7 +328,10 @@ def cmd_route_apply(args, config: Config, state: State) -> int:
     for line in plan.shown:
         out(f"  {line}")
     if not args.yes:
-        out("승인하면 --yes를 붙여 다시 실행: t2s route-apply --yes")
+        out(
+            "승인하면 --yes를 붙여 다시 실행: "
+            f"t2s route-apply --harness {h_id} --candidate {c_id} --profile {name} --yes"
+        )
         return EXIT_NEEDS_APPROVAL
     route_store.write(toml_path, plan.text)
     out(

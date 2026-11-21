@@ -213,3 +213,71 @@ def test_resume_of_pair_run_ignores_partner(root, capsys, monkeypatch):
     code, lines, err = cli(capsys, "resume", "--run-id", ids[1])
     assert code == 0, err
     assert any(x.startswith(f"시작: {ids[1]}") for x in lines)
+
+
+def test_route_judge_halted_run_not_sent_to_scoring(root, capsys, monkeypatch):
+    code, _, _, sp = _start(root, capsys, monkeypatch, "--no-score")
+    ids = [cmd[-1] for cmd, _ in sp.calls]
+    _work_both(root, ids)
+    capsys.readouterr()
+    mpath = root / "runs" / ids[0] / "manifest.json"
+    R.write_json_atomic(mpath, {**R.read_json(mpath), "halted": {"reason": "usage_limit"}})
+    code, lines, _ = cli(capsys, "route-judge")
+    assert code == 1 and len(lines) == 1, lines
+    assert lines[0].startswith(f"멈춘 run입니다: {ids[0]}") and f"t2s resume --run-id {ids[0]}" in lines[0]
+    assert not any("t2s score" in x for x in lines)
+    assert not (root / "runs" / ids[0] / "score.json").exists()
+    assert not R.judgment_path(root / "runs", ids[0], ids[1]).exists()
+
+
+def test_route_judge_running_run_not_sent_to_scoring(root, capsys, monkeypatch):
+    code, _, _, sp = _start(root, capsys, monkeypatch, "--no-score")
+    ids = [cmd[-1] for cmd, _ in sp.calls]
+    _work_both(root, ids)
+    capsys.readouterr()
+    R.update_control(root / "runs" / ids[0], state="running", pid=os.getpid())
+    code, lines, _ = cli(capsys, "route-judge")
+    assert code == 1 and lines == [f"아직 도는 중입니다: {ids[0]} (t2s route-status)"]
+    assert not any("t2s score" in x for x in lines)
+    assert not (root / "runs" / ids[0] / "score.json").exists()
+    # 죽은 pid면 도는 중으로 보지 않고 채점 전 안내로 간다
+    R.update_control(root / "runs" / ids[0], state="running", pid=None, worker_pid=None)
+    code, lines, _ = cli(capsys, "route-judge")
+    assert code == 1 and lines == [f"아직 채점 전입니다: t2s score --run {ids[0]}"]
+
+
+def test_route_start_refuses_dirty_full_measurement(root, capsys, monkeypatch):
+    f = run_cmds._dirty_full_measurement
+    assert f("codex-cli", 500, 500, {"dirty": True}) is True
+    assert f("codex-cli", 500, 500, {"dirty": None}) is True
+    assert f("codex-cli", 500, 500, {"dirty": False}) is False
+    assert f("codex-cli", 3, 500, {"dirty": True}) is False
+    assert f("fake", 500, 500, {"dirty": True}) is False
+    monkeypatch.setattr(run_cmds.batch, "git_info", lambda root: {"head": "h", "src_tree": "t", "dirty": True})
+    seen = []
+    monkeypatch.setattr(run_cmds, "_dirty_full_measurement", lambda *a: seen.append(a) or True)
+    runs = root / "runs"
+    before = sorted(p.name for p in runs.iterdir()) if runs.exists() else []
+    code, lines, err, sp = _start(root, capsys, monkeypatch)
+    assert code == 1 and "미커밋 코드 상태에서는 전체 측정을 시작하지 않습니다" in err and "--limit" in err
+    assert sp.calls == [] and not any(x.startswith("시작: ") for x in lines)
+    assert seen and seen[0][0] == "fake" and seen[0][1] == seen[0][2] and seen[0][3]["dirty"] is True
+    assert (sorted(p.name for p in runs.iterdir()) if runs.exists() else []) == before
+
+
+def test_route_judge_refuses_different_model_before_comparing(root, capsys, monkeypatch):
+    code, _, _, sp = _start(root, capsys, monkeypatch)
+    ids = [cmd[-1] for cmd, _ in sp.calls]
+    assert _work_both(root, ids) == {ids[0]: 0, ids[1]: 0}
+    capsys.readouterr()
+    jpath = R.judgment_path(root / "runs", ids[0], ids[1])
+    for field, change in (("llm", {"model": "other-model"}), ("git", {"head": "0" * 40})):
+        mpath = root / "runs" / ids[1] / "run.json"
+        original = R.read_json(mpath)
+        R.write_json_atomic(mpath, {**original, field: {**(original.get(field) or {}), **change}})
+        code, lines, _ = cli(capsys, "route-judge", "--harness", ids[0], "--candidate", ids[1])
+        assert code == 1, lines
+        assert any("견주지 않는다" in x for x in lines)
+        assert not any(x.startswith(("경로 판정:", "새로 맞음")) for x in lines)
+        assert not jpath.exists()
+        R.write_json_atomic(mpath, original)
