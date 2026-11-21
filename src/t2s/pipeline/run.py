@@ -9,6 +9,12 @@ DB 지문 전후 비교, 읽기 감시, 최종 SQL 표시는 부르는 쪽(ask·
 - hint=글(evidence used): 같은 글을 세 자리에 글자 그대로 넣는다. 키워드 힌트 칸(CHESS HINT), 주석의 지식
   (DAMO `-- External Knowledge: <글>`), 고치기 지식 칸(MAC 고치기 템플릿의 evidence 칸에 해당). 빈 글이면 빈 글 그대로.
   넣은 글 안의 중괄호는 다시 바꾸지 않는다.
+
+단계 끄기(프로필별 부분 덮어쓰기, route = "partial"): `value_search=False`면 ② 키워드 호출, ③ 값 검색, ④ 값 줄을 모두
+건너뛰고(세 단계 기록은 `{"skipped": true}`) ⑤에 스키마 글을 그대로 넘긴다. `column_profile=False`면 ⑤를 건너뛰고 ④의 글을
+생성·고치기 프롬프트에 쓴다. `refine_rounds=0`이면 ⑩ ⑪을 돌지 않는다(execute 기록은 `{"skipped": true}`, 최종 실행은
+부르는 쪽이 한 번 한다. refine.refine_loop는 0회를 받지 않으므로 여기서 건너뛴다). 기본값(둘 다 켬)의 갈래는 이 칸을 두기 전과 같은 호출 순서·같은 글을 낸다
+(tests/unit/test_prompt_regression.py, tests/unit/test_stage_switches.py).
 """
 
 from __future__ import annotations
@@ -32,6 +38,9 @@ if TYPE_CHECKING:
     from t2s.prep.embed import Embedder
 
 HINT_RULES_VERSION = "1.0.0"  # 힌트를 넣는 자리(키워드 힌트 칸, 주석 지식, 고치기 지식 칸)와 넣는 법
+SKIPPED = {"skipped": True}  # 끈 단계의 기록
+BOOL_FIELDS = ("value_search", "column_profile")
+COUNT_FIELDS = ("example_rows", "refine_rounds")  # 0 이상의 정수
 
 
 @dataclass(frozen=True)
@@ -41,6 +50,8 @@ class PipelineSettings:
     exec_timeout_seconds: float = 120
     refine_rounds: int = 3
     keep_rows: int = 5
+    value_search: bool = True  # False면 ②③④를 건너뜀
+    column_profile: bool = True  # False면 ⑤를 건너뜀
 
     @classmethod
     def from_mapping(cls, raw: Mapping) -> PipelineSettings:
@@ -52,7 +63,18 @@ class PipelineSettings:
         unknown = set(raw) - known - {"refine_template"}
         if unknown:
             raise ValueError(f"[pipeline]에 모르는 칸이 있습니다: {', '.join(sorted(unknown))}")
+        check_values(raw)
         return cls(**{k: raw[k] for k in known if k in raw})
+
+
+def check_values(raw: Mapping) -> None:
+    """단계 끄기 칸의 형과 범위. 참거짓 칸은 bool만, 개수 칸은 0 이상의 정수만(bool 제외) 받는다."""
+    for k in BOOL_FIELDS:
+        if k in raw and not isinstance(raw[k], bool):
+            raise ValueError(f"{k}는 true 또는 false입니다: {raw[k]!r}")
+    for k in COUNT_FIELDS:
+        if k in raw and (isinstance(raw[k], bool) or not isinstance(raw[k], int) or raw[k] < 0):
+            raise ValueError(f"{k}는 0 이상의 정수입니다: {raw[k]!r}")
 
 
 class LlmCallFailed(Exception):
@@ -144,127 +166,137 @@ def answer(
             },
         )
 
-        # ② 키워드(읽지 못하면 같은 프롬프트로 다시, 모두 keyword_attempts번)
-        t0 = time.monotonic()
-        kw_prompt = keywords.keywords_prompt(question, "" if hint is None else hint)
-        items: list | None = None
-        why: str | None = None
-        attempts = 0
-        kw_calls: list[int] = []
-        try:
-            for attempt in range(1, settings.keyword_attempts + 1):
-                attempts = attempt
-                box: list[keywords.KeywordParse] = []
-
-                def parse_kw(text: str, box: list = box) -> bool:
-                    box.append(keywords.parse_keywords(text))
-                    return box[-1].ok
-
-                _, k = ask("extract_keywords", kw_prompt, attempt, parse_kw)
-                kw_calls.append(k)
-                if box and box[-1].ok:
-                    items = box[-1].items
-                    break
-                why = box[-1].why if box else "no response"
-        finally:
-            kws = items if items is not None else []
-            non_string = sum(1 for x in kws if not isinstance(x, str))
-            trace.set_stage(
-                "extract_keywords",
-                {
-                    "calls": kw_calls,
-                    "keywords": None if items is None else [repr(x) for x in kws],
-                    "ok": items is not None,
-                    "attempts": attempts,
-                    "why": None if items is not None else why,
-                    "non_string": non_string,
-                    "prompt_chars": len(kw_prompt),
-                },
-            )
-            trace.timing["keywords_ms"] = ms(t0)
-
-        # ③ 값 검색(글이 아닌 키워드가 하나라도 있으면 건너뛴다. 원본은 .strip()에서 예외가 나 값이 붙지 않는다)
-        t0 = time.monotonic()
-        if non_string == 0:
+        if settings.value_search:
+            # ② 키워드(읽지 못하면 같은 프롬프트로 다시, 모두 keyword_attempts번)
+            t0 = time.monotonic()
+            kw_prompt = keywords.keywords_prompt(question, "" if hint is None else hint)
+            items: list | None = None
+            why: str | None = None
+            attempts = 0
+            kw_calls: list[int] = []
             try:
-                vs = value_search.similar_entities(assets.index, [str(x) for x in kws], cached)
-            except EmbeddingFailed:
-                raise
-            except Exception as e:
-                raise ValueSearchFailed(f"값 검색 실패: {type(e).__name__}: {e}") from e
-            per_column = vs.per_column
+                for attempt in range(1, settings.keyword_attempts + 1):
+                    attempts = attempt
+                    box: list[keywords.KeywordParse] = []
+
+                    def parse_kw(text: str, box: list = box) -> bool:
+                        box.append(keywords.parse_keywords(text))
+                        return box[-1].ok
+
+                    _, k = ask("extract_keywords", kw_prompt, attempt, parse_kw)
+                    kw_calls.append(k)
+                    if box and box[-1].ok:
+                        items = box[-1].items
+                        break
+                    why = box[-1].why if box else "no response"
+            finally:
+                kws = items if items is not None else []
+                non_string = sum(1 for x in kws if not isinstance(x, str))
+                trace.set_stage(
+                    "extract_keywords",
+                    {
+                        "calls": kw_calls,
+                        "keywords": None if items is None else [repr(x) for x in kws],
+                        "ok": items is not None,
+                        "attempts": attempts,
+                        "why": None if items is not None else why,
+                        "non_string": non_string,
+                        "prompt_chars": len(kw_prompt),
+                    },
+                )
+                trace.timing["keywords_ms"] = ms(t0)
+
+            # ③ 값 검색(글이 아닌 키워드가 하나라도 있으면 건너뛴다. 원본은 .strip()에서 예외가 나 값이 붙지 않는다)
+            t0 = time.monotonic()
+            if non_string == 0:
+                try:
+                    vs = value_search.similar_entities(assets.index, [str(x) for x in kws], cached)
+                except EmbeddingFailed:
+                    raise
+                except Exception as e:
+                    raise ValueSearchFailed(f"값 검색 실패: {type(e).__name__}: {e}") from e
+                per_column = vs.per_column
+                trace.set_stage(
+                    "retrieve_entity",
+                    {
+                        "search_strings": len(vs.packets),
+                        "jaccard_hits": vs.jaccard_hits,
+                        "after_edit": vs.after_edit,
+                        "after_embedding": vs.after_embedding,
+                        "columns": sum(len(cols) for _, cols in per_column),
+                        "values": _count_values(per_column),
+                        "per_column": _plain_per_column(per_column),
+                        "error": None,
+                        "min_margin": vs.min_margin,
+                        "near": vs.near,
+                        "comparisons": vs.comparisons,
+                        "margin_counts": vs.margin_counts,
+                    },
+                )
+            else:
+                per_column = []
+                trace.set_stage(
+                    "retrieve_entity",
+                    {
+                        "search_strings": 0,
+                        "jaccard_hits": 0,
+                        "after_edit": 0,
+                        "after_embedding": 0,
+                        "columns": 0,
+                        "values": 0,
+                        "per_column": [],
+                        "error": f"글이 아닌 키워드 {non_string}개(원본은 .strip()에서 예외가 나 값 검색을 하지 않는다)",
+                        "min_margin": None,
+                        "near": [],
+                        "comparisons": 0,
+                        "margin_counts": {},
+                    },
+                )
+            trace.timing["values_ms"] = ms(t0)
+
+            # ④ 값 줄
+            attached = attach.attach_values(schema.tables, schema.blocks, per_column, assets.values)
             trace.set_stage(
-                "retrieve_entity",
+                "attach_values",
                 {
-                    "search_strings": len(vs.packets),
-                    "jaccard_hits": vs.jaccard_hits,
-                    "after_edit": vs.after_edit,
-                    "after_embedding": vs.after_embedding,
-                    "columns": sum(len(cols) for _, cols in per_column),
-                    "values": _count_values(per_column),
-                    "per_column": _plain_per_column(per_column),
-                    "error": None,
-                    "min_margin": vs.min_margin,
-                    "near": vs.near,
-                    "comparisons": vs.comparisons,
-                    "margin_counts": vs.margin_counts,
+                    "tables": len(attached.attached),
+                    "columns": sum(len(cols) for _, cols in attached.attached),
+                    "values": _count_values(attached.attached),
+                    "attached": _plain_per_column(attached.attached),
+                    "chars_added": attached.chars_added,
+                    "schema_chars": len(attached.text),
+                    "unmatched_tables": attached.unmatched_tables,
                 },
             )
         else:
-            per_column = []
-            trace.set_stage(
-                "retrieve_entity",
-                {
-                    "search_strings": 0,
-                    "jaccard_hits": 0,
-                    "after_edit": 0,
-                    "after_embedding": 0,
-                    "columns": 0,
-                    "values": 0,
-                    "per_column": [],
-                    "error": f"글이 아닌 키워드 {non_string}개(원본은 .strip()에서 예외가 나 값 검색을 하지 않는다)",
-                    "min_margin": None,
-                    "near": [],
-                    "comparisons": 0,
-                    "margin_counts": {},
-                },
-            )
-        trace.timing["values_ms"] = ms(t0)
-
-        # ④ 값 줄
-        attached = attach.attach_values(schema.tables, schema.blocks, per_column, assets.values)
-        trace.set_stage(
-            "attach_values",
-            {
-                "tables": len(attached.attached),
-                "columns": sum(len(cols) for _, cols in attached.attached),
-                "values": _count_values(attached.attached),
-                "attached": _plain_per_column(attached.attached),
-                "chars_added": attached.chars_added,
-                "schema_chars": len(attached.text),
-                "unmatched_tables": attached.unmatched_tables,
-            },
-        )
+            for sid in ("extract_keywords", "retrieve_entity", "attach_values"):
+                trace.set_stage(sid, dict(SKIPPED))
+            attached = attach.attach_values(schema.tables, schema.blocks, [], assets.values)
 
         # ⑤ 프로파일 줄
-        profiled = attach.attach_profile(schema.tables, attached.blocks, assets.profile)
-        trace.set_stage(
-            "attach_profile",
-            {
-                "tables": sum(1 for n in profiled.line_chars.values() if n > 0),
-                "line_chars": dict(profiled.line_chars),
-                "chars_added": profiled.chars_added,
-                "schema_chars": len(profiled.text),
-                "profile_sha256": assets.manifest.get("files", {}).get("profile.json", {}).get("sha256"),
-            },
-        )
+        if settings.column_profile:
+            profiled = attach.attach_profile(schema.tables, attached.blocks, assets.profile)
+            schema_for_model = profiled.text
+            trace.set_stage(
+                "attach_profile",
+                {
+                    "tables": sum(1 for n in profiled.line_chars.values() if n > 0),
+                    "line_chars": dict(profiled.line_chars),
+                    "chars_added": profiled.chars_added,
+                    "schema_chars": len(profiled.text),
+                    "profile_sha256": assets.manifest.get("files", {}).get("profile.json", {}).get("sha256"),
+                },
+            )
+        else:
+            schema_for_model = attached.text
+            trace.set_stage("attach_profile", dict(SKIPPED))
 
         # ⑥ ⑦ 주석·결합
         if hint is None:
             trace.set_stage("comment", {"knowledge": "None"})
         else:
             trace.set_stage("comment", {"knowledge": "given", "chars": len(hint), "sha256": sha256_text(hint)})
-        gen_prompt = prompt.combined_prompt(profiled.text, question, hint, source.dialect.name)
+        gen_prompt = prompt.combined_prompt(schema_for_model, question, hint, source.dialect.name)
         trace.set_stage(
             "prompt",
             {"chars": len(gen_prompt), "sha256": sha256_text(gen_prompt), "cot": prompt.COT in gen_prompt},
@@ -304,6 +336,10 @@ def answer(
         if extracted.sql is None:
             trace.exception = extracted.exception
             trace.sql = None
+        elif settings.refine_rounds == 0:
+            # 고치기 끔: ⑩ ⑪을 돌지 않는다(최종 실행은 부르는 쪽이 한 번 한다)
+            trace.set_stage("execute", dict(SKIPPED))
+            trace.sql = extracted.sql
         else:
             # ⑩ ⑪ 실행·판정·고치기
             t0 = time.monotonic()
@@ -313,7 +349,7 @@ def answer(
                     extracted.sql,
                     question=question,
                     knowledge="" if hint is None else hint,
-                    schema_text=profiled.text,
+                    schema_text=schema_for_model,
                     tables=schema.tables,
                     source=source,
                     ask=ask,
