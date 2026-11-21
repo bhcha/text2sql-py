@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-CALL_NAMES = ("extract_keywords", "generate_sql", "refine_sql")
+CALL_NAMES = ("extract_keywords", "generate_sql", "refine_sql", "single_sql")  # single_sql: 단일 호출 경로
 # 이어 돌 때 다시 도는 실패 종류(TS benchmarks/benchkit/run.ts RETRYABLE_EXCEPTIONS)
 RETRYABLE_FAILURES = ("CodexExit", "CodexUsageLimit", "ClaudeExit", "ClaudeUsageLimit")
 

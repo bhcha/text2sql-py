@@ -25,7 +25,7 @@ def test_sha256_text_is_utf8():
 
 
 def test_call_names():
-    assert CALL_NAMES == ("extract_keywords", "generate_sql", "refine_sql")
+    assert CALL_NAMES == ("extract_keywords", "generate_sql", "refine_sql", "single_sql")
     assert set(DEFAULT_RESPONSES) == set(CALL_NAMES)
 
 

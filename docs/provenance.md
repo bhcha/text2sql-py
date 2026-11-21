@@ -16,6 +16,7 @@
 | DAMO-ConvAI | https://github.com/AlibabaResearch/DAMO-ConvAI | `faf754671f5b850e1b4d1ff870db37a6a2480df6` | MIT, Copyright (c) 2022 Alibaba Research (`LICENSES/MIT-DAMO-ConvAI.txt`) | 아래 5절 둘째 문구 |
 | MAC-SQL | https://github.com/wbbeyourself/MAC-SQL | `31a9df5e0d520be4769be57a4b9022e5e34a14f4` | 표기 없음 | 위 커밋의 저장소 내용만 보았다. 그 뒤 커밋에 라이선스 표기가 생겼는지는 미확인 |
 | 스터디 저장소 | jenn25ng/text-to-sql-study (GitHub 비공개, gh 로그인과 접근 권한 필요) | `290ff9bee2d8ac70e01932857911f025a377c1ba` | 표기 없음(위 커밋의 저장소 맨 위에 LICENSE 파일이 없음을 확인) | 채점 스크립트 `scripts/run_baseline.py`를 사용자 판단으로 복사 후 수정했다. 저장소에는 쓰지 않고 `gh api`로 읽기만 했다 |
+| text2sql-model-baseline | 같은 작성자의 로컬 형제 저장소(원격 주소 미확인) | `df10b12` | 표기 없음(최상위 LICENSE 파일 없음을 확인). 커밋 작성자가 이 저장소와 같은 사용자(작성자 이름으로 확인). 라이선스 조건은 미확인 | 단일 호출 틀·응답 읽기 규칙을 복사 후 수정(2026-11-21 더함, 끝 단락) |
 
 ## 3. 단계별 출처 표
 
@@ -47,6 +48,7 @@
 | evidence used: ⑥ 주석의 지식 | DAMO-ConvAI `bird/llm/src/gpt_request.py` `generate_comment_prompt` 104행, `collect_response_from_gpt` 179-180행, `knowledge_package` 208-213행, `decouple_question_schema` 218-225행, `--use_knowledge` 261-264행 | `src/t2s/pipeline/prompt.py`(바뀐 코드 없음, 지식 인자에 글을 넘김), `src/t2s/pipeline/run.py` | 복사 후 수정한 파일의 기존 인자를 씀. evidence used면 `-- External Knowledge: <글>`, not_used면 `None` 그대로 | MIT 고지 유지. `prompt.py` 머리말에 적음 |
 | evidence used: ⑪ 고치기 지식 칸 | MAC-SQL `core/const.py` 579행(고치기 템플릿의 evidence 칸), `core/agents.py` `Refiner._refine` 723행·731행, `Refiner.talk` 753-756행 | `src/t2s/pipeline/refine.py` | 재구현(코드·문장 복사 없음). 새로 쓴 템플릿의 `{knowledge}` 칸에 evidence used면 evidence 글, not_used면 빈 글. 템플릿 파일은 바꾸지 않음 | 코드·문장 복사 없음. 읽은 곳은 6절 표 |
 | evidence used: 공개 evidence 파일·문항 조건 잇기·run 기록 | (오픈소스 없음) | `src/t2s/fetch/public_questions.py` `build_public_hints`·`serialize_hints`·`check_hints_against_official`, `src/t2s/fetch/bird.py` `public_hints`, `src/t2s/dataset/hints.py`, `src/t2s/dataset/questions.py` `load_study_inputs(keep_conditions)`, `src/t2s/runner/guard.py` `HINT_GLOBS`, `src/t2s/runner/batch.py`, `src/t2s/cli/run_cmds.py`, `src/t2s/eval/bird.py` `check_run_evidence`, `src/t2s/eval/study.py`, `src/t2s/eval/leak_audit.py`, `src/t2s/eval/report.py` | 자체. 공개 evidence 파일은 공개 문항 파일과 같은 꼴의 규칙(위치 순서, 칸 고정, sha256 고정), Olist 문항 조건은 각 줄 앞뒤 공백만 떼고 `"; "`로 잇기 | 자체 |
+| 단일 호출 경로(route = single) | text2sql-model-baseline `baseline/prompt.py` 5-7행(틀), 10-14행(힌트 붙이기), 17-20행(응답 읽기). codex 인자는 `baseline/model.py` 32-58행과 같은 설정 | `src/t2s/pipeline/single.py`, `src/t2s/llm/codex_cli.py`(`bare`), `src/t2s/llm/select.py` `backend_for(single=True)` | 복사 후 수정. 틀·응답 읽기는 글자 그대로, 힌트 줄 이름표를 `External Knowledge:`로, 스키마를 `DataSource`에서 만들고 기록을 `Trace`로 남김. codex `bare`는 코드 복사 없이 설정 값만 같음 | 원본 저장소에 LICENSE 없음. 파일 머리말에 출처·커밋·줄·바꾼 것 |
 
 ## 4. Python판에서 달라진 동작
 
@@ -132,3 +134,5 @@ codex 하네스 기본값 바꿈(2026-11-17 더함): `T2S_CODEX_HARNESS`가 없�
 실험용 꼬리만 바꿈(2026-11-17 더함, 2026-11-21 코드 삭제): 환경변수 `T2S_GEN_BARE_TAIL=1`이면 생성 프롬프트 끝의 원본 CoT 문장과 `SELECT ` 꼬리 대신 `\nSQL: `(`BARE_TAIL`)만 붙인다. 출력 요구사항 먼저·계획 먼저에 공통으로 바뀐 것만 따로 재는 대조다. 세 실험 설정은 하나만 켤 수 있다. 켰는지는 문항 기록 `prompt` 단계 `bare_tail` 칸에 남는다.
 
 꼬리만 바꿈 결과와 파기(2026-11-17 더함): terra·medium 500문항, 같은 커밋 790bf65·같은 시간대에서 대조 254, 켬 239(새로 맞음 15·새로 틀림 30, p 0.036). 결과 열 수 평균은 1.40 → 1.42로 거의 같고, 값·행 수 쪽 틀림이 늘었다. 원본 CoT 문장과 `SELECT ` 꼬리가 점수를 받친다고 보고 이 설정은 쓰지 않기로 했다(사용자 결정). 코드는 2026-11-21 사용자 지시로 지웠다(결과는 이 기록으로만 남긴다).
+
+단일 호출 경로 되살림(2026-11-21 더함): 모델 단위 경로(`route = "single"`)를 위해 단일 호출 경로를 `src/t2s/pipeline/single.py`로 되살렸다. 틀(`SINGLE_TEMPLATE`)과 응답 읽기(앞뒤 공백을 떼고 응답 전체를 감싼 sql·sqlite·이름 없는 코드 울타리 하나만 벗김)는 형제 저장소 text2sql-model-baseline 커밋 `df10b12`의 `baseline/prompt.py` 5-7행·17-20행과 글자가 같다. 이 저장소의 배분 측정 코드(커밋 `38f2740`의 `src/t2s/pipeline/route.py`, 같은 날 지움)에 있던 부분을 거쳐 왔다. 바꾼 것은 힌트 줄 이름표 하나(`External Knowledge:`, 그 저장소는 다른 낱말을 쓴다. 생성 패키지는 그 낱말을 문자열로 갖지 않는다)와, 빈 응답을 SQL 없음으로 보는 것이다. codex 단일 호출 인자는 `bare`(환경 블록·내장 스킬 목록만 끔, codex 기본 지시는 그대로)로 그 저장소 `baseline/model.py` 32-58행과 같은 설정이다. claude-code 단일 호출은 이 저장소의 고정 시스템 프롬프트(`src/t2s/llm/claude_cli.py`)를 그대로 쓴다(사용자 결정). 그 저장소의 Claude 쪽(`baseline/claude_model.py`)은 CLI 기본 시스템 프롬프트를 쓰므로, 이 저장소의 claude 단일 호출 수치는 그 저장소 수치와 같은 조건이 아니다. 그 저장소의 라이선스 조건은 미확인이다(최상위 LICENSE 파일 없음, 커밋 작성자가 이 저장소와 같은 사용자).

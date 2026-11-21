@@ -161,3 +161,39 @@ def test_harness_default_and_none(monkeypatch):
     assert harness_flags() == ("minimal", "task")
     monkeypatch.setenv("T2S_CODEX_HARNESS", "none")
     assert harness_flags() == () and harness_args(()) == []
+
+
+def test_harness_bare_constructor(fake, tmp_path, monkeypatch):
+    """단일 호출 경로의 bare: 환경 블록·내장 스킬 목록만 끄고 기본 지시·과제 설명은 더하지 않는다."""
+    monkeypatch.delenv("T2S_CODEX_HARNESS", raising=False)
+    out = CodexBackend(SETTINGS, harness=("bare",)).call("P", tmp_path / "c", name="single_sql", attempt=1)
+    assert out.response == "SELECT 1" and out.meta["harness"] == ["bare"]
+    [entry] = read_log(fake)
+    args = entry["args"]
+    i = args.index("-s")
+    assert args[:i] == [
+        *EXPECTED[: EXPECTED.index("-s")],
+        "-c",
+        "include_environment_context=false",
+        "-c",
+        "skills.include_instructions=false",
+    ]
+    assert not any(a.startswith(("model_instructions_file=", "developer_instructions=")) for a in args)
+
+
+def test_harness_constructor_default_is_env(fake, tmp_path, monkeypatch):
+    monkeypatch.delenv("T2S_CODEX_HARNESS", raising=False)
+    out = CodexBackend(SETTINGS).call("P", tmp_path / "c", name="generate_sql", attempt=1)
+    assert out.meta["harness"] == ["minimal", "task"]
+    assert CodexBackend(SETTINGS).harness is None
+
+
+def test_harness_bare_with_minimal_refused():
+    from t2s.llm.codex_cli import harness_args
+
+    with pytest.raises(RuntimeError):
+        CodexBackend(SETTINGS, harness=("bare", "minimal"))
+    with pytest.raises(RuntimeError):
+        CodexBackend(SETTINGS, harness=("nope",))
+    with pytest.raises(RuntimeError):
+        harness_args(("bare", "minimal"))

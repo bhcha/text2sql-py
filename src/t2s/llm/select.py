@@ -221,10 +221,16 @@ def provider_name(backend: str) -> str:
     return {"codex-cli": "OpenAI", "claude-code": "Anthropic"}.get(backend, "없음(가짜 백엔드)")
 
 
-def backend_for(llm: ResolvedLlm) -> LlmBackend:
+SINGLE_CODEX_HARNESS = ("bare",)  # 단일 호출 경로의 codex 인자(형제 저장소 text2sql-model-baseline과 같은 설정)
+
+
+def backend_for(llm: ResolvedLlm, *, single: bool = False) -> LlmBackend:
+    """single=True(단일 호출 경로)면 codex는 bare 인자. claude·가짜는 경로와 상관없이 같은 인자다."""
     if llm.backend == "codex-cli":
         from t2s.llm.codex_cli import CodexBackend
 
+        if single:
+            return CodexBackend(llm.settings(), harness=SINGLE_CODEX_HARNESS)
         return CodexBackend(llm.settings())
     if llm.backend == "claude-code":
         from t2s.llm.claude_cli import ClaudeBackend

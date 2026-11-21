@@ -16,6 +16,7 @@ DEFAULT_RESPONSES: dict[str, str] = {
     "extract_keywords": '["Apple Juice", "paid"]',
     "generate_sql": "SELECT COUNT(*) FROM product",
     "refine_sql": "```sql\nSELECT COUNT(*) FROM product\n```",
+    "single_sql": "SELECT COUNT(*) FROM product",
 }
 FAIL_KINDS = {"exit": "FakeExit", "limit": "FakeUsageLimit"}
 
