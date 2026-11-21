@@ -82,3 +82,39 @@ single_seconds = 5342.6
 measured = "2026-11-21"
 cli = "codex-cli 0.170.0"
 commit = "45476c0"
+
+[profiles.gpt-5-6-luna-medium]
+backend = "codex-cli"
+model = "gpt-5.6-luna"
+reasoning_effort = "medium"
+timeout_seconds = 150
+item_timeout_seconds = 1530
+route = "harness"
+
+[[profiles.gpt-5-6-luna-medium.route_basis]]
+route = "harness"
+verdict = "harness_better"
+rule = "route-judge/1"
+backend = "codex-cli"
+model = "gpt-5.6-luna"
+reasoning_effort = "medium"
+dataset = "bird-minidev"
+dataset_id = "cc48ba16"
+evidence = "not_used"
+questions = 500
+harness_run = "20261121-bird-minidev-872f8e-harness"
+single_run = "20261121-bird-minidev-872f8e-single"
+harness_correct = 230
+single_correct = 169
+new_right = 76
+new_wrong = 15
+p = 0.0
+harness_input_tokens = 6987666
+harness_output_tokens = 173874
+single_input_tokens = 4233491
+single_output_tokens = 99683
+harness_seconds = 7287.1
+single_seconds = 4326.9
+measured = "2026-11-21"
+cli = "codex-cli 0.170.0"
+commit = "3ee46bc"
