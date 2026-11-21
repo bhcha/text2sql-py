@@ -20,6 +20,8 @@ EXIT_NEEDS_PREP = 5
 # t2s.llm.select.BACKENDS와 같다(채점 프로세스가 llm을 불러오지 않게 여기 따로 둔다. test_select가 대조한다)
 BACKENDS = ("codex-cli", "claude-code", "fake")
 EVIDENCE_MODES = ("used", "not_used")
+# t2s.pipeline.route.ROUTES와 같다(채점 프로세스가 pipeline을 불러오지 않게 여기 따로 둔다. test_route_resolve가 대조한다)
+ROUTES = ("single", "harness", "partial")
 
 
 def add_model_arguments(parser) -> None:

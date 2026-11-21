@@ -15,6 +15,9 @@ RUN_FORMAT = "t2s-run/1"
 SEPARATOR = "\t----- bird -----\t"
 FAILURE_SQL = "SELECT 1 FROM __no_sql__"  # 없는 테이블이라 늘 오류 → 0점. 빈 SQL은 정답이 0행인 문항에서 1점을 받는다
 STATUSES = ("generated", "no_sql", "exception", "not_started")
+# 모델 단위 경로. t2s.pipeline.route.ROUTES와 같다(채점 쪽이 pipeline을 불러오지 않게 여기 따로 둔다. 테스트가 대조한다)
+ROUTES = ("single", "harness", "partial")
+HARNESS_ROUTE = "harness"
 EXEC_STATUSES = ("rows", "empty", "error", "timeout")
 
 RUN_FILE = "run.json"
@@ -167,3 +170,34 @@ def update_control(run: Path, **fields) -> dict:
     data.update(fields)
     write_json_atomic(p, data)
     return data
+
+
+# ── 경로(run.json의 route 칸) ────────────────────────────
+
+
+def route_of(meta: dict | None) -> str:
+    """run.json의 적용 경로. 칸이 없는 옛 run·재채점 run은 harness."""
+    route = (meta or {}).get("route")
+    applied = route.get("applied") if isinstance(route, dict) else None
+    return applied if applied in ROUTES else HARNESS_ROUTE
+
+
+def route_label(meta: dict | None) -> str:
+    """라벨의 경로 꼬리표(`1회 실행` 뒤, `구현 Python` 앞). harness면 빈 글이라 라벨이 바뀌지 않는다."""
+    applied = route_of(meta)
+    if applied == "single":
+        return " / 경로 single(단일 호출)"
+    if applied == "partial":
+        over = ((meta or {}).get("route") or {}).get("overrides") or {}
+        text = ", ".join(f"{k}={_route_value(v)}" for k, v in over.items())
+        return f" / 경로 partial({text})"
+    return ""
+
+
+def _route_value(v) -> str:
+    return ("true" if v else "false") if isinstance(v, bool) else str(v)
+
+
+def route_warnings(meta: dict | None) -> list[str]:
+    route = (meta or {}).get("route")
+    return [str(w) for w in (route.get("warnings") or [])] if isinstance(route, dict) else []
