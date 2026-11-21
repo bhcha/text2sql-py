@@ -71,11 +71,11 @@ description: 지금 연결된 데이터셋의 문항 전체(또는 "앞 N문항�
 ## 모델 정하기 (사용자에게 인자를 묻지 않는다)
 
 1. 사용자가 이번 대화에서 모델을 말했으면 그 모델로 돈다. 말 → 인자:
-   - 오푸스, opus → `--backend claude-code --model claude-opus-5-5`
-   - 테라, terra → `--backend codex-cli --model gpt-5.6-terra`
-   - 솔, sol → `--backend codex-cli --model gpt-5.6-sol`
-   - 루나, luna → `--backend codex-cli --model gpt-5.6-luna`
-   - 아스트라, astra → `--backend codex-cli --model gpt-6-astra`
+   - 오푸스, opus → `--backend claude-code --model opus`
+   - 테라, terra → `--backend codex-cli --model terra`
+   - 솔, sol → `--backend codex-cli --model sol`
+   - 루나, luna → `--backend codex-cli --model luna`
+   - 아스트라, astra → `--backend codex-cli --model astra`
    - 그 밖의 전체 모델 이름은 그대로 `--model`에 넣는다. `claude-`로 시작하면 `--backend claude-code`, `gpt-`로 시작하면 `--backend codex-cli`.
 
    추론 단계를 말했으면(low·medium·high·xhigh·max) `--effort` 그 값, 말하지 않았으면 `--effort medium --effort-source default-medium`(추론 단계를 말하지 않았다는 표시. 이때는 아래의 모델 이름 맞추기를 하지 않는다). 조합이 gpt-5.6-terra·medium·codex-cli면 위 인자 대신 `--profile p3-ref`를 쓴다(원본 재현 조건). 이 경우들에 `--model-source conversation`을 붙인다.

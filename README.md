@@ -42,7 +42,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | `/connect <경로>` | `register <이름> --sqlite <경로>`(고지) → 승인 뒤 `--yes` → `prepare <이름>` → `use <이름>`. 이름은 말한 것, 없으면 파일 이름에서 만든다 |
 | `/text2sql <질문>` | `ask [--source <DB>] <모델 인자> "<질문>"`. 종료 코드 5면 `prepare` 뒤 한 번 더 |
 | `/runset` | `status`로 할 일을 고른 뒤 `prepare` → `run <모델 인자> [--limit N] [--questions <파일>] [--evidence used]` → (물을 때) `status` → `report`. 지금 데이터셋이 olist면 늘 `--questions data/olist/model_inputs.v0.3.json`. `--evidence used`는 사용자가 evidence(문항 조건)를 주라고 말했을 때만 |
-| `/newmodel` | `route-status`로 할 일을 고른 뒤 `prepare` → `route-start <모델 인자> [--limit N] [--questions <파일>] [--evidence used]` → (물을 때) `route-status` → `route-judge` → `route-apply`(더할 글만 보임) → 승인 뒤 `route-apply --yes` |
+| `/newmodel` | `route-status`로 할 일을 고른 뒤 `prepare` → `route-start <모델 인자> [--limit N] [--questions <파일>] [--evidence used]` → (물을 때) `route-status` → `route-judge` → `route-apply --yes`(기록할 수 있는 판정이면 묻지 않고 씀) |
 - `/runset`은 시작하고 바로 돌아온다. "진행 어때"로 상태를, 끝난 뒤 "보고"로 결과를 본다.
 - 모델은 지금 세션의 모델이 기본이다. "terra medium으로", "opus로"처럼 말하면 그 모델을 쓴다. 모델을 알 수 없으면 돌리지 않고 묻는다.
 
