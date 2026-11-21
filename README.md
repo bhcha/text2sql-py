@@ -25,6 +25,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | 3 | `/text2sql <질문>` | 지금 데이터셋에 질문 하나. BIRD면 DB 이름을 함께 말한다 | 수 초~수십 초 |
 | 4 | `/runset` | 지금 데이터셋 전체(또는 "앞 N문항만")를 돌리고, 정답이 있으면 채점·기준 비교. Olist면 평가셋 49문항을 돌리고 스터디 채점 규칙으로 잰다 | 500문항 30~70분 |
 | 따로 | `/getolist` | 스터디 Olist DB와 평가셋 v0.3(49문항)을 gh로 받고 해시를 대조, 정답은 `gold/olist/`로, 정답 설정 `gold/olist/gold.toml`을 만듦 | 받기 약 70MB |
+| 따로 | `/newmodel` | 새 모델(백엔드·모델·추론 단계)을 하네스(전체 P3)와 단일 호출 두 run으로 함께 돌리고, 위치별로 견주어 그 모델의 경로(harness·single)를 판정한 뒤 승인을 받아 `harness.toml` 프로필에 경로와 근거를 더함 | 500문항 두 run을 함께(걸리는 시간 미측정) |
 
 - `/getbird` 뒤 바로 `/runset`을 불러도 된다(스킬이 `prepare`를 먼저 돌린다). 기본 데이터셋은 없다. `/text2sql`·`/runset` 전에 `/connect bird`, `/connect olist`, `/connect <경로>` 중 하나로 데이터셋을 정해야 한다. `bird`는 데이터셋 `bird-minidev`를 가리키는 말이다.
 - `/getolist`는 받기만 한다(정답 설정 `gold/olist/gold.toml`도 이때 만든다). Olist DB를 쓰려면 `/connect olist`로 등록한다(고지 뒤 승인). 그 뒤 `/runset`이 평가셋 49문항을 돌리고 채점한다(아래 "Olist 평가셋 채점"). Olist 자료는 CC BY-NC-SA 4.0이고 스터디 용도로만 쓴다.
@@ -41,6 +42,7 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | `/connect <경로>` | `register <이름> --sqlite <경로>`(고지) → 승인 뒤 `--yes` → `prepare <이름>` → `use <이름>`. 이름은 말한 것, 없으면 파일 이름에서 만든다 |
 | `/text2sql <질문>` | `ask [--source <DB>] <모델 인자> "<질문>"`. 종료 코드 5면 `prepare` 뒤 한 번 더 |
 | `/runset` | `status`로 할 일을 고른 뒤 `prepare` → `run <모델 인자> [--limit N] [--questions <파일>] [--evidence used]` → (물을 때) `status` → `report`. 지금 데이터셋이 olist면 늘 `--questions data/olist/model_inputs.v0.3.json`. `--evidence used`는 사용자가 evidence(문항 조건)를 주라고 말했을 때만 |
+| `/newmodel` | `route-status`로 할 일을 고른 뒤 `prepare` → `route-start <모델 인자> [--limit N] [--questions <파일>] [--evidence used]` → (물을 때) `route-status` → `route-judge` → `route-apply`(더할 글만 보임) → 승인 뒤 `route-apply --yes` |
 - `/runset`은 시작하고 바로 돌아온다. "진행 어때"로 상태를, 끝난 뒤 "보고"로 결과를 본다.
 - 모델은 지금 세션의 모델이 기본이다. "terra medium으로", "opus로"처럼 말하면 그 모델을 쓴다. 모델을 알 수 없으면 돌리지 않고 묻는다.
 
@@ -65,12 +67,16 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 | `score` | 정답 설정의 채점기(BIRD 공식 채점기 또는 스터디 채점기)로 채점. BIRD는 예측 파일을 받아 채점도 한다(스터디는 종료 코드 2, 예측 파일 채점의 라벨은 `evidence 미확인`). evidence used run이면 run에 준 evidence 글이 정답 쪽 원본과 글자 그대로 같은지도 본다. `--meta-time-out`이 없으면 BIRD 30초, 스터디 10초 | `uv run t2s score --run <id>` |
 | `report` | 라벨, EX, 기준과 위치별 비교, 누설 검사 한 줄. evidence 방식이 다른 run·기준선과는 견주지 않는다 | `uv run t2s report` |
 | `leak-audit` | 프롬프트에 정답·evidence가 들어갔는지 검사(evidence used run이면 evidence는 세지 않고 빠진 위치를 센다) | `uv run t2s leak-audit --run <id>` |
+| `route-start` | 하네스(전체 P3)·단일 호출 두 run을 짝으로 만들어 분리 프로세스 둘로 함께 돌림(끝나면 각각 채점·보고, 단일 호출 run이 먼저 채점) | `uv run t2s route-start --profile p3-claude` |
+| `route-status` | 가장 최근(또는 `--pair`) 짝 두 run의 진행, 10줄 안 | `uv run t2s route-status` |
+| `route-judge` | 짝 두 run(또는 `--harness`·`--candidate`)을 위치별로 견주어 경로를 판정하고 하네스 run 폴더에 판정 파일을 씀(덮어쓰지 않음) | `uv run t2s route-judge` |
+| `route-apply` | 판정을 `harness.toml` 프로필에 더할 글을 보임. `--yes`가 있을 때만 씀(종료 코드 3 승인 필요). 소표본·가짜 백엔드·미커밋 측정·판정 보류는 거절 | `uv run t2s route-apply --yes` |
 
 `ask`·`run`은 스스로 준비하지 않는다. 자산이 없거나 낡았으면 모델을 부르기 전에 종료 코드 5로 멈추므로 `prepare`를 먼저 돌린다. 소스가 하나인 데이터셋이면 `ask`에 `--source`를 붙이지 않는다. 모델 인자가 없으면 세션 기록에서 모델을 찾고, 못 찾으면 종료 코드 2로 멈춘다. 정답이 없는 데이터셋에서 `run`은 0으로 끝나고(생성 뒤 이어 부른 채점만 4), `score`·`leak-audit`은 4다.
 
 모델 인자(`--profile`, `--backend`, `--model`, `--effort`, `--model-source`, `--effort-source`, `--session`)는 스킬이 넘기는 내부 계약이다. 손으로 칠 때는 `--profile p3-ref`(codex-cli·gpt-5.6-terra·medium), `--backend claude-code --model claude-opus-5-5`, 모델 호출 없는 시험용 `--backend fake`를 쓰면 된다.
 
-종료 코드: 0 성공, 1 실패, 2 쓰임새 오류(소스·모델을 정해야 함), 3 승인 필요(`register`), 4 정답 없음(채점 생략), 5 준비 필요(`prepare`를 먼저).
+종료 코드: 0 성공, 1 실패, 2 쓰임새 오류(소스·모델을 정해야 함), 3 승인 필요(`register`, `route-apply`), 4 정답 없음(채점 생략), 5 준비 필요(`prepare`를 먼저).
 
 ## 자기 DB에 묻기
 
@@ -84,7 +90,8 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 모두 git 밖이다.
 
 - `runs/<run_id>/`: `run.json`(시작 조건: 모델, 커밋, 판, DB 지문, evidence 방식), evidence used run이면 `hints.json`(위치별로 준 evidence 글), `control.json`(진행 상태), `run.log`, `items/<위치>/`(`record.json`, `trace.json`, 호출마다 `calls/<k>/prompt.txt`·`response.txt`·`llm-meta.json`·`cli-events.jsonl`), `records.jsonl`, `predictions.json`, `manifest.json`, 채점 뒤 `score.json`·`ex.jsonl`·`evaluator-stdout.txt`·`leak-audit.json`, 보고 뒤 `report.json`·`report.md`.
-- `runs/ask/<시각>-<16진>/`: `ask` 한 번의 `trace.json`·`ask.json`·`calls/`.
+- `run.json`의 `route` 칸: 적용 경로(`applied`: single·harness·partial), 프로필이 요청한 경로(`requested`), 정한 곳(`source`: default·profile·forced), 까닭(`reason`: session·alias·no_profile·no_route·no_basis·basis_mismatch·measured·forced), 쓴 근거 사본(`basis`), 경고(`warnings`), partial의 덮어쓴 칸(`overrides`), 짝(`pair`: route-start로 만든 run의 짝 이름·역할·상대 run). 칸이 없는 옛 run은 harness로 읽는다. `pipeline` 칸은 실제 적용한 설정이다. 짝 판정 파일은 하네스 run 폴더의 `route-judgment-<후보 run>.json`이다.
+- `runs/ask/<시각>-<16진>/`: `ask` 한 번의 `trace.json`·`ask.json`(같은 `route` 칸)·`calls/`.
 - `data/`: 받은 자료, 임베딩 모델, 자산(`data/assets/<데이터셋>/<소스>/`의 값 색인·프로파일·manifest), 공개 evidence 파일(`data/bird-minidev/hints.public.json`, 위치별 question_id와 evidence 글만, sha256 고정). 공개 evidence 파일은 evidence used run을 시작하는 프로세스만 연다(그 밖에는 읽기 감시가 막는다).
 - `gold/`: 정답이 든 파일(정답 SQL, 기대 결과, 채점 메모, 공식 문제 파일 원본)과 정답 설정, 채점 중간 파일(`gold/_work/<run_id>/`, 스터디 채점의 문항별 이유는 `detail.jsonl`). 채점(`score`·`report`·`leak-audit`)만 읽는다. 생성 쪽(`ask`·`run`)은 읽기 감시를 걸고 돌아 이 폴더를 열지 못한다.
 - `var/state.json`: 지금 바라보는 데이터셋과 등록 기록.
@@ -98,6 +105,15 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 - 원 논문·리더보드 점수와 견주지 않는다(측정 조건이 다르다).
 - Olist 라벨: `Olist 스터디 평가셋 v0.3 / SQLite / 131eaf49 / 49문제 / EX(스터디 결과 비교) / evidence not_used / 로컬 측정 / <모델>·추론 <단계>·<백엔드> / 1회 실행 / 구현 Python <커밋>`(Olist의 evidence는 문항 조건이다. 문항 조건을 준 run이면 `evidence used`). `131eaf49`는 정답 파일의 sha256 앞 8자다. 꼬리표(미커밋 코드, 소표본·점수 아님, 가짜 백엔드·점수 아님)는 BIRD와 같다. 기본 기준 run은 없고 `report --against <run>`으로 견준다. 비교 문장은 부호 검정 p만 쓰고 "49문항·1회 실행이라 낫다·못하다로 읽지 않는다"를 붙인다. 스터디 E0 점수와 같은 줄에 두지 않는다.
 - 누설 검사 한 줄이 0이 아니거나 도구 호출이 0이 아닌 run은 대표로 쓰지 않는다.
+- 경로가 전체 하네스가 아닌 run의 라벨에는 `1회 실행` 뒤에 `/ 경로 single(단일 호출)` 또는 `/ 경로 partial(<바꾼 칸=값, …>)`이 붙는다. harness run의 라벨은 그대로다. 경로가 다른 run·기준선과 견주면 "경로가 달라 재현 비교 아님"이 붙는다.
+
+## 모델 단위 경로(route)
+
+- 프로필(`[profiles.<이름>]`)에 `route = "single" | "harness" | "partial"`과 근거 배열(`[[profiles.<이름>.route_basis]]`)을 둔다. `partial`은 `[profiles.<이름>.pipeline]`의 칸(`example_rows`, `value_search`, `column_profile`, `refine_rounds`)을 공통 `[pipeline]` 위에 덮어쓴다. `value_search = false`는 키워드 호출·값 검색·값 줄을, `column_profile = false`는 프로파일 줄을, `refine_rounds = 0`은 실행·고치기 반복을 건너뛴다. 끈 단계 밖의 프롬프트는 바이트 단위로 그대로다.
+- 경로는 프로필을 이름(`--profile`)으로 골랐을 때만 따른다. 세션 모델·별칭·`--model` 전체 이름·가짜 백엔드는 늘 전체 P3다. 프로필에 경로가 없거나, 근거가 없거나, 마지막 근거의 백엔드·모델·추론 단계가 프로필과 한 글자라도 다르면 전체 P3로 돌고 그 까닭을 `run.json`에 남긴다. 근거의 CLI 판·데이터셋·evidence 조건만 다르면 경로는 그대로 쓰고 "근거가 낡았다"·"잠정 경로" 경고를 화면·`run.json`·`status`·`report`에 남긴다(자동으로 다시 재지 않는다. 다시 재려면 `/newmodel`).
+- 단일 호출 경로는 질문과 CREATE 원문만 주는 호출 하나다(틀과 응답 읽기는 형제 저장소 text2sql-model-baseline과 같다, `docs/provenance.md`). codex는 `bare` 인자(환경 블록·내장 스킬 목록만 끔), claude는 이 저장소의 고정 시스템 프롬프트를 쓴다. 밖으로 나가는 것은 질문과 CREATE 원문이다(evidence used면 문항 evidence 글 추가).
+- 판정 규칙(`route-judge/1`): h = 하네스만 맞은 위치 수, s = 후보만 맞은 위치 수. BIRD는 h − s > 13이고 p < 0.05면 harness, s − h > 13이고 p < 0.05면 후보, 그 밖(차이 없음)은 더 싸므로 후보(후보의 토큰·문항 시간이 둘 다 하네스보다 크면 harness). Olist(49문항)는 p만 보고 p ≥ 0.05면 판정 보류(기록하지 않고 전체 P3 유지). 토큰·시간은 함께 보이되 판정 조건이 아니고, 시간은 두 run을 함께 돌려 잰 값이다. 판정은 1회 실행 측정으로 정한 설정값이며 다시 재면 바뀔 수 있다.
+- 기록할 수 있는 판정: 같은 데이터셋·문항·문항 수, 소표본 아님, 가짜 백엔드 아님, 같은 백엔드·모델·추론 단계·evidence 방식, 같은 커밋이고 미커밋 아님, 멈춤 없음, 누설 0, 채점기 대조 맞음, DB 불변, 도구 호출 0, CLI 판이 두 run의 시작·끝에서 같음. `route-apply`는 근거를 배열에 더하기만 하고 참조 프로필 `p3-ref`에는 쓰지 않는다. `harness.toml`이 바뀌면 커밋하기 전의 run에는 `(미커밋 코드)`가 붙는다.
 
 ## Olist 평가셋 채점
 
