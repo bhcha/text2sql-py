@@ -13,7 +13,6 @@ DB 지문 전후 비교, 읽기 감시, 최종 SQL 표시는 부르는 쪽(ask·
 
 from __future__ import annotations
 
-import os
 import platform
 import sqlite3
 import time
@@ -32,11 +31,6 @@ from t2s.prep.embed import EmbeddingFailed
 if TYPE_CHECKING:
     from t2s.prep.embed import Embedder
 
-OUTPUT_SPEC_ENV = (
-    "T2S_GEN_OUTPUT_SPEC"  # 실험용: "1"이면 생성 프롬프트가 출력 요구사항을 먼저 적게 한다(prompt.py, 파기)
-)
-PLAN_ENV = "T2S_GEN_PLAN"  # 실험용: "1"이면 생성 프롬프트가 계획을 먼저 적게 한다(prompt.py, 파기)
-BARE_TAIL_ENV = "T2S_GEN_BARE_TAIL"  # 실험용: "1"이면 생성 프롬프트 꼬리를 `SQL: ` 한 줄로 바꾼다(prompt.py)
 HINT_RULES_VERSION = "1.0.0"  # 힌트를 넣는 자리(키워드 힌트 칸, 주석 지식, 고치기 지식 칸)와 넣는 법
 
 
@@ -90,9 +84,7 @@ def answer(
     settings: PipelineSettings | None = None,
     calls_dir: Path | None = None,
     hint: str | None = None,
-    call_offset: int = 0,
 ) -> Trace:
-    """call_offset: 호출 번호(calls/<k>/)를 이만큼 밀어 쓴다(배분 측정에서 calls/1이 배분 호출일 때 1). 기본 0."""
     settings = settings or PipelineSettings()
     started = time.monotonic()
     trace = Trace(question=question)
@@ -111,7 +103,7 @@ def answer(
         return round((time.monotonic() - t0) * 1000)
 
     def ask(name: str, text: str, attempt: int, parse) -> tuple[str, int]:
-        k = call_offset + len(trace.calls) + 1
+        k = len(trace.calls) + 1
         outcome = llm.call(
             text, Path(calls_dir) / str(k) if calls_dir is not None else None, name=name, attempt=attempt
         )
@@ -272,22 +264,10 @@ def answer(
             trace.set_stage("comment", {"knowledge": "None"})
         else:
             trace.set_stage("comment", {"knowledge": "given", "chars": len(hint), "sha256": sha256_text(hint)})
-        output_spec = os.environ.get(OUTPUT_SPEC_ENV) == "1"
-        plan = os.environ.get(PLAN_ENV) == "1"
-        bare_tail = os.environ.get(BARE_TAIL_ENV) == "1"
-        gen_prompt = prompt.combined_prompt(
-            profiled.text, question, hint, source.dialect.name, output_spec=output_spec, plan=plan, bare_tail=bare_tail
-        )
+        gen_prompt = prompt.combined_prompt(profiled.text, question, hint, source.dialect.name)
         trace.set_stage(
             "prompt",
-            {
-                "chars": len(gen_prompt),
-                "sha256": sha256_text(gen_prompt),
-                "cot": prompt.COT in gen_prompt,
-                "output_spec": output_spec,
-                "plan": plan,
-                "bare_tail": bare_tail,
-            },
+            {"chars": len(gen_prompt), "sha256": sha256_text(gen_prompt), "cot": prompt.COT in gen_prompt},
         )
 
         # ⑧ 모델 호출

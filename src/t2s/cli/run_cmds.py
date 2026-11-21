@@ -38,7 +38,6 @@ from t2s.datasource.base import DataSourceError
 from t2s.datasource.factory import open_source
 from t2s.llm import select
 from t2s.pipeline import refine
-from t2s.pipeline import route as route_rules
 from t2s.pipeline.run import PipelineSettings
 from t2s.pipeline.value_search import CachedEmbedder
 from t2s.prep import assets, embed
@@ -325,8 +324,6 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
         "started_at": batch.now(),
         "command": list(sys.argv),
     }
-    if llm.strategy == batch.ROUTE:
-        run_meta["route"] = route_rules.route_meta()
     R.write_json_atomic(run / R.RUN_FILE, run_meta)
     R.write_json_atomic(
         run / R.CONTROL_FILE,

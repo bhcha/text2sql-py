@@ -48,7 +48,6 @@ class ResolvedLlm:
     model_source: str
     effort_source: str
     session_evidence: dict = field(default_factory=dict)
-    strategy: str = "p3"  # p3 | route(배분 측정: 이 모델이 배분자, 프로필의 strategy 칸)
 
     def settings(self) -> LlmSettings:
         return LlmSettings(self.backend, self.model, self.reasoning_effort, self.timeout_seconds)
@@ -107,9 +106,7 @@ def codex_config(home: Path) -> dict[str, str | None]:
     }
 
 
-def _named(
-    backend, model, effort, timeouts, profile, model_source, effort_source, evidence, strategy="p3"
-) -> ResolvedLlm:
+def _named(backend, model, effort, timeouts, profile, model_source, effort_source, evidence) -> ResolvedLlm:
     if profile is None and (backend, model, effort) == REFERENCE:
         profile = REFERENCE_PROFILE
     return ResolvedLlm(
@@ -122,7 +119,6 @@ def _named(
         model_source=model_source,
         effort_source=effort_source,
         session_evidence=evidence,
-        strategy=strategy,
     )
 
 
@@ -158,7 +154,6 @@ def select_model(
                 model_source or "conversation",
                 effort_source or "conversation",
                 {},
-                str(p.get("strategy", "p3")),
             )
     transcript = transcript_model(env, cwd, home)
     evidence: dict = {"transcript_model": transcript, "claude_effort_env": env.get("CLAUDE_EFFORT")}

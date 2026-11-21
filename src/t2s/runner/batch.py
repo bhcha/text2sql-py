@@ -24,9 +24,8 @@ from t2s.dataset.questions import PublicQuestion
 from t2s.datasource.base import DataSource
 from t2s.datasource.factory import open_source
 from t2s.llm import _proc
-from t2s.llm.base import LlmBackend, LlmSettings, is_usage_limit, usage_totals
+from t2s.llm.base import LlmBackend, is_usage_limit, usage_totals
 from t2s.llm.select import ResolvedLlm, backend_for
-from t2s.pipeline import route as RT
 from t2s.pipeline.run import PipelineSettings, answer
 from t2s.pipeline.trace import Trace
 from t2s.pipeline.value_search import CachedEmbedder
@@ -35,10 +34,6 @@ from t2s.runner import records as R
 
 HALT_AFTER = 5  # 사용량 한도 연속(TS HALT_AFTER)
 HALT_AFTER_FAILURES = 20  # 종류와 상관없는 모델 호출 실패 연속
-# 배분 측정(strategy route): 한도는 첫 번에, 모델 호출 실패는 5번 연속이면 멈춘다(자동 재시도로 덮지 않는다)
-ROUTE_HALT_AFTER = 1
-ROUTE_HALT_AFTER_FAILURES = 5
-ROUTE = "route"
 CALL_FAILURE_SUFFIXES = ("Exit", "Timeout", "UsageLimit")
 VERSION_PACKAGES = ("numpy", "onnxruntime", "tokenizers")
 
@@ -138,7 +133,6 @@ class RunContext:
     _assets: dict[str, assets.LoadedAssets] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
     _shared_backend: LlmBackend | None = None
-    _route_backends: dict[str, LlmBackend] | None = None
 
     def source(self, name: str) -> DataSource:
         with self._lock:
@@ -164,28 +158,6 @@ class RunContext:
             if self._shared_backend is None:
                 self._shared_backend = backend_for(self.llm)
             return self._shared_backend
-
-    def route_backends(self) -> tuple[LlmBackend, dict[str, LlmBackend]]:
-        """(배분 백엔드, 후보 id → 백엔드). 가짜·바꿔치기 백엔드면 모두 그것으로 만든다."""
-        if self.backend_factory is not None or self.llm.backend == "fake":
-            make = self.backend_factory or (lambda: backend_for(self.llm))
-            return make(), {c.id: make() for c in RT.CANDIDATES}
-        with self._lock:
-            if self._route_backends is None:
-                from t2s.llm.codex_cli import CodexBackend
-
-                if self.llm.backend != "codex-cli":
-                    raise RuntimeError("배분 측정은 codex-cli 백엔드만 쓴다")
-                out: dict[str, LlmBackend] = {
-                    "": CodexBackend(self.llm.settings(), harness=("bare",)),
-                }
-                for c in RT.CANDIDATES:
-                    out[c.id] = CodexBackend(
-                        LlmSettings("codex-cli", c.model, c.reasoning_effort, c.timeout_seconds), harness=c.harness
-                    )
-                self._route_backends = out
-            router = self._route_backends[""]
-            return router, {k: v for k, v in self._route_backends.items() if k}
 
 
 # ── 한 문항 ──────────────────────────────────────────────
@@ -244,24 +216,6 @@ def _llm_summary(trace: Trace) -> dict:
     }
 
 
-USAGE_KEYS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")
-
-
-def usage_detail(calls) -> dict:
-    """호출 묶음의 수·시간·토큰(Codex usage 칸 그대로 더한다. usage가 없는 호출 수는 따로 센다)."""
-    out: dict = {"calls": len(calls), "elapsed_ms": sum(c.elapsed_ms for c in calls), "usage_missing": 0}
-    for k in USAGE_KEYS:
-        out[k] = 0
-    for c in calls:
-        if not isinstance(c.usage, dict):
-            out["usage_missing"] += 1
-            continue
-        for k in USAGE_KEYS:
-            v = c.usage.get(k)
-            out[k] += int(v) if isinstance(v, (int, float)) else 0
-    return out
-
-
 def run_item(q: PublicQuestion, ctx: RunContext, attempt: int) -> dict:
     """문항 하나를 돌리고 item 폴더에 trace.json과 record.json을 쓴다. record를 돌려준다."""
     started = time.monotonic()
@@ -270,50 +224,24 @@ def run_item(q: PublicQuestion, ctx: RunContext, attempt: int) -> dict:
     trace: Trace | None = None
     exception = None
     final = None
-    route: dict | None = None
     try:
         source = ctx.source(q.db_id)
         loaded = ctx.assets_for(q.db_id)
-        if ctx.llm.strategy == ROUTE:
-            router, backends = ctx.route_backends()
-            result = RT.route_answer(
-                q.question,
-                source,
-                loaded,
-                router,
-                backends,
-                embedder=ctx.embedder,
-                settings=ctx.settings,
-                calls_dir=folder / "calls",
-                hint=None if ctx.hints is None else ctx.hints[q.position],
-            )
-            trace = result.trace
-            route = {
-                "choice": result.choice,
-                "router": usage_detail(trace.calls[:1]),
-                "exec": usage_detail(trace.calls[1:]),
-                "timing": result.timing,
-                "router_response_chars": result.router_response_chars,
-            }
-        else:
-            trace = answer(
-                q.question,
-                source,
-                loaded,
-                ctx.backend(),
-                embedder=ctx.embedder,
-                settings=ctx.settings,
-                calls_dir=folder / "calls",
-                hint=None if ctx.hints is None else ctx.hints[q.position],
-            )
+        trace = answer(
+            q.question,
+            source,
+            loaded,
+            ctx.backend(),
+            embedder=ctx.embedder,
+            settings=ctx.settings,
+            calls_dir=folder / "calls",
+            hint=None if ctx.hints is None else ctx.hints[q.position],
+        )
         final = _final_exec(trace, source, ctx.settings)
     except Exception as e:  # noqa: BLE001 — 한 문항의 실패가 다른 문항을 막지 않는다
         exception = {"type": type(e).__name__, "message": str(e)[:2000]}
     if trace is not None:
-        tj = trace.to_json()
-        if route is not None:
-            tj["route"] = route
-        R.write_json_atomic(folder / R.TRACE_FILE, tj)
+        R.write_json_atomic(folder / R.TRACE_FILE, trace.to_json())
         status, reason = _status(trace)
         exception = trace.exception
         refine = trace.stages.get("refine") or {}
@@ -352,8 +280,6 @@ def run_item(q: PublicQuestion, ctx: RunContext, attempt: int) -> dict:
         "item_dir": os.path.relpath(folder, ctx.run),
         "finished_at": now(),
     }
-    if ctx.llm.strategy == ROUTE:
-        record["route"] = route
     R.write_json_atomic(folder / R.RECORD_FILE, record)
     return record
 
@@ -385,13 +311,10 @@ def run_pool(questions: list[PublicQuestion], ctx: RunContext, workers: int, att
             t = (record.get("exception") or {}).get("type")
             counters["limit"] = counters["limit"] + 1 if is_usage_limit(t) else 0
             counters["fail"] = counters["fail"] + 1 if is_call_failure(record) else 0
-            route = ctx.llm.strategy == ROUTE
-            limit_after = ROUTE_HALT_AFTER if route else HALT_AFTER
-            fail_after = ROUTE_HALT_AFTER_FAILURES if route else HALT_AFTER_FAILURES
-            if counters["limit"] >= limit_after and not ctx.stop.is_set():
+            if counters["limit"] >= HALT_AFTER and not ctx.stop.is_set():
                 ctx.halt_reason = "usage_limit"
                 ctx.stop.set()
-            elif counters["fail"] >= fail_after and not ctx.stop.is_set():
+            elif counters["fail"] >= HALT_AFTER_FAILURES and not ctx.stop.is_set():
                 ctx.halt_reason = "consecutive_failures"
                 ctx.stop.set()
 
@@ -410,13 +333,6 @@ def run_pool(questions: list[PublicQuestion], ctx: RunContext, workers: int, att
     return done
 
 
-def _halt_after(ctx: RunContext) -> int:
-    route = ctx.llm.strategy == ROUTE
-    if ctx.halt_reason == "usage_limit":
-        return ROUTE_HALT_AFTER if route else HALT_AFTER
-    return ROUTE_HALT_AFTER_FAILURES if route else HALT_AFTER_FAILURES
-
-
 def request_stop(ctx: RunContext) -> None:
     """멈춤 신호: 새 문항을 시작하지 않고, 돌고 있는 모델 CLI를 끝낸다(그 문항은 …Exit로 기록된다)."""
     if ctx.halt_reason is None:
@@ -432,10 +348,8 @@ def finalize(ctx: RunContext, questions: list[PublicQuestion], run_meta: dict, *
     """records.jsonl·predictions.json·manifest.json을 쓰고 manifest 내용을 돌려준다."""
     items = R.read_item_records(ctx.run)
     halted_note = {
-        "usage_limit": f"사용량 한도 {ROUTE_HALT_AFTER if ctx.llm.strategy == ROUTE else HALT_AFTER}회 연속",
-        "consecutive_failures": (
-            f"모델 호출 실패 {ROUTE_HALT_AFTER_FAILURES if ctx.llm.strategy == ROUTE else HALT_AFTER_FAILURES}회 연속"
-        ),
+        "usage_limit": f"사용량 한도 {HALT_AFTER}회 연속",
+        "consecutive_failures": f"모델 호출 실패 {HALT_AFTER_FAILURES}회 연속",
         "stop": "멈춤 신호",
     }.get(ctx.halt_reason or "", "")
     rows = []
@@ -494,7 +408,7 @@ def finalize(ctx: RunContext, questions: list[PublicQuestion], run_meta: dict, *
         if ctx.halt_reason is None
         else {
             "reason": ctx.halt_reason,
-            "after": _halt_after(ctx),
+            "after": HALT_AFTER if ctx.halt_reason == "usage_limit" else HALT_AFTER_FAILURES,
         },
         "resumes": control.get("resumes", []),
         "llm_totals": {
