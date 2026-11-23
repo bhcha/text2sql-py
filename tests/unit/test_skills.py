@@ -11,8 +11,6 @@ from t2s.cli.main import build_parser
 
 REPO = Path(__file__).resolve().parents[2]
 SKILLS = ("getbird", "getolist", "connect", "text2sql", "runset", "newmodel")
-CALL = re.compile(r"(?<![\w/.-])/(text2sql|runset|getbird|getolist|connect|newmodel)(?![A-Za-z0-9_-])")
-COMMAND = re.compile(r"uv run t2s ([a-z][a-z-]*)")
 FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 
@@ -206,10 +204,15 @@ def test_plugin_newmodel_and_model_rules_kept():
     text = _new("newmodel")
     assert "p3 route-apply --yes" in text and "묻지 않고 바로" in text and "기록할 수 없는 판정" in text
     assert "사용자 승인 없이" not in text and "승인했을 때만" not in text
+    assert "기록에 쓸 수 없음" in text and "p3-ref" in text and "커밋하지 않는다" in text
     for name in ("text2sql", "runset"):
         text = _new(name)
         assert "`--effort medium --effort-source default-medium`" in text, name
         assert "추론 단계를 기본값 medium으로 보고 아래의 모델 이름 맞추기를 한다" in text, name
+        assert "추론 단계를 말하지 않았으면 medium으로 보고" in text and "`--profile p3-ref`" in text, name
+        assert "맞추기를 하지 않는다" not in text, name
+    text = _new("runset")
+    assert "`p3 run`(start) → `p3 status` → `p3 report`만" in text and "말이 없으면 not_used다" in text
 
 
 def test_routing_eval_prompts():
