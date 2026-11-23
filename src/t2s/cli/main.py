@@ -10,6 +10,7 @@ import argparse
 import sys
 
 from t2s import __version__
+from t2s.session.names import METRIC_KINDS
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -149,6 +150,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("fetch", help="BIRD 자료·임베딩 모델·스터디 Olist 자료 받기")
     p.add_argument("what", choices=["bird", "model", "olist"])
+
+    p = sub.add_parser("session", help="지표 길의 세션 폴더 열기·적기·닫기(DB를 열지 않는다)")
+    ss = p.add_subparsers(dest="session_command", metavar="<open|note|close>", required=True)
+    q = ss.add_parser("open", help="세션 폴더와 session.json을 만들고 폴더 경로를 한 줄로 낸다")
+    q.add_argument("--kind", required=True, choices=METRIC_KINDS)
+    q.add_argument("--question", metavar="글", help="사용자의 질문")
+    q = ss.add_parser("note", help="session.json에 칸 하나를 더한다(시맨틱 모델의 model·version_id 같은 것)")
+    q.add_argument("name", metavar="세션")
+    q.add_argument("--key", required=True, metavar="이름")
+    q.add_argument("--value", required=True, metavar="글")
+    q = ss.add_parser("close", help="session.json에 끝 시각을 적는다")
+    q.add_argument("name", metavar="세션")
     return parser
 
 
@@ -182,6 +195,10 @@ def main(argv: list[str] | None = None) -> int:
             from t2s.cli import eval_cmds
 
             return eval_cmds.run(args)
+        if args.command == "session":
+            from t2s.cli import session_cmds
+
+            return session_cmds.run(args)
         if args.command == "fetch":
             from t2s.cli import fetch_cmd
 
