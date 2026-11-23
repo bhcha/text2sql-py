@@ -1,4 +1,4 @@
-"""text2sql-plugin에 실을 스킬 폴더를 만든다(엔진 스킬 p3-engine과 스킬 여섯).
+"""text2sql-plugin에 실을 스킬 폴더를 만든다(엔진 스킬 p3-engine과 스킬 일곱).
 
 결과: dist/engine-skills/skills/ (git 밖). 차례:
   1. 작업 트리가 깨끗한지 본다. 아니면 멈춘다(--allow-dirty면 표식에 dirty: true).
@@ -9,7 +9,7 @@
   6. 사본: harness.toml·baselines/ → assets/, AGENTS.md → references/rules.md, docs/provenance.md → references/provenance.md.
   7. 금지 파일 검사(정답 폴더 이름, data·runs·var·sessions 폴더, .env*, .venv, 캐시, DB·zip 파일, 공개 evidence 파일 이름,
      글 파일 안의 로컬 절대 경로). 하나라도 있으면 멈춘다.
-  8. 스킬 글 검사(uv run·"저장소 루트" 0건, 머리말 name = 폴더 이름, "준비"·"지킬 것" 묶음이 여섯에 같음).
+  8. 스킬 글 검사(uv run·"저장소 루트" 0건, 머리말 name = 폴더 이름, "준비"·"지킬 것" 묶음이 일곱에 같음).
   9. ENGINE.json을 쓴다(만든 시각은 넣지 않는다. 같은 커밋에서 두 번 만들면 체크섬이 같다).
  10. 결과 폴더와 체크섬을 한 줄로 낸다.
 이 스크립트는 정답 폴더와 data/를 읽지 않는다(복사할 것을 이름으로 정하고, 결과 폴더에서 이름으로 걸러 낸다).
@@ -31,7 +31,7 @@ from t2s import engine
 REPO = Path(__file__).resolve().parent.parent
 OUT = Path("dist") / "engine-skills"
 ENGINE_NAME = "p3-engine"
-SKILLS = ("connect", "getbird", "getolist", "text2sql", "runset", "newmodel")
+SKILLS = ("connect", "getbird", "getolist", "text2sql", "runset", "newmodel", "sessions")
 ENGINE_FILES = ("pyproject.toml", "uv.lock", ".python-version", "LICENSE")
 ENGINE_DIRS = ("LICENSES",)
 COPIES = (("AGENTS.md", "references/rules.md"), ("docs/provenance.md", "references/provenance.md"))
@@ -94,7 +94,8 @@ def forbidden(out: Path) -> list[str]:
         rel = path.relative_to(out).as_posix()
         name = path.name
         if path.is_dir():
-            if name in FORBIDDEN_DIRS:
+            # 스킬 폴더 자체(skills/sessions, 세션 보기 스킬)는 이름이 같아도 기록 폴더가 아니다. 그 아래의 같은 이름은 막는다
+            if name in FORBIDDEN_DIRS and rel != f"skills/{name}":
                 bad.append(f"금지 폴더 {rel}")
             continue
         if name.startswith(".env") or name in FORBIDDEN_NAMES or name.endswith(FORBIDDEN_SUFFIXES):
@@ -142,9 +143,9 @@ def skill_problems(skills: Path) -> list[str]:
         preps.add(tuple(PREP_LINE.findall(text)))
         keeps.add(keep_block(text))
     if len(preps) != 1 or () in preps:
-        bad.append("'준비' 단락이 여섯에 같지 않음")
+        bad.append("'준비' 단락이 일곱에 같지 않음")
     if len(keeps) != 1 or None in keeps:
-        bad.append("'지킬 것' 묶음이 여섯에 같지 않음")
+        bad.append("'지킬 것' 묶음이 일곱에 같지 않음")
     return bad
 
 

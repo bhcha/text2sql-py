@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -136,3 +137,81 @@ def test_does_not_write_into_run_sessions(root, capsys):
     code, _, err = cli(capsys, "session", "close", name)
     assert code == 1 and "세션이 없습니다" in err
     assert sorted(p.name for p in run.iterdir()) == ["run.json"]
+
+
+# ── sessions(목록) ──
+
+
+def _write(path: Path, data) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+
+LLM = {"backend": "fake", "model": "fake-model", "reasoning_effort": None}
+LABEL = "BIRD Mini-Dev / SQLite / ab12cd34 / 6문제 / EX / evidence not_used / 로컬 측정 / fake-model·추론 none·fake"
+
+
+def test_sessions_empty(root, capsys):
+    code, lines, _ = cli(capsys, "sessions")
+    assert code == 0 and lines == [f"세션 폴더: {root.resolve() / 'sessions'}", "세션이 없습니다"]
+    assert GUARDED == [root.resolve()]
+
+
+def test_sessions_lists_newest_first_without_reading_big_files(root, capsys):
+    s = root / "sessions"
+    ask = "2026-11-23-shop-ask-aaaaaa"
+    _write(s / ask / "ask.json", {"llm": LLM, "source": "shop", "exit_code": 0})
+    scored = "2026-11-23-mini-set-bbbbbb"
+    _write(s / scored / "run.json", {"dataset": "mini", "llm": LLM, "count": 6, "started_at": "2026-11-23T02:00:00Z"})
+    _write(s / scored / "control.json", {"state": "finished", "pid": None})
+    _write(s / scored / "report.json", {"kind": "scored", "label": LABEL, "ex_total": {"correct": 2, "denominator": 6}})
+    (s / scored / "score.json").write_text("{}", encoding="utf-8")
+    running = "2026-11-23-mini-set-cccccc-harness"
+    _write(s / running / "run.json", {"dataset": "mini", "llm": LLM, "count": 3, "evidence": {"mode": "used"}})
+    _write(s / running / "control.json", {"state": "running", "pid": os.getpid(), "phase": "generate"})
+    # 큰 파일은 읽지 않는다: 읽으려 하면 권한 오류가 나게 막아 둔다
+    big = [s / scored / "records.jsonl", s / scored / "items/0000/record.json", s / running / "records.jsonl"]
+    for f in big:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("{}", encoding="utf-8")
+        f.chmod(0)
+    old = "20261120-mini-dddddd"  # 색인에 없는 옛 이름 run
+    _write(s / old / "run.json", {"dataset": "mini", "llm": LLM, "count": 6, "started_at": "2026-11-20T00:00:00Z"})
+    _write(s / old / "control.json", {"state": "stopped"})
+    rows = [
+        (ask, "ask", "shop", "2026-11-23T01:00:00Z"),
+        (scored, "set", "mini", "2026-11-23T02:00:00Z"),
+        (running, "set", "mini", "2026-11-23T04:00:00Z"),
+    ]
+    for name, kind, ds, at in rows:
+        session_index.append(s, session_index.entry(name, kind, ds, at, {}))
+    code, lines, _ = cli(capsys, "session", "open", "--kind", "metric", "--question", "q" * 50)
+    metric = Path(lines[0]).name
+    try:
+        code, lines, _ = cli(capsys, "sessions")
+    finally:
+        for f in big:
+            f.chmod(0o644)
+    assert code == 0, lines
+    assert lines[0] == f"세션 폴더: {root.resolve() / 'sessions'}"
+    assert lines[1] == f'{metric} · metric · none · 열림 · 질문 "{"q" * 39}…"'
+    assert lines[2] == f"{running} · set · mini · 진행 중(generate) · fake-model·추론 none·fake · evidence used · 3문항"
+    assert lines[3] == f"{scored} · set · mini · 끝남(보고까지) · EX 2/6 · {LABEL}"
+    assert lines[4] == f"{ask} · ask · shop · 끝남(종료 코드 0) · fake-model·추론 none·fake · 소스 shop"
+    assert lines[5] == f"{old} · set · mini · 멈춤 · fake-model·추론 none·fake · evidence not_used · 6문항"
+    assert len(lines) == 6
+
+
+def test_sessions_shows_twenty(root, capsys):
+    s = root / "sessions"
+    for i in range(23):
+        name = f"2026-11-23-mini-ask-{i:06x}"
+        _write(s / name / "ask.json", {"llm": LLM, "source": "shop", "exit_code": 0})
+        session_index.append(s, session_index.entry(name, "ask", "mini", f"2026-11-23T00:00:{i:02d}Z", {}))
+    session_index.append(
+        s, session_index.entry("2026-11-23-mini-ask-ffffff", "ask", "mini", "2026-11-23T01:00:00Z", {})
+    )
+    code, lines, _ = cli(capsys, "sessions")
+    assert code == 0 and len(lines) == 1 + 20 + 1
+    assert lines[1] == "2026-11-23-mini-ask-ffffff · ask · mini · 폴더 없음"
+    assert lines[2].startswith("2026-11-23-mini-ask-000016 · ") and lines[-1] == "… 그 밖 4개(더 오래된 것)"

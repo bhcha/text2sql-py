@@ -1,6 +1,6 @@
 ---
 name: p3-engine
-description: P3 text-to-SQL 엔진(코드, 기본 설정, 기준선)을 담은 스킬이다. 사용자가 직접 부르지 않고, 다른 스킬(connect, getbird, getolist, text2sql, runset, newmodel)이 이 폴더의 scripts/p3 를 부른다.
+description: P3 text-to-SQL 엔진(코드, 기본 설정, 기준선)을 담은 스킬이다. 사용자가 직접 부르지 않고, 다른 스킬(connect, getbird, getolist, text2sql, runset, newmodel, sessions)이 이 폴더의 scripts/p3 를 부른다.
 when_to_use: 직접 부르지 않는다. 다른 스킬의 글이 이 폴더의 scripts/p3 를 가리킬 때만 그 스크립트를 쓴다.
 disable-model-invocation: true
 ---
@@ -17,7 +17,7 @@ disable-model-invocation: true
 
 - 작업 루트는 사용자가 일하는 폴더의 `.text2sql/`이다. `T2S_ROOT`가 있으면 그것을, 없으면 부른 폴더에서 위로 올라가며 가장 가까운 `.text2sql/`를 쓴다.
 - 없으면 "작업 폴더가 없습니다. 먼저 init"이 나오고 종료 코드 2다. 그때 `p3 init`을 돌릴지 사용자에게 한 줄로 묻는다. `init`은 부른 폴더에 `.text2sql/`를 만들고 기본 설정(`harness.toml`)과 기준선(`baselines/`)을 복사한다. 있는 파일은 덮어쓰지 않는다.
-- 받은 자료(`data/`), 정답(`gold/`), 실행 기록(`runs/`), 상태(`var/`)는 모두 `.text2sql/` 아래에 생긴다. 설정을 바꾸는 것(`route-apply`)도 `.text2sql/harness.toml`에 쓴다.
+- 받은 자료(`data/`), 정답(`gold/`), 실행 기록(세션 폴더 `sessions/`), 상태(`var/`)는 모두 `.text2sql/` 아래에 생긴다. 설정을 바꾸는 것(`route-apply`)도 `.text2sql/harness.toml`에 쓴다.
 
 ## 하지 말 것
 
@@ -34,11 +34,12 @@ disable-model-invocation: true
 - 묶음 실행: `p3 run`, `p3 status`, `p3 stop`, `p3 resume`
 - 채점과 보고: `p3 score`, `p3 report`, `p3 leak-audit`
 - 경로 판정: `p3 route-start`, `p3 route-status`, `p3 route-judge`, `p3 route-apply`
+- 세션: `p3 sessions`(최근 세션 20개), `p3 session open --kind <종류>`·`p3 session note`·`p3 session close`(지표 길의 세션 폴더)
 - 작업 폴더와 환경: `p3 init`, `p3 init --refresh`, `p3 setup`, `p3 verify`(엔진 폴더의 파일과 깔린 엔진 패키지가 엔진 표식 `ENGINE.json`과 같은지)
 
 ## 더 읽을 것 (필요할 때만)
 
 - `references/commands.md`: 명령 표 전체와 종료 코드 0~5의 뜻.
 - `references/labels.md`: 점수 라벨과 견주는 규칙.
-- `references/session-layout.md`: `.text2sql/` 아래에 무엇이 놓이는지.
+- `references/session-layout.md`: `.text2sql/` 아래에 무엇이 놓이는지와 세션 이름 규칙.
 - `references/egress.md`: 모델 제공자 서버로 무엇이 나가는지.

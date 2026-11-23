@@ -151,6 +151,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("fetch", help="BIRD 자료·임베딩 모델·스터디 Olist 자료 받기")
     p.add_argument("what", choices=["bird", "model", "olist"])
 
+    sub.add_parser("sessions", help="세션 목록(최근 것부터 20개: 이름, 종류, 데이터셋, 상태, 라벨 요약)")
+
     p = sub.add_parser("session", help="지표 길의 세션 폴더 열기·적기·닫기(DB를 열지 않는다)")
     ss = p.add_subparsers(dest="session_command", metavar="<open|note|close>", required=True)
     q = ss.add_parser("open", help="세션 폴더와 session.json을 만들고 폴더 경로를 한 줄로 낸다")
@@ -195,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
             from t2s.cli import eval_cmds
 
             return eval_cmds.run(args)
-        if args.command == "session":
+        if args.command in ("session", "sessions"):
             from t2s.cli import session_cmds
 
             return session_cmds.run(args)

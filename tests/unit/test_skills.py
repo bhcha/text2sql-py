@@ -10,7 +10,7 @@ from pathlib import Path
 from t2s.cli.main import build_parser
 
 REPO = Path(__file__).resolve().parents[2]
-SKILLS = ("getbird", "getolist", "connect", "text2sql", "runset", "newmodel")
+SKILLS = ("getbird", "getolist", "connect", "text2sql", "runset", "newmodel", "sessions")
 FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 
@@ -20,6 +20,17 @@ def _subparsers() -> dict[str, argparse.ArgumentParser]:
         if isinstance(action, argparse._SubParsersAction):
             return dict(action.choices)
     raise AssertionError("하위 명령이 없다")
+
+
+def _all_flags(parser: argparse.ArgumentParser) -> set[str]:
+    """한 하위 명령의 인자와, 그 아래 하위 명령(session open·note·close)의 인자."""
+    flags: set[str] = set()
+    for a in parser._actions:
+        flags.update(a.option_strings)
+        if isinstance(a, argparse._SubParsersAction):
+            for sub in a.choices.values():
+                flags |= _all_flags(sub)
+    return flags
 
 
 def _text(where: str, name: str) -> str:
@@ -191,7 +202,7 @@ def test_plugin_seven_texts_no_repo_root_or_uv_run():
 
 def test_plugin_commands_exist():
     subs = _subparsers()
-    flags = {opt for p in subs.values() for a in p._actions for opt in a.option_strings}
+    flags = {opt for p in subs.values() for opt in _all_flags(p)}
     for name in (*SKILLS, ENGINE_SKILL):
         text = _new(name)
         for cmd in P3_COMMAND.findall(text):
@@ -225,6 +236,7 @@ def test_routing_eval_prompts():
         "data-question-routes-to-text2sql": ("financial에서 계좌 몇 개야", "text2sql"),
         "run-all-routes-to-runset": ("전체 돌려줘", "runset"),
         "new-model-routes-to-newmodel": ("새 모델 재줘", "newmodel"),
+        "sessions-list-routes-to-sessions": ("세션 목록 보여줘", "sessions"),
     }
     assert sorted(p.name for p in evals.iterdir() if p.is_dir() and p.name != "results") == sorted(want)
     for case, (prompt, skill) in want.items():
@@ -235,3 +247,23 @@ def test_routing_eval_prompts():
         pattern = re.search(r"input_match: '(.*)'", grader).group(1)
         assert re.search(pattern, f'{{"skill": "text2sql:{skill}"}}') and re.search(pattern, f'{{"skill": "{skill}"}}')
         assert not re.search(pattern, '{"skill": "text2sql:p3-engine"}'), case
+
+
+def test_plugin_sessions_calls_only_allowed_commands():
+    """AGENTS 규칙 13: /sessions는 sessions·status·resume·stop·report만 부른다(공통 묶음의 init·ask·run 말은 뺀다)."""
+    text = _new("sessions")
+    body = text.replace(_prep(text), "").replace(_keep(text), "")
+    assert set(P3_COMMAND.findall(body)) == {"sessions", "status", "resume", "stop", "report"}
+    assert "세션을 지우거나 이름을 바꾸거나 옮기지 않는다" in text
+    assert "`session.json`" in text and "`t2s-log.jsonl`" in text and "열지 않는다" in text
+    for word in ("p3 status --run-id <세션 이름>", "p3 report --run <세션 이름>", "p3 resume --run-id <세션 이름>"):
+        assert word in text, word
+
+
+def test_engine_skill_lists_session_commands():
+    text = _new(ENGINE_SKILL)
+    assert "sessions)이" in text.split("\n---\n", 1)[0]
+    assert "`p3 sessions`" in text and "`p3 session open --kind <종류>`" in text
+    layout = (REPO / "plugin/skills" / ENGINE_SKILL / "references/session-layout.md").read_text(encoding="utf-8")
+    assert "YYYY-MM-DD-<데이터셋>-<종류>-<16진 6자>" in layout and "legacy_runs" in layout and "index.jsonl" in layout
+    assert ".text2sql/runs/" not in layout

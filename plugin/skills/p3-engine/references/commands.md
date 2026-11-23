@@ -15,8 +15,8 @@
 | `register` | SQLite 파일을 데이터셋으로 등록(고지 뒤 `--yes`) | `p3 register shop --sqlite <경로>/shop.sqlite --yes` |
 | `prepare` | 값 색인·프로파일 만들기(준비된 것은 건너뜀) | `p3 prepare` |
 | `ask` | 질문 하나 → SQL → 읽기 전용 실행 → 앞 10행 | `p3 ask --source financial --profile p3-ref "How many accounts are there?"` |
-| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지). `--questions`는 공개 문항 꼴 JSON, 스터디 모델 입력 JSON, 한 줄에 질문 하나인 텍스트. `--evidence used`면 문항의 evidence를 준다(기본 not_used) | `p3 run --profile p3-ref --limit 20` |
-| `status` | 가장 최근(또는 `--run-id`) run의 진행, 10줄 안 | `p3 status` |
+| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지). 이름은 세션 이름 규칙(`--run-id`로 줄 수도 있다). `--questions`는 공개 문항 꼴 JSON, 스터디 모델 입력 JSON, 한 줄에 질문 하나인 텍스트. `--evidence used`면 문항의 evidence를 준다(기본 not_used) | `p3 run --profile p3-ref --limit 20` |
+| `status` | 가장 최근(또는 `--run-id`) run의 진행, 10줄 안. 세션 폴더에 없는 이름은 옛 run 폴더(`legacy_runs`)에서 찾아 읽기만 한다 | `p3 status` |
 | `stop` | 도는 run 멈추기 | `p3 stop` |
 | `resume` | 멈춘 run 이어 돌기(채점 전, 같은 커밋일 때만) | `p3 resume` |
 | `score` | 정답 설정의 채점기(BIRD 공식 채점기 또는 스터디 채점기)로 채점. BIRD는 예측 파일을 받아 채점도 한다(스터디는 종료 코드 2, 예측 파일 채점의 라벨은 `evidence 미확인`). evidence used run이면 run에 준 evidence 글이 정답 쪽 원본과 글자 그대로 같은지도 본다. `--meta-time-out`이 없으면 BIRD 30초, 스터디 10초 | `p3 score --run <id>` |
@@ -26,6 +26,10 @@
 | `route-status` | 가장 최근(또는 `--pair`) 짝 두 run의 진행, 10줄 안 | `p3 route-status` |
 | `route-judge` | 짝 두 run(또는 `--harness`·`--candidate`)을 위치별로 견주어 경로를 판정하고 하네스 run 폴더에 판정 파일을 씀(덮어쓰지 않음) | `p3 route-judge` |
 | `route-apply` | 판정을 작업 루트의 `harness.toml` 프로필에 더할 글을 보임. `--yes`가 있을 때만 씀(종료 코드 3 승인 필요). 소표본·가짜 백엔드·미커밋 측정·판정 보류는 거절 | `p3 route-apply --yes` |
+| `sessions` | 세션 목록: 첫 줄에 세션 폴더 자리, 그 아래 최근 것부터 20개를 한 줄씩(이름, 종류, 데이터셋, 상태, 라벨 요약). 색인과 세션 폴더의 작은 파일만 읽는다 | `p3 sessions` |
+| `session open` | 지표 길의 세션 폴더와 `session.json`을 만들고 폴더 경로를 한 줄로 냄(`--kind`는 metric·explore·check·diagnose·define, `--question`은 질문 글). DB를 열지 않는다 | `p3 session open --kind metric --question "<질문>"` |
+| `session note` | 지표 길 세션의 `session.json`에 칸 하나를 더함(시맨틱 모델의 `model`·`version_id` 같은 것. 있는 칸은 덮어쓰지 않음, 500자까지) | `p3 session note <세션 이름> --key model --value <이름>` |
+| `session close` | 지표 길 세션의 `session.json`에 끝 시각을 적음 | `p3 session close <세션 이름>` |
 
 `ask`·`run`은 스스로 준비하지 않는다. 자산이 없거나 낡았으면 모델을 부르기 전에 종료 코드 5로 멈추므로 `prepare`를 먼저 돌린다. 소스가 하나인 데이터셋이면 `ask`에 `--source`를 붙이지 않는다. 모델 인자가 없으면 세션 기록에서 모델을 찾고, 못 찾으면 종료 코드 2로 멈춘다. 정답이 없는 데이터셋에서 `run`은 0으로 끝나고(생성 뒤 이어 부른 채점만 4), `score`·`leak-audit`은 4다.
 

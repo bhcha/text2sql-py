@@ -623,6 +623,12 @@ def evidence_mode(meta: dict) -> str | None:
     return (meta.get("evidence") or {}).get("mode", EVIDENCE_NOT_USED)
 
 
+def evidence_word(meta: dict) -> str:
+    """status·sessions 줄의 evidence 칸: "evidence used|not_used", 재채점 run은 "evidence 미확인"."""
+    mode = evidence_mode(meta)
+    return "evidence 미확인" if mode is None else f"evidence {mode}"
+
+
 def _run_hints(run: Path, meta: dict) -> list[str] | None:
     """evidence used run이면 run 폴더의 hints.json을 run.json의 sha256과 대조해 읽는다. not_used면 None."""
     if evidence_mode(meta) != EVIDENCE_USED:
@@ -707,8 +713,7 @@ def cmd_status(args, root: Path, state, config: Config) -> int:
     word = state_word(run)
     item_limit = float(meta.get("llm", {}).get("item_timeout_seconds") or 0) * 1000
     slow = sum(1 for r in items.values() if item_limit and r.get("elapsed_ms", 0) > item_limit)
-    mode = evidence_mode(meta)
-    ev_word = "evidence 미확인" if mode is None else f"evidence {mode}"
+    ev_word = evidence_word(meta)
     out(
         f"{rid} · {meta.get('dataset')} · {ev_word} · {word}"
         + (f" · 오래 걸린 문항 {slow}" if slow else "")

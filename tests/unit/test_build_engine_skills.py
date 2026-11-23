@@ -88,7 +88,7 @@ def test_two_builds_same_checksum(repo):
     )
     assert (eng / "scripts/p3").stat().st_mode & 0o111
     skills = sorted(p.name for p in (repo / "dist/engine-skills/skills").iterdir())
-    assert skills == ["connect", "getbird", "getolist", "newmodel", "p3-engine", "runset", "text2sql"]
+    assert skills == ["connect", "getbird", "getolist", "newmodel", "p3-engine", "runset", "sessions", "text2sql"]
     assert not any(p.name == "__pycache__" for p in eng.rglob("*"))
     assert _git(repo, "status", "--porcelain") == ""  # dist/는 git 밖
 
@@ -109,6 +109,8 @@ def test_dirty_tree_stops_unless_allowed(repo):
     [
         ("plugin/skills/connect/gold/x.txt", "x", "금지 폴더"),
         ("plugin/skills/connect/data/x.txt", "x", "금지 폴더"),
+        ("plugin/skills/sessions/sessions/x.txt", "x", "금지 폴더"),
+        ("plugin/skills/p3-engine/sessions/x.txt", "x", "금지 폴더"),
         ("plugin/skills/connect/x.sqlite", "x", "금지 파일"),
         ("plugin/skills/connect/x.zip", "x", "금지 파일"),
         ("plugin/skills/connect/hints.public.json", "{}", "금지 파일"),
@@ -131,10 +133,10 @@ def test_skill_text_checks(repo):
     text = path.read_text(encoding="utf-8")
     path.write_text(text.replace("준비: 이 스킬은", "준비: 이 스킬만은", 1), encoding="utf-8")
     r = build(repo, "--allow-dirty")
-    assert r.returncode == 1 and "'준비' 단락이 여섯에 같지 않음" in r.stderr
+    assert r.returncode == 1 and "'준비' 단락이 일곱에 같지 않음" in r.stderr
     path.write_text(text.replace("\n## 지킬 것\n\n", "\n## 지킬 것\n\n- 더한 줄\n", 1), encoding="utf-8")
     r = build(repo, "--allow-dirty")
-    assert r.returncode == 1 and "'지킬 것' 묶음이 여섯에 같지 않음" in r.stderr
+    assert r.returncode == 1 and "'지킬 것' 묶음이 일곱에 같지 않음" in r.stderr
     path.write_text(text + "\nuv run t2s datasets\n", encoding="utf-8")
     r = build(repo, "--allow-dirty")
     assert r.returncode == 1 and "runset: 'uv run' 1건" in r.stderr
