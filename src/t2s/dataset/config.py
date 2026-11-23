@@ -142,11 +142,15 @@ def _dataset_from_state(name: str, raw: dict, root: Path) -> DatasetSpec:
     )
 
 
-def _legacy_runs(root: Path, raw) -> tuple[Path, ...]:
+def _legacy_runs(root: Path, raw, runs_dir: Path) -> tuple[Path, ...]:
     if raw is None:
         return ()
     if not isinstance(raw, list) or not all(isinstance(v, str) and v for v in raw):
         raise ConfigError(f"{CONFIG_FILE}의 [paths] legacy_runs는 폴더 경로 글의 목록이어야 합니다")
+    runs = runs_dir.resolve()  # 옛 run 폴더가 실행 기록 자리와 같거나 겹치면 읽기만 할 run을 쓰게 된다
+    for r in (_resolve(root, v).resolve() for v in raw):
+        if r == runs or runs in r.parents or r in runs.parents:
+            raise ConfigError(f"{CONFIG_FILE}의 [paths] legacy_runs가 실행 기록 자리(runs)와 겹칩니다: {r}")
     return tuple(_resolve(root, v) for v in raw)
 
 
@@ -177,5 +181,5 @@ def load_config(root: Path, state: State) -> Config:
         datasets=datasets,
         profiles=dict(raw.get("profiles", {})),
         pipeline=dict(raw.get("pipeline", {})),
-        legacy_runs_dirs=_legacy_runs(root, paths.get("legacy_runs")),
+        legacy_runs_dirs=_legacy_runs(root, paths.get("legacy_runs"), _resolve(root, str(paths.get("runs", "runs")))),
     )

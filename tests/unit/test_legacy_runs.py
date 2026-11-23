@@ -79,6 +79,10 @@ def test_config_reads_legacy_runs(root):
     (root / "harness.toml").write_text(bad, encoding="utf-8")
     with pytest.raises(ConfigError):
         load_config(root, load_state(root))
+    for overlap in ('["runs"]', '["runs/old"]', '["."]'):  # 실행 기록 자리와 같거나 겹치면 설정 오류
+        (root / "harness.toml").write_text(bad.replace('"old-runs"', overlap), encoding="utf-8")
+        with pytest.raises(ConfigError, match="겹칩니다"):
+            load_config(root, load_state(root))
 
 
 def test_find_run_order_and_names(tmp_path):

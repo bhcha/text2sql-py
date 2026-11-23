@@ -94,8 +94,8 @@ def forbidden(out: Path) -> list[str]:
         rel = path.relative_to(out).as_posix()
         name = path.name
         if path.is_dir():
-            # 스킬 폴더 자체(skills/sessions, 세션 보기 스킬)는 이름이 같아도 기록 폴더가 아니다. 그 아래의 같은 이름은 막는다
-            if name in FORBIDDEN_DIRS and rel != f"skills/{name}":
+            # 세션 보기 스킬의 폴더 skills/sessions 하나만 뺀다(그 아래의 같은 이름과 다른 금지 이름은 막는다)
+            if name in FORBIDDEN_DIRS and rel != "skills/sessions":
                 bad.append(f"금지 폴더 {rel}")
             continue
         if name.startswith(".env") or name in FORBIDDEN_NAMES or name.endswith(FORBIDDEN_SUFFIXES):

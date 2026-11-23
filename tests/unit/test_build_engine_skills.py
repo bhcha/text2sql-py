@@ -108,6 +108,7 @@ def test_dirty_tree_stops_unless_allowed(repo):
     ("rel", "content", "why"),
     [
         ("plugin/skills/connect/gold/x.txt", "x", "금지 폴더"),
+        ("plugin/skills/gold/x.txt", "x", "금지 폴더"),
         ("plugin/skills/connect/data/x.txt", "x", "금지 폴더"),
         ("plugin/skills/sessions/sessions/x.txt", "x", "금지 폴더"),
         ("plugin/skills/p3-engine/sessions/x.txt", "x", "금지 폴더"),
