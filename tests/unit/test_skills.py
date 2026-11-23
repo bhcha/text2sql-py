@@ -298,3 +298,21 @@ def test_plugin_codex_sandbox_note():
         assert head in text and CODEX_SANDBOX_MARK in text and "전체 접근" in text
     for name in ("text2sql", "runset"):
         assert '샌드박스 없는 터미널에서)만 돕니다"라고 알리고 멈춘다. 다시 돌리지 않는다' in _new(name)
+
+
+def test_plugin_failure_stop_rule():
+    """p3 ask(runset은 p3 명령)가 실패하면 다른 방법으로 답하지 않는다: SQL 직접 쓰기·자료/DB 파일 읽기·웹 검색 금지."""
+    text = _new("text2sql")
+    assert (
+        "`p3 ask`가 실패하면 질문에 다른 방법으로 답하지 않는다. SQL을 직접 쓰지 않고, 자료 폴더나 DB 파일을 직접 읽거나 "
+        "둘러보지 않고, 웹을 검색하지 않는다. 오류를 보여 주고 멈춘다." in text
+    )
+    dont = text.partition("## 하지 말 것\n")[2]
+    assert dont.startswith(
+        "\n- `p3 ask`가 실패했을 때 답을 대신 찾지 않는다. SQL을 직접 쓰지 않고, 자료 폴더나 DB 파일을 직접 읽지 않고, "
+        "웹을 검색하지 않는다. 오류를 보여 주고 멈춘다.\n"
+    )
+    assert (
+        "- `p3` 명령이 실패했을 때 결과를 다른 방법으로 만들지 않는다. SQL을 직접 쓰지 않고, 자료 폴더나 DB 파일을 직접 "
+        "읽지 않고, 웹을 검색하지 않는다. 오류를 보여 주고 멈춘다." in _new("runset").partition("## 하지 말 것\n")[2]
+    )
