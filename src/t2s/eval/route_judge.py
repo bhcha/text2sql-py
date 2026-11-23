@@ -59,6 +59,9 @@ def pick_runs(
         raise JudgeError(str(e)) from e
 
 
+NO_GOLD_LINE = "이 데이터셋은 정답이 없어 경로를 판정할 수 없습니다"
+
+
 @dataclass
 class RunSide:
     run_id: str
@@ -75,6 +78,8 @@ def _load(config: Config, run_id: str) -> RunSide:
     meta = R.read_json_if(run / R.RUN_FILE)
     if meta is None:
         raise JudgeError(f"run이 없습니다: {run_id}")
+    if not (G.gold_folder(config.root, meta["dataset"]) / G.GOLD_TOML).is_file():
+        raise G.NoGold(NO_GOLD_LINE)  # 채점해도 점수가 생기지 않으므로 "아직 채점 전"이라 말하지 않는다
     manifest = R.read_json_if(run / R.MANIFEST_FILE)
     if manifest is None:
         raise REP.NotReady(f"아직 생성 중입니다: {run_id} (t2s route-status)")

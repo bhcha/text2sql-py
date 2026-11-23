@@ -193,6 +193,23 @@ def test_route_judge_before_score(root, capsys, monkeypatch):
     assert code == 1 and lines == [f"아직 채점 전입니다: t2s score --run {ids[0]}"]
 
 
+def test_route_judge_without_gold_says_cannot_judge(root, capsys, monkeypatch):
+    # 정답 없는 데이터셋: score가 4(정답 없음)를 낸 뒤에도 "아직 채점 전"을 되풀이하지 않고 판정할 수 없다고 알린다
+    code, _, _, sp = _start(root, capsys, monkeypatch, "--no-score")
+    ids = [cmd[-1] for cmd, _ in sp.calls]
+    _work_both(root, ids)
+    capsys.readouterr()
+    (root / "gold").rename(root / "gold-away")
+    no_gold = "이 데이터셋은 정답이 없어 경로를 판정할 수 없습니다"
+    code, lines, _ = cli(capsys, "route-judge")
+    assert code == 4 and lines == [no_gold]
+    code, lines, _ = cli(capsys, "score", "--run", ids[0])
+    assert code == 4 and lines == ["정답 없음: 채점 생략"]
+    code, lines, _ = cli(capsys, "route-judge")
+    assert code == 4 and lines == [no_gold]
+    assert not R.judgment_path(root / "runs", ids[0], ids[1]).exists()
+
+
 def test_route_status_without_pairs(root, capsys):
     code, lines, _ = cli(capsys, "route-status")
     assert code == 0 and lines == ["시작한 짝(route-start)이 없습니다"]

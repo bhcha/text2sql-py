@@ -128,8 +128,15 @@ def cmd_leak(args, state, config) -> int:
 
 
 def cmd_route_judge(args, state, config) -> int:
-    """짝 run 두 개(또는 --harness·--candidate)를 견주어 경로를 판정하고 하네스 run 폴더에 판정 파일을 쓴다."""
-    lines, _, code = route_judge.judge(config, args.pair, args.harness, args.candidate)
+    """짝 run 두 개(또는 --harness·--candidate)를 견주어 경로를 판정하고 하네스 run 폴더에 판정 파일을 쓴다.
+
+    정답 없는 데이터셋의 run이면 판정할 수 없다고 알리고 종료 코드 4(정답 없음)로 끝난다.
+    """
+    try:
+        lines, _, code = route_judge.judge(config, args.pair, args.harness, args.candidate)
+    except G.NoGold:
+        out(route_judge.NO_GOLD_LINE)
+        return EXIT_NO_GOLD
     for line in lines:
         out(line)
     return code

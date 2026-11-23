@@ -89,6 +89,12 @@ SWAP_SRC = "플러그인을 업데이트하거나 엔진 스킬 폴더를 건드
 # 게이트 2 사람 결정 (가): 설치본의 채점 run은 허용하되, 점수를 보는 자리에 이 한 줄을 둔다(runset·newmodel 같은 글)
 NOT_REPRESENTATIVE = "플러그인 설치본에서 잰 점수는 대표 측정이 아니다. 대표 측정은 text2sql-py 저장소 클론에서 한다."
 RUNSET_REPORT = '출력을 그대로 보여 준다. 라벨 전체 문자열과 "새로 맞음·새로 틀림" 문장을 자르지 않는다.\n'
+# 정답 없는 데이터셋에서 route-judge가 내는 줄(종료 코드 4)을 newmodel 판정 절에 한 줄 더한다
+NEWMODEL_NO_GOLD = (
+    '- "이 데이터셋은 정답이 없어 경로를 판정할 수 없습니다"가 나오면(종료 코드 4) 채점하지 않고 그 줄을 그대로 '
+    "보여 준 뒤 멈춘다. 기록하지 않는다.\n"
+)
+NEWMODEL_EVIDENCE = '- "evidence 조건이 달라 견주지 않는다"가 나오면 그대로 보여 주고 멈춘다.\n'
 NEWMODEL_JUDGE = (
     '출력을 그대로 보여 준다. 두 run의 라벨 전체와 "새로 맞음·새로 틀림" 문장, 비용 줄, 경로 판정 줄을 자르지 않는다.\n'
 )
@@ -138,6 +144,7 @@ ALLOWED = {
     ],
     "newmodel": [
         (NEWMODEL_JUDGE, f"{NEWMODEL_JUDGE}\n{NOT_REPRESENTATIVE}\n"),
+        (NEWMODEL_EVIDENCE, NEWMODEL_NO_GOLD + NEWMODEL_EVIDENCE),
         (
             "`t2s route-start` → `t2s route-status` → `t2s route-judge` → (기록할 수 있는 판정이면 바로) `t2s route-apply`만",
             "`p3 route-start` → `p3 route-status` → `p3 route-judge` → (기록할 수 있는 판정이면 바로) `p3 route-apply`만",
