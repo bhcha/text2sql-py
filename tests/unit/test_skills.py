@@ -86,6 +86,12 @@ STATE_WORD = re.compile(r"(?<![\w./])var/state\.json")
 INIT_ASK = '명령이 "작업 폴더가 없습니다. 먼저 init"으로 끝나면 `p3 init`을 돌릴지 한 줄로 묻고, 좋다고 하면 `p3 init` 뒤 다시 실행한다.'
 PURE = "문항의 evidence와 사람이 쓴 설명을 모델에 주지 않는 조건"
 SWAP_SRC = "플러그인을 업데이트하거나 엔진 스킬 폴더를 건드리지 않는다."
+# 게이트 2 사람 결정 (가): 설치본의 채점 run은 허용하되, 점수를 보는 자리에 이 한 줄을 둔다(runset·newmodel 같은 글)
+NOT_REPRESENTATIVE = "플러그인 설치본에서 잰 점수는 대표 측정이 아니다. 대표 측정은 text2sql-py 저장소 클론에서 한다."
+RUNSET_REPORT = '출력을 그대로 보여 준다. 라벨 전체 문자열과 "새로 맞음·새로 틀림" 문장을 자르지 않는다.\n'
+NEWMODEL_JUDGE = (
+    '출력을 그대로 보여 준다. 두 run의 라벨 전체와 "새로 맞음·새로 틀림" 문장, 비용 줄, 경로 판정 줄을 자르지 않는다.\n'
+)
 # 옛 글 → 새 글에서 허용된 스킬별 바꿈(공통 바꿈은 allowed_transform이 한다). 이 밖의 차이는 없어야 한다.
 ALLOWED = {
     "connect": [
@@ -126,10 +132,12 @@ ALLOWED = {
         ("이 스킬은 `t2s ask`를 한 번 돌리고", "이 스킬은 `p3 ask`를 한 번 돌리고"),
     ],
     "runset": [
+        (RUNSET_REPORT, f"{RUNSET_REPORT}\n{NOT_REPRESENTATIVE}\n"),
         ("`t2s run`(start) → `t2s status` → `t2s report`만", "`p3 run`(start) → `p3 status` → `p3 report`만"),
         ("- run이 도는 동안 `src/` 아래를 바꾸는 작업을 함께 하지 않는다.", f"- run이 도는 동안 {SWAP_SRC}"),
     ],
     "newmodel": [
+        (NEWMODEL_JUDGE, f"{NEWMODEL_JUDGE}\n{NOT_REPRESENTATIVE}\n"),
         (
             "`t2s route-start` → `t2s route-status` → `t2s route-judge` → (기록할 수 있는 판정이면 바로) `t2s route-apply`만",
             "`p3 route-start` → `p3 route-status` → `p3 route-judge` → (기록할 수 있는 판정이면 바로) `p3 route-apply`만",
