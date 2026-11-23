@@ -121,12 +121,15 @@ def engine_check(package_dir: Path | None = None) -> dict | None:
 
     home: 엔진 자리(플러그인 폴더) 파일의 차이(engine_differences), installed: 깔린 t2s 패키지의 차이
     (installed_differences), matches: 둘 다 빈 목록인지. 표식이 없거나 읽을 수 없으면 None.
+    대조 중 표식을 다시 읽지 못해도 None(같음으로 보지 않는다).
     """
     home = engine_home()
     if home is None or _read_stamp(home) is None:
         return None
-    home_diffs = engine_differences(home) or []
-    installed = installed_differences(package_dir) or []
+    home_diffs = engine_differences(home)
+    installed = installed_differences(package_dir)
+    if home_diffs is None or installed is None:
+        return None
     return {"home": home_diffs, "installed": installed, "matches": not home_diffs and not installed}
 
 

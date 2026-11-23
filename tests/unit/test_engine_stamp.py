@@ -206,3 +206,15 @@ def test_changed_installed_file_fails_verify(tmp_path, monkeypatch, capsys):
     assert (rec["matches"], rec["home_matches"], rec["installed_matches"]) == (False, True, False)
     assert main(["verify"]) == 1
     assert capsys.readouterr().out.splitlines() == ["다름: 1곳", "  깔린 패키지 바뀜 src/t2s/pipeline/judge.py"]
+
+
+def test_check_unavailable_is_not_same(tmp_path, monkeypatch):
+    # 대조 중 표식을 다시 읽지 못하면(None) 같음이 아니라 판정 불가이고, 기록은 미커밋이다
+    home = tmp_path / "engine"
+    _stamp(home, PACKAGE)
+    monkeypatch.setenv(engine.ENV_HOME, str(home))
+    for name in ("engine_differences", "installed_differences"):
+        with monkeypatch.context() as m:
+            m.setattr(engine, name, lambda *a, **k: None)
+            assert engine.engine_check() is None
+            assert engine.git_from_stamp()["dirty"] is True
