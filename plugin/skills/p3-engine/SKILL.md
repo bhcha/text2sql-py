@@ -29,13 +29,15 @@ disable-model-invocation: true
 ## 명령 묶음
 
 - 받기: `p3 fetch bird`, `p3 fetch model`, `p3 fetch olist`
-- 데이터셋: `p3 datasets`, `p3 use <이름>`, `p3 register <이름> --sqlite <경로>`(고지 뒤 `--yes`), `p3 prepare [<이름>]`
-- 질문 하나: `p3 ask [--source <DB>] <모델 인자> "<질문>"`
+- 데이터셋: `p3 datasets`, `p3 use '<이름>'`, `p3 register '<이름>' --sqlite '<경로>'`(고지 뒤 `--yes`), `p3 prepare ['<이름>']`
+- 질문 하나: `p3 ask [--source '<DB>'] <모델 인자> '<질문>'`
 - 묶음 실행: `p3 run`, `p3 status`, `p3 stop`, `p3 resume`
 - 채점과 보고: `p3 score`, `p3 report`, `p3 leak-audit`
 - 경로 판정: `p3 route-start`, `p3 route-status`, `p3 route-judge`, `p3 route-apply`
 - 세션: `p3 sessions`(최근 세션 20개), `p3 session open --kind <종류>`·`p3 session note`·`p3 session close`(지표 길의 세션 폴더)
 - 작업 폴더와 환경: `p3 init`, `p3 init --refresh`, `p3 setup`, `p3 verify`(엔진 폴더의 파일과 깔린 엔진 패키지가 엔진 표식 `ENGINE.json`과 같은지)
+
+사용자가 쓴 글(질문·경로·이름)은 명령에 작은따옴표로 감싸 넣는다(큰따옴표 안에서는 셸이 `$`·`` ` ``·`\`·`!`를 바꿔 엔진이 다른 글을 받는다). 글 속 작은따옴표 `'`는 `'\''`로 바꿔 쓰고, 그 밖에는 사용자가 쓴 그대로 넣는다.
 
 ## 더 읽을 것 (필요할 때만)
 

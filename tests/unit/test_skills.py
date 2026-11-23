@@ -256,7 +256,11 @@ def test_plugin_sessions_calls_only_allowed_commands():
     assert set(P3_COMMAND.findall(body)) == {"sessions", "status", "resume", "stop", "report"}
     assert "세션을 지우거나 이름을 바꾸거나 옮기지 않는다" in text
     assert "`session.json`" in text and "`t2s-log.jsonl`" in text and "열지 않는다" in text
-    for word in ("p3 status --run-id <세션 이름>", "p3 report --run <세션 이름>", "p3 resume --run-id <세션 이름>"):
+    for word in (
+        "p3 status --run-id '<세션 이름>'",
+        "p3 report --run '<세션 이름>'",
+        "p3 resume --run-id '<세션 이름>'",
+    ):
         assert word in text, word
 
 
@@ -267,3 +271,18 @@ def test_engine_skill_lists_session_commands():
     layout = (REPO / "plugin/skills" / ENGINE_SKILL / "references/session-layout.md").read_text(encoding="utf-8")
     assert "YYYY-MM-DD-<데이터셋>-<종류>-<16진 6자>" in layout and "legacy_runs" in layout and "index.jsonl" in layout
     assert ".text2sql/runs/" not in layout
+
+
+def test_plugin_user_text_single_quoted():
+    """리뷰 게이트 4: 사용자가 쓴 질문은 셸 작은따옴표로 넘긴다(큰따옴표 안에서는 셸이 $·`·\\를 바꾼다)."""
+    text = _new("text2sql")
+    assert "\n   p3 ask [--source '<이름>'] <모델 인자> '<질문>'\n" in text
+    assert "`'\\''`" in text and "큰따옴표는 쓰지 않는다" in text
+    engine = _new(ENGINE_SKILL)
+    assert "`p3 ask [--source '<DB>'] <모델 인자> '<질문>'`" in engine and "`'\\''`" in engine
+    for name in (*SKILLS, ENGINE_SKILL):
+        assert '"<질문>"' not in _new(name), name
+    connect = _new("connect")
+    assert "p3 register '<이름>' --sqlite '<경로>' --yes" in connect and "`'\\''`" in connect
+    assert "`--questions '<경로>'`" in _new("runset")
+    assert "/connect bird로 BIRD를 지금 데이터셋으로 정한 뒤" in _new("getbird")
