@@ -265,3 +265,28 @@ def test_json_questions_must_match_sources(root, capsys):
     (root / "bad.json").write_text(json.dumps([{"question_id": 1, "db_id": "nope", "question": "q", "difficulty": ""}]))
     code, _, e = run(capsys, "run", "--backend", "fake", "--questions", str(root / "bad.json"), "--run-id", "z")
     assert code == 2 and "소스가 아닙니다" in e
+
+
+def test_run_json_engine_field_only_with_stamp(root, capsys, monkeypatch):
+    from t2s import engine
+
+    argv = [
+        "run",
+        "--foreground",
+        "--backend",
+        "fake",
+        "--limit",
+        "1",
+        "--no-score",
+        "--questions",
+        str(root / "q.txt"),
+    ]
+    assert run(capsys, *argv, "--run-id", "e0")[0] == 0
+    assert "engine" not in R.read_json(root / "runs/e0/run.json")
+    stamped = {"head": "c" * 40, "src_tree": "t" * 40, "dirty": False}
+    record = {"version": "0.1.0", "checksum": "k" * 64, "matches": True}
+    monkeypatch.setattr(engine, "git_from_stamp", lambda: stamped)
+    monkeypatch.setattr(engine, "engine_record", lambda: record)
+    assert run(capsys, *argv, "--run-id", "e1")[0] == 0
+    meta = R.read_json(root / "runs/e1/run.json")
+    assert meta["engine"] == record and meta["git"] == stamped

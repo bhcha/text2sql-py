@@ -171,3 +171,19 @@ def test_fake_codex_profile(shop, capsys, monkeypatch, tmp_path):
     meta = json.loads((run_dir / "calls/2/llm-meta.json").read_text())
     assert meta["backend"] == "codex-cli" and meta["work_dir_files"] == 0
     assert (run_dir / "calls/2/cli-events.jsonl").is_file()
+
+
+def test_ask_json_engine_field_only_with_stamp(shop, capsys, monkeypatch):
+    from t2s import engine
+
+    code, lines, _ = ask(capsys, "--backend", "fake", QUESTION)
+    rec = json.loads((shop / lines[-1].removeprefix("실행 폴더: ") / "ask.json").read_text())
+    assert code == 0 and "engine" not in rec
+    stamped = {"head": "c" * 40, "src_tree": "t" * 40, "dirty": False}
+    record = {"version": "0.1.0", "checksum": "k" * 64, "matches": True}
+    monkeypatch.setattr(engine, "git_from_stamp", lambda: stamped)
+    monkeypatch.setattr(engine, "engine_record", lambda: record)
+    code, lines2, _ = ask(capsys, "--backend", "fake", QUESTION)
+    rec = json.loads((shop / lines2[-1].removeprefix("실행 폴더: ") / "ask.json").read_text())
+    assert code == 0 and rec["engine"] == record and rec["git_head"] == "c" * 40
+    assert len(lines2) == len(lines)  # 화면 글 줄 수는 그대로

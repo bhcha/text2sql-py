@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import t2s.runner.records as R
+from t2s import engine
 from t2s.dataset.config import Config
 from t2s.dataset.questions import load_public_questions
 from t2s.eval import gold as G
@@ -59,6 +60,10 @@ def sha256_file(path: Path) -> str:
 
 
 def git_info(root: Path) -> dict:
+    stamped = engine.git_from_stamp()  # 엔진 표식이 있으면(플러그인 설치본) 표식의 값
+    if stamped is not None:
+        return stamped
+
     def git(*args):
         try:
             return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, check=False)
@@ -601,6 +606,7 @@ def import_predictions(config: Config, dataset: str, path: Path, run_id: str) ->
         "workers": None,
         "llm": None,
         "git": git_info(config.root),
+        **({"engine": rec} if (rec := engine.engine_record()) is not None else {}),
         "versions_start": {"python": platform.python_version(), "sqlite": sqlite3.sqlite_version},
         "databases": {},
         "score_after": False,

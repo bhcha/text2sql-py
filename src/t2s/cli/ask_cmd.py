@@ -16,6 +16,7 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from t2s import engine
 from t2s.cli.data_cmds import err, out
 from t2s.dataset.config import ConfigError, find_root, load_config
 from t2s.dataset.state import StateError, current_dataset, load_state
@@ -62,6 +63,9 @@ def exec_line(result) -> str:
 
 
 def git_head(root: Path) -> str | None:
+    stamped = engine.git_from_stamp()  # 엔진 표식이 있으면(플러그인 설치본) 표식의 커밋
+    if stamped is not None:
+        return stamped["head"]
     try:
         r = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
     except OSError:
@@ -252,6 +256,7 @@ def run(args) -> int:
         "exit_code": code,
         "finished_at": _now(),
         "git_head": git_head(root),
+        **({"engine": rec} if (rec := engine.engine_record()) is not None else {}),
         "python": platform.python_version(),
         "sqlite": sqlite3.sqlite_version,
     }

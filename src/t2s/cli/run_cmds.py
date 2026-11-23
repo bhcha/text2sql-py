@@ -27,6 +27,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
+from t2s import engine
 from t2s.cli.data_cmds import err, out
 from t2s.dataset import hints as H
 from t2s.dataset.config import Config, ConfigError, DatasetSpec, find_root, load_config
@@ -411,6 +412,7 @@ def _create_run(
         "route": route,
         "pipeline": {**asdict(settings), "refine_template_sha256": refine.template_sha256()},
         "git": git,
+        **({"engine": rec} if (rec := engine.engine_record()) is not None else {}),
         "versions_start": batch.versions(),
         "databases": batch.fingerprints(prep.spec, prep.db_ids),
         "score_after": not args.no_score,

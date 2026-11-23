@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from t2s import engine
 from t2s.dataset.config import Config, DatasetSpec
 from t2s.dataset.questions import PublicQuestion
 from t2s.datasource.base import DataSource
@@ -48,7 +49,10 @@ def now() -> str:
 
 
 def git_info(root: Path) -> dict:
-    """head, src_tree, dirty. git 저장소가 아니면 셋 다 None."""
+    """head, src_tree, dirty. git 저장소가 아니면 셋 다 None. 엔진 표식이 있으면(플러그인 설치본) 표식의 값."""
+    stamped = engine.git_from_stamp()
+    if stamped is not None:
+        return stamped
 
     def git(*args: str) -> subprocess.CompletedProcess | None:
         try:
