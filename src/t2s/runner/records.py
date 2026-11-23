@@ -43,6 +43,24 @@ def run_dir(runs_dir: Path, run_id: str) -> Path:
     return Path(runs_dir) / run_id
 
 
+def find_run(runs_dir: Path, run_id: str, legacy_dirs=()) -> tuple[Path, bool] | None:
+    """run 이름 → (폴더, 옛 run인가). 세션 폴더 자리에서 먼저 찾고, 없으면 옛 run 폴더 자리(legacy_dirs)에서 차례로 찾는다.
+
+    옛 run 폴더는 읽기만 한다. 부르는 쪽은 옛 run이면 그 폴더에 쓰지 않는다. run 이름은 폴더 이름 하나여야 한다.
+    run.json이 있는 폴더만 run으로 본다. 어디에도 없으면 None.
+    """
+    if not run_id or run_id in (".", "..") or "/" in run_id or os.sep in run_id:
+        return None
+    here = run_dir(runs_dir, run_id)
+    if is_run(here):
+        return here, False
+    for base in legacy_dirs:
+        there = run_dir(base, run_id)
+        if is_run(there):
+            return there, True
+    return None
+
+
 def item_dir(run: Path, position: int) -> Path:
     return Path(run) / ITEMS_DIR / f"{position:04d}"
 

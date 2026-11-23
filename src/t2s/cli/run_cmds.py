@@ -695,7 +695,8 @@ def cmd_status(args, root: Path, state, config: Config) -> int:
     if rid is None:
         out("시작한 run이 없습니다")
         return EXIT_OK
-    run = R.run_dir(config.runs_dir, rid)
+    found = R.find_run(config.runs_dir, rid, config.legacy_runs_dirs)  # 세션 폴더에 없으면 옛 run 폴더에서(읽기만)
+    run, legacy = found if found else (R.run_dir(config.runs_dir, rid), False)
     meta = R.read_json_if(run / R.RUN_FILE)
     if meta is None:
         err(f"run이 없습니다: {rid}")
@@ -708,7 +709,11 @@ def cmd_status(args, root: Path, state, config: Config) -> int:
     slow = sum(1 for r in items.values() if item_limit and r.get("elapsed_ms", 0) > item_limit)
     mode = evidence_mode(meta)
     ev_word = "evidence 미확인" if mode is None else f"evidence {mode}"
-    out(f"{rid} · {meta.get('dataset')} · {ev_word} · {word}" + (f" · 오래 걸린 문항 {slow}" if slow else ""))
+    out(
+        f"{rid} · {meta.get('dataset')} · {ev_word} · {word}"
+        + (f" · 오래 걸린 문항 {slow}" if slow else "")
+        + (" · 옛 run(읽기만)" if legacy else "")
+    )
     if meta.get("kind") == "rescore":
         out("재채점 run(생성 없음)")
     else:
@@ -848,14 +853,17 @@ def cmd_resume(args, root: Path, state, config: Config) -> int:
         return EXIT_FAIL
     run = R.run_dir(config.runs_dir, rid)
     meta = R.read_json_if(run / R.RUN_FILE)
-    if meta is None:
-        err(f"run이 없습니다: {rid}")
-        return EXIT_FAIL
-    control = R.read_json_if(run / R.CONTROL_FILE) or {}
 
     def refuse(why: str) -> int:
         err(f"이어 돌 수 없습니다: {why}")
         return EXIT_FAIL
+
+    if meta is None:
+        if (R.find_run(config.runs_dir, rid, config.legacy_runs_dirs) or (None, False))[1]:
+            return refuse("옛 run 폴더(legacy_runs)의 run은 읽기만 합니다")
+        err(f"run이 없습니다: {rid}")
+        return EXIT_FAIL
+    control = R.read_json_if(run / R.CONTROL_FILE) or {}
 
     if control.get("state") in ("running", "starting") and (
         R.pid_alive(control.get("pid")) or R.pid_alive(control.get("worker_pid"))

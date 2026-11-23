@@ -131,7 +131,8 @@ def load_side(config: Config, ref: str) -> Side:
         rows = {int(r["position"]): r for r in R.read_jsonl(path)}
         correct = sum(int(r["ex_match"]) for r in rows.values())
         return Side(ref, f"{ref} (ex.jsonl, EX {correct}/{len(rows)})", rows, evidence=None)
-    run = R.run_dir(config.runs_dir, ref)
+    found = R.find_run(config.runs_dir, ref, config.legacy_runs_dirs)  # 세션 폴더에 없으면 옛 run 폴더에서(읽기만)
+    run = found[0] if found else R.run_dir(config.runs_dir, ref)
     score = R.read_json_if(run / R.SCORE_FILE)
     if score is None or not (run / R.EX_FILE).is_file():
         raise ReportError(f"비교 대상을 읽지 못했습니다(채점한 run·기준선 .json·ex.jsonl): {ref}")

@@ -71,10 +71,12 @@ class RunSide:
     rows: dict[int, dict]
     records: list[dict]
     cost: dict = field(default_factory=dict)
+    legacy: bool = False  # 옛 run 폴더(legacy_runs)에서 읽은 run. 그 폴더에는 쓰지 않는다
 
 
 def _load(config: Config, run_id: str) -> RunSide:
-    run = R.run_dir(config.runs_dir, run_id)
+    found = R.find_run(config.runs_dir, run_id, config.legacy_runs_dirs)  # 세션 폴더에 없으면 옛 run 폴더에서(읽기만)
+    run, legacy = found if found else (R.run_dir(config.runs_dir, run_id), False)
     meta = R.read_json_if(run / R.RUN_FILE)
     if meta is None:
         raise JudgeError(f"run이 없습니다: {run_id}")
@@ -94,7 +96,7 @@ def _load(config: Config, run_id: str) -> RunSide:
         raise REP.NotReady(f"아직 채점 전입니다: t2s score --run {run_id}")
     rows = {int(r["position"]): r for r in R.read_jsonl(run / R.EX_FILE)}
     records = R.read_jsonl(run / R.RECORDS_FILE)
-    return RunSide(run_id, meta, manifest, score, rows, records, _cost(manifest, records))
+    return RunSide(run_id, meta, manifest, score, rows, records, _cost(manifest, records), legacy)
 
 
 def _cost(manifest: dict, records: list[dict]) -> dict:
@@ -332,6 +334,9 @@ def judge(config: Config, pair: str | None, harness: str | None, candidate: str 
         "lines": list(lines),
     }
     code = 0
+    if h.legacy:
+        lines.append("판정 파일을 쓰지 않음: 하네스 run이 옛 run 폴더(legacy_runs)에 있어 읽기만 합니다")
+        return lines, data, code
     existing = R.read_json_if(path)
     if existing is not None:
         if {k: val for k, val in existing.items() if k != "judged_at"} != data:

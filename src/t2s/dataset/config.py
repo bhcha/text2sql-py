@@ -57,6 +57,8 @@ class Config:
     datasets: dict[str, DatasetSpec]
     profiles: dict[str, dict] = field(default_factory=dict)
     pipeline: dict = field(default_factory=dict)
+    # [paths] legacy_runs: 옛 run 폴더들의 자리. run 이름을 세션 폴더 자리에서 못 찾을 때 읽기만 한다(쓰지 않는다)
+    legacy_runs_dirs: tuple[Path, ...] = ()
 
 
 def find_root(start: Path | None = None) -> Path:
@@ -140,6 +142,14 @@ def _dataset_from_state(name: str, raw: dict, root: Path) -> DatasetSpec:
     )
 
 
+def _legacy_runs(root: Path, raw) -> tuple[Path, ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list) or not all(isinstance(v, str) and v for v in raw):
+        raise ConfigError(f"{CONFIG_FILE}의 [paths] legacy_runs는 폴더 경로 글의 목록이어야 합니다")
+    return tuple(_resolve(root, v) for v in raw)
+
+
 def load_config(root: Path, state: State) -> Config:
     path = root / CONFIG_FILE
     try:
@@ -167,4 +177,5 @@ def load_config(root: Path, state: State) -> Config:
         datasets=datasets,
         profiles=dict(raw.get("profiles", {})),
         pipeline=dict(raw.get("pipeline", {})),
+        legacy_runs_dirs=_legacy_runs(root, paths.get("legacy_runs")),
     )
