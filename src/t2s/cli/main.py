@@ -47,6 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--root", required=True, metavar="폴더", help="만들 작업 폴더(실행 스크립트가 넘긴다)")
     p.add_argument("--refresh", action="store_true", help="엔진의 기본 설정이 바뀌었는지 알리기만 한다")
 
+    sub.add_parser("verify", help="엔진 자리의 파일을 엔진 표식(ENGINE.json)과 대조한다(플러그인 설치본)")
+
     p = sub.add_parser("use", help="바라볼 데이터셋을 바꾼다")
     p.add_argument("name")
 
@@ -164,6 +166,10 @@ def main(argv: list[str] | None = None) -> int:
             from t2s.cli import data_cmds
 
             return data_cmds.cmd_init(args)
+        if args.command == "verify":  # 작업 루트 없이 돈다
+            from t2s.cli import data_cmds
+
+            return data_cmds.cmd_verify(args)
         if args.command == "ask":
             from t2s.cli import ask_cmd
 

@@ -9,6 +9,7 @@
 | `fetch olist` | 스터디 Olist DB·평가셋 받기(gh)와 해시 대조, 정답은 `.text2sql/gold/olist/`로 | `p3 fetch olist` |
 | `init` | 부른 폴더에 작업 폴더 `.text2sql/`를 만들고 엔진의 기본 설정·기준선을 복사(있는 파일은 덮어쓰지 않음). `--refresh`는 엔진의 기본 설정이 바뀌었는지 알리기만 함. 작업 루트 없이 받는다 | `p3 init` |
 | `setup` | 전용 Python 환경만 만들고 그 자리를 알림. 작업 루트 없이 받는다 | `p3 setup` |
+| `verify` | 엔진 스킬 폴더의 파일을 엔진 표식(`ENGINE.json`)과 대조해 "같음" 또는 다른 파일 목록을 냄(종료 코드 0/1). 작업 루트 없이 받는다 | `p3 verify` |
 | `datasets` | 데이터셋 목록, 지금 바라보는 것, 준비 상태 | `p3 datasets` |
 | `use` | 바라볼 데이터셋 바꾸기 | `p3 use shop` |
 | `register` | SQLite 파일을 데이터셋으로 등록(고지 뒤 `--yes`) | `p3 register shop --sqlite <경로>/shop.sqlite --yes` |

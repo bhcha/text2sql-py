@@ -41,5 +41,5 @@ markers = [
 line-length = 120
 target-version = "py313"
 src = ["src", "tests"]
-# 문서 안의 Python 예시 상자는 서식 검사에서 뺀다(설명용 꼴이다). 공식 채점기 사본은 고치지 않으므로 뺀다.
-extend-exclude = ["*.md", "src/t2s/eval/vendor"]
+# 문서 안의 Python 예시 상자는 서식 검사에서 뺀다(설명용 꼴이다). 공식 채점기 사본은 고치지 않으므로 뺀다. 빌드 결과(dist)도 뺀다.
+extend-exclude = ["*.md", "src/t2s/eval/vendor", "dist"]

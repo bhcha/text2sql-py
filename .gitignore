@@ -3,6 +3,8 @@
 /gold/
 /runs/
 /var/
+# 엔진 스킬 빌드 결과(scripts/build_engine_skills.py)
+/dist/
 # 의존성
 /.venv/
 __pycache__/

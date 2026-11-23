@@ -25,8 +25,8 @@ def engine_home() -> Path | None:
     return Path(value) if value else None
 
 
-def _read_stamp() -> dict | None:
-    home = engine_home()
+def _read_stamp(home: Path | None = None) -> dict | None:
+    home = home if home is not None else engine_home()
     if home is None:
         return None
     path = home / STAMP_FILE
@@ -53,15 +53,27 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _installed_files(package_dir: Path) -> dict[str, str]:
+def folder_files(folder: Path, *, skip_stamp: bool = False) -> dict[str, str]:
+    """폴더 안 파일의 상대 경로 → sha256(이름순). 캐시(__pycache__, .pyc)는 뺀다. skip_stamp면 맨 위의 표식 파일도 뺀다."""
     out: dict[str, str] = {}
-    for path in sorted(package_dir.rglob("*")):
-        if not path.is_file() or any(part in _SKIP_DIRS for part in path.relative_to(package_dir).parts):
+    for path in sorted(folder.rglob("*")):
+        rel = path.relative_to(folder)
+        if not path.is_file() or any(part in _SKIP_DIRS for part in rel.parts) or path.suffix == ".pyc":
             continue
-        if path.suffix == ".pyc":
+        if skip_stamp and rel.as_posix() == STAMP_FILE:
             continue
-        out[path.relative_to(package_dir).as_posix()] = _sha256(path)
-    return out
+        out[rel.as_posix()] = _sha256(path)
+    return dict(sorted(out.items()))
+
+
+def files_checksum(files: dict[str, str]) -> str:
+    """표식의 checksum: files를 이름순 한 줄 JSON으로 적은 글의 sha256. 만든 시각 같은 칸은 들어가지 않는다."""
+    text = json.dumps(dict(sorted(files.items())), ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _installed_files(package_dir: Path) -> dict[str, str]:
+    return folder_files(package_dir)
 
 
 def stamp_matches(package_dir: Path | None = None) -> bool | None:
@@ -108,3 +120,32 @@ def engine_record(package_dir: Path | None = None) -> dict | None:
     if stamp is None:
         return None
     return {"version": stamp["version"], "checksum": stamp["checksum"], "matches": stamp_matches(package_dir)}
+
+
+def engine_differences(home: Path | None = None) -> list[str] | None:
+    """엔진 자리의 파일들을 표식과 대조한다. 표식이 없거나 읽을 수 없으면 None, 같으면 빈 목록.
+
+    다르면 한 줄씩: "바뀜 <경로>", "없음 <경로>"(표식에 있는데 없음), "더 있음 <경로>", 표식 자체가 맞지 않으면
+    "표식 체크섬 다름".
+    """
+    home = home if home is not None else engine_home()
+    if home is None:
+        return None
+    stamp = _read_stamp(home)
+    if stamp is None:
+        return None
+    files = stamp.get("files")
+    if not isinstance(files, dict):
+        return ["표식에 파일 목록 없음"]
+    out: list[str] = []
+    if files_checksum(files) != stamp.get("checksum"):
+        out.append("표식 체크섬 다름")
+    now = folder_files(home, skip_stamp=True)
+    for rel in sorted(set(files) | set(now)):
+        if rel not in now:
+            out.append(f"없음 {rel}")
+        elif rel not in files:
+            out.append(f"더 있음 {rel}")
+        elif now[rel] != files[rel]:
+            out.append(f"바뀜 {rel}")
+    return out
