@@ -310,7 +310,7 @@ def test_plugin_failure_stop_rule():
     dont = text.partition("## 하지 말 것\n")[2]
     assert dont.startswith(
         "\n- `p3 ask`가 실패했을 때 답을 대신 찾지 않는다. SQL을 직접 쓰지 않고, 자료 폴더나 DB 파일을 직접 읽지 않고, "
-        "웹을 검색하지 않는다. 오류를 보여 주고 멈춘다.\n"
+        "웹을 검색하지 않는다. 오류를 보여 주고 멈춘다. 다만 5번의 절차("
     )
     assert (
         "- `p3` 명령이 실패했을 때 결과를 다른 방법으로 만들지 않는다. SQL을 직접 쓰지 않고, 자료 폴더나 DB 파일을 직접 "

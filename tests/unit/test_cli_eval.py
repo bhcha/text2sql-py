@@ -247,7 +247,7 @@ def test_status_shows_codex_sandbox_hint(root, capsys, monkeypatch):
 
     class Sandboxed(FakeBackend):
         def call(self, prompt, call_dir, *, name, attempt):
-            msg = f"호출 1({name}): exit 1: Error: failed to initialize in-process app-server client: x"
+            msg = f"호출 1({name}): exit 1: Error: failed to initialize in-process app-server client: Operation not permitted (os error 1)"
             return LlmOutcome(response=None, failure=LlmFailure("CodexExit", msg), meta={})
 
     monkeypatch.setattr(batch, "backend_for", lambda llm, single=False: Sandboxed())
