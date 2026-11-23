@@ -12,7 +12,6 @@ import os
 import platform
 import secrets
 import sqlite3
-import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -63,14 +62,14 @@ def exec_line(result) -> str:
 
 
 def git_head(root: Path) -> str | None:
-    stamped = engine.git_from_stamp()  # 엔진 표식이 있으면(플러그인 설치본) 표식의 커밋
-    if stamped is not None:
-        return stamped["head"]
-    try:
-        r = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=False)
-    except OSError:
-        return None
-    return r.stdout.strip() or None if r.returncode == 0 else None
+    """기록할 커밋. run.json과 같은 함수(batch.git_info)를 쓴다. 엔진 표식이 있으면(플러그인 설치본) 표식의 커밋."""
+    return batch.git_info(root)["head"]
+
+
+def _git_fields(root: Path) -> dict:
+    """ask.json의 git_head·dirty(run.json의 git.head·git.dirty와 같은 값). dirty가 참이면 미커밋 코드다."""
+    info = batch.git_info(root)
+    return {"git_head": info["head"], "dirty": info["dirty"]}
 
 
 def _now() -> str:
@@ -260,7 +259,7 @@ def run(args) -> int:
         else {"status": shown.status, "row_count": shown.row_count, "columns": shown.columns},
         "exit_code": code,
         "finished_at": _now(),
-        "git_head": git_head(root),
+        **_git_fields(root),
         **({"engine": rec} if (rec := engine.engine_record()) is not None else {}),
         "python": platform.python_version(),
         "sqlite": sqlite3.sqlite_version,

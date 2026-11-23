@@ -178,12 +178,16 @@ def test_ask_json_engine_field_only_with_stamp(shop, capsys, monkeypatch):
 
     code, lines, _ = ask(capsys, "--backend", "fake", QUESTION)
     rec = json.loads((shop / lines[-1].removeprefix("실행 폴더: ") / "ask.json").read_text())
-    assert code == 0 and "engine" not in rec
+    assert code == 0 and "engine" not in rec and "dirty" in rec
     stamped = {"head": "c" * 40, "src_tree": "t" * 40, "dirty": False}
     record = {"version": "0.1.0", "checksum": "k" * 64, "matches": True}
     monkeypatch.setattr(engine, "git_from_stamp", lambda: stamped)
     monkeypatch.setattr(engine, "engine_record", lambda: record)
     code, lines2, _ = ask(capsys, "--backend", "fake", QUESTION)
     rec = json.loads((shop / lines2[-1].removeprefix("실행 폴더: ") / "ask.json").read_text())
-    assert code == 0 and rec["engine"] == record and rec["git_head"] == "c" * 40
+    assert code == 0 and rec["engine"] == record and rec["git_head"] == "c" * 40 and rec["dirty"] is False
+    monkeypatch.setattr(engine, "git_from_stamp", lambda: {**stamped, "dirty": True})
+    code, lines3, _ = ask(capsys, "--backend", "fake", QUESTION)
+    rec = json.loads((shop / lines3[-1].removeprefix("실행 폴더: ") / "ask.json").read_text())
+    assert code == 0 and rec["dirty"] is True  # run.json의 git.dirty와 같은 값
     assert len(lines2) == len(lines)  # 화면 글 줄 수는 그대로

@@ -74,12 +74,13 @@ def _toml() -> str:
 
 
 def _engine_home(tmp: Path) -> Path:
-    """임시 엔진 자리: assets/(기본 설정·기준선)와 지금 패키지 파일로 만든 표식."""
+    """임시 엔진 자리: assets/(기본 설정·기준선), src/t2s(지금 패키지 사본), 그 자리의 파일로 만든 표식."""
     home = tmp / "engine"
     (home / "assets").mkdir(parents=True)
     (home / "assets/harness.toml").write_text(_toml(), encoding="utf-8")
     shutil.copytree(REPO / "baselines", home / "assets/baselines")
-    files = {engine.PACKAGE_PREFIX + k: v for k, v in engine.folder_files(PACKAGE).items()}
+    shutil.copytree(PACKAGE, home / "src/t2s", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    files = engine.folder_files(home, skip_stamp=True)
     stamp = {
         "engine": "p3",
         "version": "0.1.0",

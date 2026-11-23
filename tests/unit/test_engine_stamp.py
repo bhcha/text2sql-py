@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 import subprocess
@@ -12,22 +11,17 @@ import pytest
 
 from t2s import engine
 from t2s.cli import ask_cmd
+from t2s.cli.main import main
 from t2s.eval import bird
 from t2s.runner import batch
 
 PACKAGE = Path(engine.__file__).resolve().parent
 
 
-def _files(package_dir: Path) -> dict[str, str]:
-    out = {}
-    for path in sorted(package_dir.rglob("*")):
-        rel = path.relative_to(package_dir)
-        if path.is_file() and "__pycache__" not in rel.parts and path.suffix != ".pyc":
-            out[engine.PACKAGE_PREFIX + rel.as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
-    return out
-
-
 def _stamp(home: Path, package_dir: Path, **over) -> dict:
+    """빌드와 같은 꼴의 엔진 자리: home/src/t2s에 package_dir 사본, 표식의 files·checksum은 그 자리의 파일."""
+    shutil.copytree(package_dir, home / "src" / "t2s", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    files = engine.folder_files(home, skip_stamp=True)
     stamp = {
         "engine": "p3",
         "version": "0.1.0",
@@ -35,11 +29,10 @@ def _stamp(home: Path, package_dir: Path, **over) -> dict:
         "commit": "c" * 40,
         "src_tree": "t" * 40,
         "dirty": False,
-        "files": _files(package_dir),
-        "checksum": "k" * 64,
+        "files": files,
+        "checksum": engine.files_checksum(files),
         **over,
     }
-    home.mkdir(parents=True, exist_ok=True)
     (home / engine.STAMP_FILE).write_text(json.dumps(stamp), encoding="utf-8")
     return stamp
 
@@ -99,7 +92,13 @@ def test_stamp_values_replace_git(tmp_path, monkeypatch):
         assert ask_cmd.git_head(root) == stamp["commit"]
     assert engine.engine_stamp() == {k: stamp[k] for k in ("commit", "src_tree", "dirty", "version", "checksum")}
     assert engine.stamp_matches() is True
-    assert engine.engine_record() == {"version": "0.1.0", "checksum": stamp["checksum"], "matches": True}
+    assert engine.engine_record() == {
+        "version": "0.1.0",
+        "checksum": stamp["checksum"],
+        "matches": True,
+        "home_matches": True,
+        "installed_matches": True,
+    }
 
 
 def test_dirty_stamp_is_dirty(tmp_path, monkeypatch):
@@ -171,3 +170,39 @@ def test_unstamped_git_engine_home_uses_engine_git(tmp_path, monkeypatch):
     assert info["head"] == head and info["dirty"] is False
     (home / "src" / "t2s" / "b.py").write_text("y = 2\n", encoding="utf-8")
     assert batch.git_info(root)["dirty"] is True
+
+
+def test_changed_home_file_is_dirty_and_verify_fails(tmp_path, monkeypatch, capsys):
+    # 엔진 자리(플러그인 폴더)를 고치면 깔린 패키지가 표식과 같아도 기록이 미커밋이고 verify도 1이다(같은 함수)
+    home = tmp_path / "engine"
+    _stamp(home, PACKAGE)
+    monkeypatch.setenv(engine.ENV_HOME, str(home))
+    assert main(["verify"]) == 0
+    capsys.readouterr()
+    target = home / "src/t2s/pipeline/judge.py"
+    target.write_text(target.read_text(encoding="utf-8") + "# 바꿈\n", encoding="utf-8")
+    assert engine.engine_check() == {"home": ["바뀜 src/t2s/pipeline/judge.py"], "installed": [], "matches": False}
+    assert batch.git_info(tmp_path)["dirty"] is True and bird.git_info(tmp_path)["dirty"] is True
+    rec = engine.engine_record()
+    assert (rec["matches"], rec["home_matches"], rec["installed_matches"]) == (False, False, True)
+    assert main(["verify"]) == 1
+    assert capsys.readouterr().out.splitlines() == ["다름: 1곳", "  바뀜 src/t2s/pipeline/judge.py"]
+
+
+def test_changed_installed_file_fails_verify(tmp_path, monkeypatch, capsys):
+    # 깔린 패키지를 고치면 엔진 자리가 표식과 같아도 verify가 1이다(기록과 같은 판정)
+    copy = tmp_path / "site" / "t2s"
+    shutil.copytree(PACKAGE, copy, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    home = tmp_path / "engine"
+    _stamp(home, copy)
+    monkeypatch.setenv(engine.ENV_HOME, str(home))
+    monkeypatch.setattr(engine, "__file__", str(copy / "engine.py"))  # 지금 돌고 있는 패키지를 사본으로 본다
+    assert main(["verify"]) == 0
+    capsys.readouterr()
+    target = copy / "pipeline" / "judge.py"
+    target.write_text(target.read_text(encoding="utf-8") + "# 바꿈\n", encoding="utf-8")
+    assert engine.git_from_stamp()["dirty"] is True
+    rec = engine.engine_record()
+    assert (rec["matches"], rec["home_matches"], rec["installed_matches"]) == (False, True, False)
+    assert main(["verify"]) == 1
+    assert capsys.readouterr().out.splitlines() == ["다름: 1곳", "  깔린 패키지 바뀜 src/t2s/pipeline/judge.py"]

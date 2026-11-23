@@ -34,7 +34,7 @@ disable-model-invocation: true
 - 묶음 실행: `p3 run`, `p3 status`, `p3 stop`, `p3 resume`
 - 채점과 보고: `p3 score`, `p3 report`, `p3 leak-audit`
 - 경로 판정: `p3 route-start`, `p3 route-status`, `p3 route-judge`, `p3 route-apply`
-- 작업 폴더와 환경: `p3 init`, `p3 init --refresh`, `p3 setup`, `p3 verify`(엔진 폴더의 파일이 엔진 표식 `ENGINE.json`과 같은지)
+- 작업 폴더와 환경: `p3 init`, `p3 init --refresh`, `p3 setup`, `p3 verify`(엔진 폴더의 파일과 깔린 엔진 패키지가 엔진 표식 `ENGINE.json`과 같은지)
 
 ## 더 읽을 것 (필요할 때만)
 

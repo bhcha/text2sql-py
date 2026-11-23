@@ -1,7 +1,7 @@
 """명령 datasets, use, register, prepare, route-apply, init, verify. init·verify 밖의 명령은 첫머리에서 읽기 감시를 건다.
 
 init은 설정을 읽기 전에 돌고(작업 루트가 아직 없다) 엔진 자리의 기본 설정·기준선만 복사한다.
-verify는 엔진 자리의 파일과 표식만 본다.
+verify는 엔진 자리의 파일, 깔린 패키지, 표식만 본다.
 
 route-apply는 하네스 run 폴더의 경로 판정 파일(t2s route-judge가 쓴 것)만 읽고, --yes가 있을 때만 harness.toml에 쓴다.
 """
@@ -451,14 +451,18 @@ VERIFY_SHOW = 20
 
 
 def cmd_verify(args) -> int:
-    """엔진 자리의 파일을 표식과 대조한다. 같으면 0, 다르거나 표식이 없으면 1. 작업 루트 없이 돈다."""
+    """엔진 자리의 파일과 깔린 패키지를 표식과 대조한다. 같으면 0, 다르거나 표식이 없으면 1. 작업 루트 없이 돈다.
+
+    기록의 미커밋 판정과 같은 함수(engine.engine_check)를 쓴다.
+    """
     home = engine.engine_home()
-    diffs = engine.engine_differences(home)
-    if diffs is None:
+    check = engine.engine_check()
+    if check is None:
         where = "엔진 자리를 모릅니다(T2S_ENGINE_HOME 없음)" if home is None else f"{home / engine.STAMP_FILE}"
         out(f"엔진 표식이 없습니다: {where}")
         return EXIT_FAIL
     stamp = engine.engine_stamp() or {}
+    diffs = check["home"] + check["installed"]
     if not diffs:
         out(f"같음: 엔진 표식과 파일이 같습니다(판 {stamp.get('version')}, 커밋 {str(stamp.get('commit'))[:12]})")
         return EXIT_OK
