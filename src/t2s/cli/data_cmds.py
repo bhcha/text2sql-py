@@ -370,6 +370,9 @@ def cmd_init(args) -> int:
     if not src_toml.is_file():
         err(f"엔진의 기본 설정이 없습니다: {src_toml}")
         return EXIT_FAIL
+    if not src_base.is_dir():
+        err(f"엔진의 기준선이 없습니다: {src_base}")
+        return EXIT_FAIL
     root = Path(args.root).resolve()
     if args.refresh:
         return _init_refresh(root, src_toml, src_base)

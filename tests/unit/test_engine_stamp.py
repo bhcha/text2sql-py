@@ -138,10 +138,14 @@ def test_stamp_without_files_is_not_trusted(tmp_path, monkeypatch):
     assert engine.git_from_stamp()["dirty"] is True
 
 
-def test_broken_stamp_falls_back(tmp_path, monkeypatch):
+def test_broken_stamp_does_not_use_root_git(tmp_path, monkeypatch):
+    # 표식 파일이 있는데 읽을 수 없으면 루트(사용자 프로젝트)의 git을 엔진 커밋으로 적지 않는다
+    repo = _git_repo(tmp_path / "proj")
     home = tmp_path / "engine"
     home.mkdir()
     (home / engine.STAMP_FILE).write_text("{깨짐", encoding="utf-8")
     monkeypatch.setenv(engine.ENV_HOME, str(home))
     assert engine.engine_stamp() is None
-    assert batch.git_info(tmp_path) == {"head": None, "src_tree": None, "dirty": None}
+    for info in (batch.git_info(repo), bird.git_info(repo)):
+        assert info["head"] is None and info["dirty"] is not False
+    assert ask_cmd.git_head(repo) is None

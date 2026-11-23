@@ -111,3 +111,13 @@ def test_engine_without_assets(tmp_path, monkeypatch, capsys):
     assert main(["init", "--root", str(tmp_path / ".text2sql")]) == 1
     assert "엔진의 기본 설정이 없습니다" in capsys.readouterr().err
     assert not (tmp_path / ".text2sql").exists()
+
+
+def test_engine_without_baselines(tmp_path, monkeypatch, capsys):
+    home = tmp_path / "engine"
+    (home / "assets").mkdir(parents=True)
+    shutil.copyfile(REPO / "harness.toml", home / "assets/harness.toml")
+    monkeypatch.setenv(engine.ENV_HOME, str(home))
+    assert main(["init", "--root", str(tmp_path / ".text2sql")]) == 1
+    assert "엔진의 기준선이 없습니다" in capsys.readouterr().err
+    assert not (tmp_path / ".text2sql").exists()

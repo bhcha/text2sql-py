@@ -84,9 +84,15 @@ def stamp_matches(package_dir: Path | None = None) -> bool | None:
 
 
 def git_from_stamp(package_dir: Path | None = None) -> dict | None:
-    """기록의 git 칸(head, src_tree, dirty)을 표식에서 만든다. 표식이 없으면 None(부르는 쪽이 지금 동작대로 간다)."""
+    """기록의 git 칸(head, src_tree, dirty)을 표식에서 만든다. 표식이 없으면 None(부르는 쪽이 지금 동작대로 간다).
+
+    표식 파일은 있는데 읽을 수 없으면 셋 다 None(작업 루트의 git을 엔진 커밋으로 적지 않는다).
+    """
     stamp = engine_stamp()
     if stamp is None:
+        home = engine_home()
+        if home is not None and (home / STAMP_FILE).exists():
+            return {"head": None, "src_tree": None, "dirty": None}
         return None
     matches = stamp_matches(package_dir)
     return {
