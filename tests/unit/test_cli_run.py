@@ -16,6 +16,7 @@ from t2s.llm.fake import FakeBackend, _finish
 from t2s.prep import embed
 from t2s.runner import batch
 from t2s.runner import records as R
+from t2s.session import index as session_index
 from t2s.session import names
 
 TOML = """
@@ -153,6 +154,9 @@ def test_default_run_name_follows_session_rule(root, capsys, monkeypatch):
     parsed = names.parse(rid)
     assert parsed is not None and parsed.kind == "set" and parsed.dataset == "shop" and not parsed.legacy
     assert (root / "runs" / rid / "run.json").is_file()
+    [row] = session_index.read(root / "runs")  # run을 시작한 곳에서 색인 한 줄
+    meta = R.read_json(root / "runs" / rid / "run.json")
+    assert (row["name"], row["kind"], row["dataset"], row["started_at"]) == (rid, "set", "shop", meta["started_at"])
 
 
 def _fake_codex(tmp_path, monkeypatch, mode):

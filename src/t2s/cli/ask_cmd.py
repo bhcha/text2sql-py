@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import os
 import platform
-import secrets
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +28,8 @@ from t2s.pipeline.single import answer_single
 from t2s.prep import assets, embed
 from t2s.runner import batch
 from t2s.runner.guard import install_guard
+from t2s.session import index as session_index
+from t2s.session import names as session_names
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
 OUTGOING = "질문, CREATE 원문·예시 3행, 질문과 비슷한 값, 열 프로파일, 실행 오류 글"
@@ -204,10 +205,11 @@ def run(args) -> int:
         )
     fp_before = source.fingerprint()
 
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = config.runs_dir / "ask" / f"{stamp}-{secrets.token_hex(3)}"
+    session = session_names.new_name(name, session_names.ASK)  # 세션 폴더: <기록 자리>/<세션 이름>/
+    run_dir = config.runs_dir / session
     calls_dir = run_dir / "calls"
     run_dir.mkdir(parents=True, exist_ok=False)
+    started_at = _now()
     settings = decision.settings or PipelineSettings.from_mapping(config.pipeline)
     try:
         if decision.applied == RT.SINGLE:
@@ -265,6 +267,9 @@ def run(args) -> int:
         "sqlite": sqlite3.sqlite_version,
     }
     (run_dir / "ask.json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    session_index.append(
+        config.runs_dir, session_index.entry(session, session_names.ASK, name, started_at, os.environ)
+    )  # 색인 한 줄(ask 끝)
 
     if trace.exception is not None:
         ex = trace.exception

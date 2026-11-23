@@ -13,6 +13,7 @@ from t2s.cli import data_cmds, run_cmds
 from t2s.cli.main import main
 from t2s.prep import embed
 from t2s.runner import records as R
+from t2s.session import index as session_index
 from t2s.session import names
 
 pytest.importorskip("func_timeout")
@@ -89,6 +90,7 @@ def test_route_start_spawns_two_paired_runs(root, capsys, monkeypatch):
     assert h["questions"] == s["questions"] and h["count"] == s["count"] == 3
     assert h["pipeline"] == s["pipeline"]
     assert R.list_pairs(root / "runs")[pair]["runs"] == {"harness": ids[0], "single": ids[1]}
+    assert [(r["name"], r["kind"]) for r in session_index.read(root / "runs")] == [(ids[0], "set"), (ids[1], "set")]
 
 
 def test_route_start_refused_while_running(root, capsys, monkeypatch):

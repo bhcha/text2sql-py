@@ -50,6 +50,7 @@ from t2s.prep import assets, embed
 from t2s.runner import batch
 from t2s.runner import records as R
 from t2s.runner.guard import install_guard
+from t2s.session import index as session_index
 from t2s.session import names
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
@@ -428,6 +429,10 @@ def _create_run(
     R.write_json_atomic(
         run / R.CONTROL_FILE,
         {"run_id": run_id, "pid": None, "started_at": run_meta["started_at"], "state": "starting", "sessions": []},
+    )
+    # 색인 한 줄(run을 시작하는 곳. resume·분리 프로세스는 더하지 않는다)
+    session_index.append(
+        config.runs_dir, session_index.entry(run_id, names.SET, prep.name, run_meta["started_at"], os.environ)
     )
     return evidence["mode"]
 

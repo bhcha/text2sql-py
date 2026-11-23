@@ -10,6 +10,8 @@ from t2s.cli.main import main
 from t2s.llm import select
 from t2s.llm.fake import FakeBackend
 from t2s.prep import embed
+from t2s.session import index as session_index
+from t2s.session import names as session_names
 
 TOML = """
 [defaults]
@@ -109,6 +111,13 @@ def test_fake_ask(shop, capsys):
     rec = json.loads((run_dir / "ask.json").read_text())
     assert rec["database_unchanged"] is True and rec["exit_code"] == 0 and rec["llm"]["backend"] == "fake"
     assert GUARDED == [shop.resolve()]
+    # 세션 폴더: <기록 자리>/<세션 이름>/(종류 ask), 색인에 한 줄
+    assert run_dir.parent == shop / "runs" and not (shop / "runs/ask").exists()
+    parsed = session_names.parse(run_dir.name)
+    assert parsed is not None and parsed.kind == "ask" and parsed.dataset == "shop" and not parsed.legacy
+    assert sorted(p.name for p in run_dir.iterdir()) == ["ask.json", "calls", "trace.json"]
+    [row] = session_index.read(shop / "runs")
+    assert (row["name"], row["kind"], row["dataset"]) == (run_dir.name, "ask", "shop") and row["started_at"]
     assert len(lines) <= 35
 
 
