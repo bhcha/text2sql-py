@@ -15,7 +15,7 @@ description: 지금 연결된 데이터셋에 자연어 질문 하나를 보내 
    - 먼저 `p3 datasets`를 돌린다. 첫 줄이 "지금 바라보는 데이터셋: 없음"이면 돌리지 않고 "먼저 /connect로 데이터셋을 정해 주세요(/connect bird, /connect olist, 또는 /connect <SQLite 경로>)"라고 알리고 멈춘다. 대신 정하지 않는다.
    - 사용자가 지금과 다른 데이터셋이나 새 DB 파일을 말하면 이 스킬에서 바꾸지 않고 "/connect <그 이름 또는 경로>로 먼저 바꿔 주세요"라고 알리고 멈춘다. 예: BIRD면 "/connect bird", Olist면 "/connect olist".
    - 소스가 하나인 데이터셋이면 `--source`를 붙이지 않는다.
-   - BIRD처럼 소스가 여럿이면 사용자가 말한 DB 이름을 `--source <이름>`으로 붙인다(financial, card_games, california_schools, codebase_community, debit_card_specializing, european_football_2, formula_1, student_club, superhero, thrombosis_prediction, toxicology).
+   - BIRD처럼 소스가 여럿이면 사용자가 말한 DB 이름을 `--source '<이름>'`으로 붙인다(financial, card_games, california_schools, codebase_community, debit_card_specializing, european_football_2, formula_1, student_club, superhero, thrombosis_prediction, toxicology).
    - DB 이름을 말하지 않았으면 위 `datasets` 출력을 보여 주고 어느 DB인지 한 줄로 묻는다. 추측하지 않는다.
 2. 모델을 정한다(아래 "모델 정하기").
 3. 실행한다. 질문 문장은 사용자가 쓴 그대로 작은따옴표 안에 넣는다(고치거나 번역하지 않는다). 큰따옴표는 쓰지 않는다. 큰따옴표 안에서는 셸이 `$`·`` ` ``·`\`·`!`를 바꿔 엔진이 다른 글을 받는다. 질문 속 작은따옴표 `'`는 `'\''`로 바꿔 쓰고(예: `What's` → `'What'\''s'`), 그 밖에는 한 글자도 바꾸지 않는다:
@@ -42,7 +42,7 @@ description: 지금 연결된 데이터셋에 자연어 질문 하나를 보내 
 
    추론 단계를 말했으면(low·medium·high·xhigh·max) `--effort` 그 값, 말하지 않았으면 `--effort medium --effort-source default-medium`(추론 단계를 말하지 않았다는 표시. 이때는 추론 단계를 기본값 medium으로 보고 아래의 모델 이름 맞추기를 한다. newmodel이 같은 규칙으로 재고 저장한다). 조합이 gpt-5.6-terra·medium·codex-cli면 위 인자 대신 `--profile p3-ref`를 쓴다(원본 재현 조건). 이 경우들에 `--model-source conversation`을 붙인다.
 
-   사용자가 harness.toml의 프로필 이름을 말했으면("p3-claude로", "<이름> 프로필로") 위 인자 대신 `--profile '<이름>'`(작은따옴표 안에 사용자가 말한 그대로)과 `--model-source conversation`을 쓴다. 프로필의 경로(single·harness·partial, /newmodel로 정한 것)는 프로필을 이름으로 골랐을 때 따르고, 모델 이름을 말했을 때도(추론 단계를 말하지 않았으면 medium으로 보고) 백엔드·모델·추론 단계가 글자 그대로 같고 근거가 맞는 프로필이 있으면 따른다(명령이 맞춘다. 맞는 프로필 여럿의 경로가 다르면 전체 P3. 추론 단계를 기본값 medium으로 보았으면 "경로 …" 줄 끝에 그렇다고 나온다). 세션 모델이면 전체 P3다. `p3-ref`는 경로를 갖지 않으므로 위의 p3-ref 규칙은 그대로다. 첫 줄 아래에 "경로 …" 줄이 나오면 그대로 보여 준다.
+   사용자가 harness.toml의 프로필 이름을 말했으면("p3-claude로", "<이름> 프로필로") 위 인자 대신 `--profile '<이름>'`(작은따옴표 안에 사용자가 말한 그대로. 이름 속 작은따옴표 `'`는 `'\''`로 바꿔 쓴다)과 `--model-source conversation`을 쓴다. 프로필의 경로(single·harness·partial, /newmodel로 정한 것)는 프로필을 이름으로 골랐을 때 따르고, 모델 이름을 말했을 때도(추론 단계를 말하지 않았으면 medium으로 보고) 백엔드·모델·추론 단계가 글자 그대로 같고 근거가 맞는 프로필이 있으면 따른다(명령이 맞춘다. 맞는 프로필 여럿의 경로가 다르면 전체 P3. 추론 단계를 기본값 medium으로 보았으면 "경로 …" 줄 끝에 그렇다고 나온다). 세션 모델이면 전체 P3다. `p3-ref`는 경로를 갖지 않으므로 위의 p3-ref 규칙은 그대로다. 첫 줄 아래에 "경로 …" 줄이 나오면 그대로 보여 준다.
 2. 모델 말이 없으면 지금 네가 돌고 있는 모델을 `--model <전체 이름>`으로 반드시 명시하고 `--model-source session-self`를 붙인다.
    Claude Code 세션이면 `--backend claude-code`. 추론 단계는 적지 않는다(명령이 세션 설정에서 읽는다).
    Codex 세션이면 `--backend codex-cli`. 추론 단계를 알면 `--effort`로 적고, 모르면 적지 않는다(명령이 설정 파일 값을 쓴다).
