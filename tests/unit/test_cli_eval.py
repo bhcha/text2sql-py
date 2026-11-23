@@ -179,3 +179,60 @@ def test_study_score_rejects_plain_question_run(study_root, capsys, tmp_path):
     assert code == 1  # 이어 부른 채점이 실패한다(문항 id 기록이 없음)
     code, _, err = cli(capsys, "score", "--run", "tx")
     assert code == 1 and "스터디 모델 입력 파일" in err
+
+
+def _gold_path_hits(root, run) -> list[str]:
+    """run 폴더 파일 중 정답 폴더 경로 글자(절대 경로, 또는 자리 표시 <gold> 아닌 gold/ 경로)가 든 것."""
+    import re
+
+    marks = {str(root / "gold"), str(root.resolve() / "gold")}
+    bare = re.compile(r"(?<![<\w.-])gold[/\\]")
+    hits = []
+    for p in run.rglob("*"):
+        if p.is_file():
+            text = p.read_text(encoding="utf-8", errors="replace")
+            hits += [f"{p.relative_to(run)}: {m}" for m in marks if m in text]
+            hits += [f"{p.relative_to(run)}: gold/" for _ in bare.findall(text)[:1]]
+    return hits
+
+
+def test_run_folder_has_no_gold_path(root, capsys):
+    """채점한 run(전체·소표본) 폴더 어디에도 정답 폴더 경로 글자가 없다. 채점기 명령은 <gold>로 남는다."""
+    for rid, extra in (("full", []), ("part", ["--limit", "5"])):
+        code, lines, _ = cli(capsys, "run", "--foreground", "--backend", "fake", "--run-id", rid, *extra)
+        assert code == 0, lines
+        assert cli(capsys, "report", "--run", rid)[0] == 0
+        assert cli(capsys, "leak-audit", "--run", rid)[0] == 0
+        run = root / "runs" / rid
+        assert _gold_path_hits(root, run) == []
+        command = R.read_json(run / "score.json")["evaluator"]["command"]
+        gold_args = [a for a in command if a.startswith("<gold>/")]
+        if rid == "full":
+            assert len(gold_args) == 2 and gold_args[1].startswith("<gold>/_work/full/")
+        else:
+            assert len(gold_args) == 2 and all(a.startswith("<gold>/_work/part/") for a in gold_args)
+    assert (root / "gold/_work/part").is_dir()
+
+
+def test_score_error_masks_gold_path(root, capsys):
+    """채점 오류 글(run 안에서는 run.log에 남는다)도 정답 폴더 경로를 <gold>로 쓴다."""
+    from t2s.eval import gold as G
+
+    assert G.mask(f"없음: {root / 'gold'}/x/y.sql", root) == "없음: <gold>/x/y.sql"
+    assert G.mask(str(root / "gold"), root) == "<gold>"
+    assert G.mask(f"{root}/golden/a", root) == f"{root}/golden/a"
+    cli(capsys, "run", "--foreground", "--backend", "fake", "--limit", "5", "--no-score", "--run-id", "ge")
+    (root / "gold" / M.DATASET / "answers.sql").unlink()
+    code, _, err = cli(capsys, "score", "--run", "ge")
+    assert code == 1 and "<gold>/" in err and str(root / "gold") not in err
+
+
+def test_study_run_folder_has_no_gold_path(study_root, capsys):
+    root, MS = study_root
+    code, lines, _ = cli(
+        capsys, "run", "--foreground", "--backend", "fake", "--questions", str(root / MS.INPUTS), "--run-id", "sg"
+    )
+    assert code == 0, lines
+    assert cli(capsys, "leak-audit", "--run", "sg")[0] == 0
+    assert _gold_path_hits(root, root / "runs/sg") == []
+    assert (root / "gold/_work/sg/detail.jsonl").is_file()

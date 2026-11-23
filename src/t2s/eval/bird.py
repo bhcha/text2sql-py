@@ -351,7 +351,7 @@ def score(config: Config, run_id: str, *, num_cpus: int = 4, meta_time_out: floa
         str(log_path),
     ]
     evaluator: dict = {
-        "command": command,
+        "command": [G.mask(a, config.root) for a in command],  # 정답 폴더 경로는 <gold>로 남긴다
         "cwd": str(VENDOR),
         "commit": hashes["commit"],
         "files_sha256": hashes["sha256"],

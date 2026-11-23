@@ -54,7 +54,7 @@ def run(args) -> int:
         out(str(e))
         return EXIT_FAIL
     except (G.GoldError, bird.ScoreError, report.ReportError, route_judge.JudgeError) as e:
-        err(f"오류: {e}")
+        err(f"오류: {G.mask(str(e), config.root)}")  # run 안에서 부르면 이 글이 run.log에 남는다
         return EXIT_FAIL
 
 

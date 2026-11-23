@@ -14,6 +14,7 @@ from pathlib import Path
 GOLD_DIR = "gold"
 GOLD_TOML = "gold.toml"
 WORK_DIR = "_work"
+GOLD_MARK = "<gold>"  # 기록에 남길 때 정답 폴더 경로 대신 쓰는 자리 표시
 
 
 class NoGold(Exception):
@@ -114,6 +115,16 @@ def gold_lines(gold: Gold) -> list[str]:
     if gold.gold_sql_path is None:
         raise GoldError(f"정답 설정에 정답 SQL 파일이 없습니다(채점기 {gold.evaluator})")
     return [line.rstrip("\r\n") for line in gold.gold_sql_path.read_text(encoding="utf-8").splitlines()]
+
+
+def mask(text: str, root: Path) -> str:
+    """글 안의 정답 폴더 경로(<root>/gold)를 GOLD_MARK로 바꾼다. run·세션 폴더에 남는 글에 쓴다(AGENTS 규칙 3)."""
+    for base in dict.fromkeys((Path(root) / GOLD_DIR, Path(root).resolve() / GOLD_DIR)):
+        b = str(base)
+        text = text.replace(b + "/", GOLD_MARK + "/").replace(b + "\\", GOLD_MARK + "/")
+        if text == b:
+            text = GOLD_MARK
+    return text
 
 
 def work_dir(root: Path, run_id: str) -> Path:
