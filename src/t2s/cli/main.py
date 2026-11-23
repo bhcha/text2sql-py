@@ -43,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("datasets", help="데이터셋 목록, 지금 바라보는 것, 준비 상태")
 
+    p = sub.add_parser("init", help="작업 폴더(.text2sql/)를 만든다(플러그인 설치본. 덮어쓰지 않음)")
+    p.add_argument("--root", required=True, metavar="폴더", help="만들 작업 폴더(실행 스크립트가 넘긴다)")
+    p.add_argument("--refresh", action="store_true", help="엔진의 기본 설정이 바뀌었는지 알리기만 한다")
+
     p = sub.add_parser("use", help="바라볼 데이터셋을 바꾼다")
     p.add_argument("name")
 
@@ -156,6 +160,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return EXIT_USAGE
     try:
+        if args.command == "init":  # 설정을 읽기 전에 처리한다(작업 루트가 아직 없다)
+            from t2s.cli import data_cmds
+
+            return data_cmds.cmd_init(args)
         if args.command == "ask":
             from t2s.cli import ask_cmd
 

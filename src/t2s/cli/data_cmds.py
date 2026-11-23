@@ -1,4 +1,6 @@
-"""명령 datasets, use, register, prepare, route-apply. 첫머리에서 읽기 감시를 건다.
+"""명령 datasets, use, register, prepare, route-apply, init. init 밖의 명령은 첫머리에서 읽기 감시를 건다.
+
+init은 설정을 읽기 전에 돌고(작업 루트가 아직 없다) 엔진 자리의 기본 설정·기준선만 복사한다.
 
 route-apply는 하네스 run 폴더의 경로 판정 파일(t2s route-judge가 쓴 것)만 읽고, --yes가 있을 때만 harness.toml에 쓴다.
 """
@@ -17,6 +19,7 @@ import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 
+from t2s import engine
 from t2s.dataset import route_store
 from t2s.dataset.config import Config, ConfigError, DatasetSpec, find_root, load_config
 from t2s.dataset.state import State, StateError, current_dataset, load_state, save_state
@@ -339,3 +342,100 @@ def cmd_route_apply(args, config: Config, state: State) -> int:
         "커밋은 말씀하실 때 합니다"
     )
     return EXIT_OK
+
+
+# ── 작업 폴더 만들기(플러그인 설치본) ────────────────────
+
+WORK_FORMAT = "1"
+INIT_FILE = "init.json"
+ASSETS_DIR = "assets"
+ENGINE_HARNESS = "harness.toml"
+ENGINE_BASELINES = "baselines"
+
+
+def _asset_hashes(folder: Path) -> dict[str, str]:
+    if not folder.is_dir():
+        return {}
+    return {p.relative_to(folder).as_posix(): R.sha256_file(p) for p in sorted(folder.rglob("*")) if p.is_file()}
+
+
+def cmd_init(args) -> int:
+    """작업 폴더(.text2sql/)를 만든다. 설정을 읽기 전에 돈다(루트가 아직 없다). 있는 파일은 덮어쓰지 않는다."""
+    home = engine.engine_home()
+    if home is None:
+        out("저장소 클론에서는 필요 없습니다(작업 루트는 저장소 루트)")
+        return EXIT_USAGE
+    src_toml = home / ASSETS_DIR / ENGINE_HARNESS
+    src_base = home / ASSETS_DIR / ENGINE_BASELINES
+    if not src_toml.is_file():
+        err(f"엔진의 기본 설정이 없습니다: {src_toml}")
+        return EXIT_FAIL
+    root = Path(args.root).resolve()
+    if args.refresh:
+        return _init_refresh(root, src_toml, src_base)
+    if (root / "format").is_file():
+        out(f"작업 폴더가 이미 있습니다: {root} (아무것도 덮어쓰지 않음)")
+        return EXIT_OK
+    root.mkdir(parents=True, exist_ok=True)
+    made = []
+
+    def put_text(name: str, text: str) -> None:
+        path = root / name
+        if not path.exists():
+            path.write_text(text, encoding="utf-8")
+            made.append(name)
+
+    put_text(".gitignore", "*\n")
+    if not (root / ENGINE_HARNESS).exists():
+        shutil.copyfile(src_toml, root / ENGINE_HARNESS)
+        made.append(ENGINE_HARNESS)
+    for rel in _asset_hashes(src_base):
+        dest = root / ENGINE_BASELINES / rel
+        if not dest.exists():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src_base / rel, dest)
+            made.append(f"{ENGINE_BASELINES}/{rel}")
+    record = {
+        "format": int(WORK_FORMAT),
+        "harness_toml_sha256": R.sha256_file(src_toml),
+        "baselines_sha256": _asset_hashes(src_base),
+        "engine": engine.engine_stamp(),
+    }
+    put_text(INIT_FILE, json.dumps(record, ensure_ascii=False, indent=2) + "\n")
+    put_text("format", WORK_FORMAT + "\n")  # 마지막에 쓴다: 이 파일이 있으면 만들기가 끝난 것
+    out(
+        f"작업 폴더를 만들었습니다: {root} (만든 것 {len(made)}개: {', '.join(made[:6])}{' …' if len(made) > 6 else ''})"
+    )
+    return EXIT_OK
+
+
+def _init_refresh(root: Path, src_toml: Path, src_base: Path) -> int:
+    """엔진의 기본 설정·기준선이 작업 폴더를 만들 때와 달라졌는지 알리기만 한다(쓰지 않는다)."""
+    if not (root / "format").is_file():
+        err(f"작업 폴더가 없습니다: {root} (먼저 init)")
+        return EXIT_USAGE
+    record = R.read_json_if(root / INIT_FILE) or {}
+    then = record.get("harness_toml_sha256")
+    now_engine = R.sha256_file(src_toml)
+    work = root / ENGINE_HARNESS
+    work_sha = R.sha256_file(work) if work.is_file() else None
+    engine_changed = then != now_engine
+    out(f"엔진 기본 설정: {'바뀜' if engine_changed else '그대로'} · 작업 폴더 설정: {_work_state(work_sha, then)}")
+    then_base = record.get("baselines_sha256") or {}
+    now_base = _asset_hashes(src_base)
+    new = sorted(set(now_base) - set(then_base))
+    changed = sorted(k for k in now_base if k in then_base and now_base[k] != then_base[k])
+    out(f"엔진 기준선: 새로 {len(new)}개 · 바뀜 {len(changed)}개" + _names(new + changed))
+    if engine_changed or new or changed:
+        out(f"작업 폴더의 파일은 고치지 않았습니다. 엔진의 것: {src_toml.parent}")
+    return EXIT_OK
+
+
+def _work_state(work_sha: str | None, then: str | None) -> str:
+    if work_sha is None:
+        return "없음"
+    return "만들 때 그대로" if work_sha == then else "고쳐 씀"
+
+
+def _names(names: list[str]) -> str:
+    return f" ({', '.join(names[:5])}{' …' if len(names) > 5 else ''})" if names else ""
