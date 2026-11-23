@@ -18,6 +18,8 @@ P3 text-to-SQL 파이프라인(11단계)을 Python으로 다시 만든 하네스
 
 ## 스킬로 쓰기 (Claude Code는 /이름, Codex는 $이름)
 
+스킬은 text2sql-plugin 플러그인으로 깔아 쓴다. 저장소 안에 따로 둔 스킬 폴더(`.claude/skills/`, `.agents/skills/`)는 없앴고, 스킬 글의 원본은 `plugin/skills/`에 있다. 배포된 플러그인을 쓸 때는 text2sql-plugin을 marketplace로 더한 뒤 `text2sql@text2sql-plugin`을 깐다. 이 저장소에서 만든 판을 로컬 경로로 깔 때는, 커밋한 깨끗한 작업 트리에서 `uv run python scripts/build_engine_skills.py`로 엔진 스킬 폴더를 만들고(결과는 `dist/engine-skills/skills/`), 그 안의 스킬 일곱 폴더를 text2sql-plugin 사본의 `skills/`에 넣은 뒤, Claude Code는 쓸 프로젝트에서 `claude plugin marketplace add --scope local <사본 경로>` → `claude plugin install --scope local text2sql@text2sql-plugin`, Codex는 `codex plugin marketplace add <사본 경로>` → `codex plugin add text2sql@text2sql-plugin`으로 깐다. 플러그인으로 깔면 Claude Code에서는 `/text2sql:이름`으로 부르고(Codex는 `$이름`), 명령은 사용자 작업 폴더의 `.text2sql/` 아래에서 돈다(첫 명령에서 `init`을 물어본다).
+
 | 차례 | 스킬 | 하는 일 | 걸리는 시간 |
 |---|---|---|---|
 | 1 | `/getbird` | BIRD Mini-Dev 자료와 임베딩 모델을 받고 해시를 대조, 정답은 `gold/`로, 공개 evidence 파일을 만듦 | 받기 1.2GB |

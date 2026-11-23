@@ -1,6 +1,6 @@
-"""스킬 글 검사: 두 위치에 있고, .agents 판은 부르는 표기만 다르고, 글 속 명령이 실제 하위 명령과 맞는다.
+"""스킬 글 검사: plugin/skills(스킬 글의 원본)의 글 속 명령이 실제 하위 명령과 맞고, 공통 묶음이 같고, 라우팅 문항 글이 있다.
 
-plugin/skills(스킬화한 원본)는 옛 글에서 허용된 바꿈만 했는지, 공통 묶음이 같은지, 라우팅 문항 글이 있는지도 본다.
+옛 두 자리(.claude/skills, .agents/skills)는 지웠다. 옛 글과 견주던 테스트도 함께 뺐다(ALLOWED는 기록으로 남긴다).
 """
 
 import argparse
@@ -28,52 +28,7 @@ def _text(where: str, name: str) -> str:
     return (REPO / where / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
 
 
-def test_both_locations_and_only_call_notation_differs():
-    for name in SKILLS:
-        claude = _text(".claude", name)
-        agents = _text(".agents", name)
-        assert CALL.sub(r"$\1", claude) == agents, name
-        assert claude.startswith(f"---\nname: {name}\n"), name
-
-
-def test_commands_exist():
-    subs = _subparsers()
-    flags = {opt for p in subs.values() for a in p._actions for opt in a.option_strings}
-    for name in SKILLS:
-        text = _text(".claude", name)
-        for cmd in COMMAND.findall(text):
-            assert cmd in subs, (name, cmd)
-        for flag in FLAG.findall(text):
-            assert flag in flags, (name, flag)
-
-
-def test_no_section_sign():
-    for where in (".claude", ".agents"):
-        for name in SKILLS:
-            assert "§" not in _text(where, name), (where, name)
-
-
-def test_newmodel_saves_recordable_judgment_without_asking():
-    """newmodel은 기록할 수 있는 판정이면 묻지 않고 route-apply --yes로 저장한다. 기록할 수 없는 판정은 쓰지 않는다."""
-    text = _text(".claude", "newmodel")
-    assert "uv run t2s route-apply --yes" in text
-    assert "묻지 않고 바로" in text and "기록할 수 없는 판정" in text
-    assert "기록에 쓸 수 없음" in text and "p3-ref" in text and "커밋하지 않는다" in text
-    assert "사용자 승인 없이" not in text and "승인했을 때만" not in text
-
-
-def test_model_name_skills_mark_unstated_effort():
-    """모델 이름으로 경로를 맞출 때 추론 단계를 말하지 않은 경우를 명령이 알 수 있게 표시하고, 그때도 medium으로 보고 맞춘다."""
-    for home in (".claude", ".agents"):
-        for name in ("text2sql", "runset"):
-            text = _text(home, name)
-            assert "`--effort medium --effort-source default-medium`" in text, (home, name)
-            assert "추론 단계를 기본값 medium으로 보고 아래의 모델 이름 맞추기를 한다" in text, (home, name)
-            assert "추론 단계를 말하지 않았으면 medium으로 보고" in text and "`--profile p3-ref`" in text, (home, name)
-            assert "맞추기를 하지 않는다" not in text, (home, name)
-
-
-# ── plugin/skills 기준(스킬화). 옛 두 자리(.claude, .agents)를 보는 위 테스트는 옛 폴더를 정리할 때 뺀다 ──
+# ── plugin/skills 기준(스킬화) ──
 
 ENGINE_SKILL = "p3-engine"
 SCRIPT_ONLY = {"setup"}  # t2s가 아니라 실행 스크립트 scripts/p3가 받는 명령
@@ -98,7 +53,7 @@ NEWMODEL_EVIDENCE = '- "evidence 조건이 달라 견주지 않는다"가 나오
 NEWMODEL_JUDGE = (
     '출력을 그대로 보여 준다. 두 run의 라벨 전체와 "새로 맞음·새로 틀림" 문장, 비용 줄, 경로 판정 줄을 자르지 않는다.\n'
 )
-# 옛 글 → 새 글에서 허용된 스킬별 바꿈(공통 바꿈은 allowed_transform이 한다). 이 밖의 차이는 없어야 한다.
+# 옛 글 → 새 글에서 허용된 스킬별 바꿈(공통 바꿈은 allowed_transform이 한다). 옛 글을 지운 뒤로는 견주는 테스트 없이 기록으로 남긴다.
 ALLOWED = {
     "connect": [
         (
@@ -199,22 +154,6 @@ def allowed_transform(name: str, old: str, prep: str, keep: str) -> str:
     first, _, after = rest.partition("\n\n")
     text = head + sep + title + "\n\n" + first + "\n\n" + prep + "\n\n" + after
     return text.replace("## 하지 말 것\n", keep + "## 하지 말 것\n", 1)
-
-
-def test_plugin_skills_only_allowed_changes():
-    prep, keep = _prep(_new("connect")), _keep(_new("connect"))
-    for name in SKILLS:
-        old, new = _text(".claude", name), _new(name)
-        assert allowed_transform(name, old, prep, keep) == new, name
-
-
-def test_plugin_command_lines_same_except_p3():
-    """명령 줄(들여 쓴 `uv run t2s …` 줄)은 `p3`로 바꾼 것 말고 인자까지 같다."""
-    for name in SKILLS:
-        old = [ln for ln in _text(".claude", name).splitlines() if ln.strip().startswith("uv run t2s ")]
-        new = [ln for ln in _new(name).splitlines() if ln.strip().startswith("p3 ")]
-        assert [ln.replace("uv run t2s ", "p3 ", 1) for ln in old] == new, name
-        assert old, name
 
 
 def test_plugin_common_blocks_same():
