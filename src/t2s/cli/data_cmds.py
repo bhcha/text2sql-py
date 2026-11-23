@@ -30,7 +30,7 @@ from t2s.datasource.base import DataSourceError
 from t2s.datasource.factory import open_source
 from t2s.prep import assets, embed
 from t2s.runner import records as R
-from t2s.runner.guard import install_guard
+from t2s.runner.guard import GoldAccessBlocked, install_guard
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_APPROVAL = 0, 1, 2, 3
 NAME_RE = re.compile(r"^[a-z][a-z0-9_-]{0,40}$")
@@ -89,6 +89,10 @@ def run(args) -> int:
         return handler(args, config, state)
     except (DataSourceError, assets.PrepFailed, ConfigError, StateError) as e:
         err(f"오류: {e}")
+        return EXIT_FAIL
+    except GoldAccessBlocked:
+        # 읽기 감시가 막았다(정답 폴더·받은 zip 안의 파일). 추적 글 없이 한 줄로 끝낸다.
+        err("오류: 보호된 폴더(정답 폴더 gold/ 또는 받은 자료 download/) 안의 파일은 등록하거나 열 수 없습니다")
         return EXIT_FAIL
 
 

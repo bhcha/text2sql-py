@@ -118,3 +118,31 @@ def test_prepare_bird_missing_and_model_missing(root, shop_db, capsys, monkeypat
     capsys.readouterr()
     assert main(["prepare", "shop"]) == 1
     assert "먼저 /getbird 또는 t2s fetch model" in capsys.readouterr().err
+
+
+def test_register_inside_gold_is_one_line(tmp_path, shop_db):
+    """정답 폴더 안의 DB 등록은 읽기 감시가 막고, 추적 글 없이 한 줄과 종료 코드 1로 끝난다(감시 훅은 하위 프로세스에서)."""
+    import os
+    import shutil
+    import subprocess
+    import sys
+
+    r = tmp_path / "repo"
+    (r / "gold").mkdir(parents=True)
+    (r / "harness.toml").write_text(TOML, encoding="utf-8")
+    db = r / "gold" / "shop.sqlite"
+    shutil.copyfile(shop_db, db)
+    env = {**os.environ, "T2S_ROOT": str(r)}
+    p = subprocess.run(
+        [sys.executable, "-m", "t2s.cli.main", "register", "inside", "--sqlite", str(db), "--yes"],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+    )
+    assert p.returncode == 1
+    assert "Traceback" not in p.stderr and "Traceback" not in p.stdout
+    assert p.stderr.strip().splitlines() == [
+        "오류: 보호된 폴더(정답 폴더 gold/ 또는 받은 자료 download/) 안의 파일은 등록하거나 열 수 없습니다"
+    ]
+    assert not (r / "var/state.json").exists() or "inside" not in (r / "var/state.json").read_text()
