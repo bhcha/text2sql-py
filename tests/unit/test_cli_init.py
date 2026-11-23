@@ -121,3 +121,13 @@ def test_engine_without_baselines(tmp_path, monkeypatch, capsys):
     assert main(["init", "--root", str(tmp_path / ".text2sql")]) == 1
     assert "엔진의 기준선이 없습니다" in capsys.readouterr().err
     assert not (tmp_path / ".text2sql").exists()
+
+
+def test_repo_layout_engine_home(tmp_path, monkeypatch):
+    """개발용 갈래: 엔진 자리가 저장소 루트면(assets/ 없음) 루트의 harness.toml·baselines/를 복사한다."""
+    monkeypatch.setenv(engine.ENV_HOME, str(REPO))
+    monkeypatch.setattr(data_cmds, "install_guard", lambda *a, **kw: None)
+    root = tmp_path / ".text2sql"
+    assert main(["init", "--root", str(root)]) == 0
+    assert (root / "harness.toml").read_bytes() == (REPO / "harness.toml").read_bytes()
+    assert (root / "baselines/ts-pure-fix.json").read_bytes() == (REPO / "baselines/ts-pure-fix.json").read_bytes()

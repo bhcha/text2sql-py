@@ -1,0 +1,82 @@
+#!/bin/sh
+# P3 엔진 실행 스크립트. 이 스킬 폴더에 든 엔진(t2s)을 전용 Python 환경에 깔아 실행한다.
+#
+# 엔진 폴더는 이 스크립트의 두 단계 위다. 처음 한 번은 uv 로 전용 환경을 만든다(인터넷 필요).
+# 다음부터는 그 환경의 t2s 를 바로 실행해 uv 도 인터넷도 쓰지 않는다.
+# 환경은 엔진 체크섬마다 하나이고 플러그인 폴더 밖($T2S_HOME, 기본은 사용자 데이터 폴더 아래 text2sql-plugin)에 둔다.
+# 같은 엔진이면 Claude Code 와 Codex 가 같은 환경을 같이 쓴다. 환경 폴더는 언제 지워도 된다.
+# 엔진 폴더와 플러그인 폴더에는 아무것도 쓰지 않는다. 엔진의 t2s 를 PATH 에 올리지 않는다.
+# 쓰기 금지 샌드박스에서 실패하지 않게 /dev/null 같은 파일로 출력을 돌리지 않는다.
+#
+# `p3 setup` 은 환경만 만들고 그 자리를 알린다. Codex 만 쓰는 곳에서는 처음 한 번 보통 터미널에서 실행해 둔다.
+# 작업 루트는 T2S_ROOT, 없으면 부른 폴더에서 위로 찾은 가장 가까운 .text2sql/ 이다.
+# init·setup·verify·--version·도움말은 작업 루트 없이 받는다. init 에는 --root <부른 폴더>/.text2sql 을 붙인다.
+#
+# 개발용 갈래: 엔진 폴더에 src/ 가 없으면(text2sql-py 저장소 안의 원본 plugin/skills/p3-engine 에서 부를 때)
+# 저장소 루트를 엔진 폴더로 본다. 빌드된 엔진 스킬 폴더에서는 쓰이지 않는다.
+ENGINE=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+if [ ! -d "$ENGINE/src/t2s" ]; then
+  REPO=$(CDPATH= cd -- "$ENGINE/../../.." && pwd)
+  if [ -d "$REPO/src/t2s" ] && [ -f "$REPO/pyproject.toml" ]; then
+    ENGINE=$REPO
+  fi
+fi
+if [ -f "$ENGINE/ENGINE.json" ]; then
+  KEY=$(sed -n 's/.*"checksum": *"\([0-9a-f]*\)".*/\1/p' "$ENGINE/ENGINE.json" | head -n 1 | cut -c 1-16)
+fi
+if [ -z "$KEY" ]; then
+  KEY=$( (cat "$ENGINE/pyproject.toml" "$ENGINE/uv.lock"; find "$ENGINE/src/t2s" -name '*.py' -not -path '*/__pycache__/*' | LC_ALL=C sort | xargs cat) | cksum | cut -d ' ' -f 1)
+fi
+BASE=${T2S_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/text2sql-plugin}
+ENV="$BASE/p3-$KEY"
+
+if [ ! -x "$ENV/bin/t2s" ]; then
+  if ! UV=$(command -v uv); then
+    echo '{"error": {"kind": "no_uv", "message": "uv 가 없다. https://docs.astral.sh/uv/getting-started/installation/ 에서 설치한 뒤 다시 실행한다", "retryable": false}}'
+    exit 1
+  fi
+  rm -rf "$ENV"
+  if ! { mkdir -p "$BASE" && UV_PROJECT_ENVIRONMENT="$ENV" "$UV" sync --quiet --project "$ENGINE" --frozen --no-editable --no-group dev; } 1>&2; then
+    rm -rf "$ENV"
+    echo "{\"error\": {\"kind\": \"setup_failed\", \"message\": \"P3 엔진 환경을 처음 만들지 못했다. 인터넷이 되고 $BASE 에 쓸 수 있는 보통 터미널에서 '$0 setup' 을 한 번 실행한다\", \"retryable\": false}}"
+    exit 1
+  fi
+fi
+if [ "$1" = "setup" ]; then
+  echo "{\"ok\": true, \"env\": \"$ENV\"}"
+  exit 0
+fi
+
+CALLER=$(pwd)
+case "$1" in
+  init|verify|--version|-h|--help|"") NEED_ROOT=no ;;
+  *) NEED_ROOT=yes ;;
+esac
+if [ -z "$T2S_ROOT" ] && [ "$NEED_ROOT" = yes ]; then
+  d=$CALLER
+  while :; do
+    if [ -d "$d/.text2sql" ]; then
+      T2S_ROOT="$d/.text2sql"
+      break
+    fi
+    [ "$d" = "/" ] && break
+    d=$(dirname -- "$d")
+  done
+  if [ -z "$T2S_ROOT" ]; then
+    echo "작업 폴더가 없습니다. 먼저 init"
+    exit 2
+  fi
+fi
+T2S_ENGINE_HOME=$ENGINE
+T2S_CALLER_CWD=$CALLER
+export T2S_ENGINE_HOME T2S_CALLER_CWD
+if [ -n "$T2S_ROOT" ]; then
+  export T2S_ROOT
+fi
+if [ "$1" = "init" ]; then
+  case " $* " in
+    *" --root "*|*" --root="*) ;;
+    *) set -- "$@" --root "$CALLER/.text2sql" ;;
+  esac
+fi
+exec "$ENV/bin/t2s" "$@"

@@ -365,8 +365,10 @@ def cmd_init(args) -> int:
     if home is None:
         out("저장소 클론에서는 필요 없습니다(작업 루트는 저장소 루트)")
         return EXIT_USAGE
-    src_toml = home / ASSETS_DIR / ENGINE_HARNESS
-    src_base = home / ASSETS_DIR / ENGINE_BASELINES
+    # 빌드된 엔진 스킬은 assets/ 아래에 둔다. assets/가 없으면 저장소 배치(엔진 자리가 저장소 루트, 개발용 갈래)로 본다
+    assets_dir = home / ASSETS_DIR if (home / ASSETS_DIR).is_dir() else home
+    src_toml = assets_dir / ENGINE_HARNESS
+    src_base = assets_dir / ENGINE_BASELINES
     if not src_toml.is_file():
         err(f"엔진의 기본 설정이 없습니다: {src_toml}")
         return EXIT_FAIL
