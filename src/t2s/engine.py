@@ -3,6 +3,7 @@
 플러그인 설치본에서는 실행 스크립트가 환경변수 T2S_ENGINE_HOME에 엔진 폴더를 넣는다. 그 폴더의 표식이
 있으면 기록의 커밋·미커밋 판정을 표식에서 읽는다(사용자 프로젝트의 git을 보지 않는다).
 저장소 클론에서는 표식이 없고, 부르는 쪽이 지금처럼 루트의 git을 본다.
+표식 없는 엔진 자리가 src/t2s를 가진 git 작업 트리면(개발용 갈래) 그 자리의 git을 본다.
 eval과 runner가 함께 쓰므로 최상위 모듈에 둔다.
 """
 
@@ -95,6 +96,25 @@ def stamp_matches(package_dir: Path | None = None) -> bool | None:
     return _installed_files(package_dir) == expected
 
 
+def _home_git(home: Path) -> dict | None:
+    """엔진 자리 자체가 git 작업 트리의 맨 위면 그 git의 head·src_tree·dirty(src, pyproject.toml, uv.lock). 아니면 None."""
+    import subprocess
+
+    def git(*args: str) -> str | None:
+        try:
+            r = subprocess.run(["git", "-C", str(home), *args], capture_output=True, text=True, check=False)
+        except OSError:
+            return None
+        return r.stdout.strip() if r.returncode == 0 else None
+
+    top = git("rev-parse", "--show-toplevel")
+    head = git("rev-parse", "HEAD")
+    if top is None or head is None or Path(top).resolve() != home.resolve():
+        return None
+    status = git("status", "--porcelain", "--", "src", "pyproject.toml", "uv.lock")
+    return {"head": head, "src_tree": git("rev-parse", "HEAD:src"), "dirty": None if status is None else bool(status)}
+
+
 def git_from_stamp(package_dir: Path | None = None) -> dict | None:
     """기록의 git 칸(head, src_tree, dirty)을 표식에서 만든다. 표식이 없으면 None(부르는 쪽이 지금 동작대로 간다).
 
@@ -105,6 +125,8 @@ def git_from_stamp(package_dir: Path | None = None) -> dict | None:
         home = engine_home()
         if home is not None and (home / STAMP_FILE).exists():
             return {"head": None, "src_tree": None, "dirty": None}
+        if home is not None and (home / "src" / "t2s").is_dir():
+            return _home_git(home)
         return None
     matches = stamp_matches(package_dir)
     return {

@@ -4,7 +4,7 @@
   1. 작업 트리가 깨끗한지 본다. 아니면 멈춘다(--allow-dirty면 표식에 dirty: true).
   2. 검사 셋(pytest, ruff check, ruff format --check)을 돌린다(--skip-checks는 시험용).
   3. 결과 폴더를 비우고 만든다.
-  4. plugin/skills/를 복사한다.
+  4. plugin/skills/를 복사한다(폴더째 복사는 git이 추적하는 파일만 싣는다. 무시·비추적 파일은 싣지 않는다).
   5. 엔진 본체를 p3-engine/에 복사한다: src/t2s/(캐시 제외), pyproject.toml, uv.lock, .python-version, LICENSE, LICENSES/.
   6. 사본: harness.toml·baselines/ → assets/, AGENTS.md → references/rules.md, docs/provenance.md → references/provenance.md.
   7. 금지 파일 검사(정답 폴더 이름, data·runs·var·sessions 폴더, .env*, .venv, 캐시, DB·zip 파일, 공개 evidence 파일 이름,
@@ -73,11 +73,18 @@ def copy_file(src: Path, dest: Path, *, header: str | None = None) -> None:
     dest.chmod(0o755 if src.stat().st_mode & 0o111 else 0o644)
 
 
+def tracked_files(src: Path) -> list[Path]:
+    """src 아래에서 git이 추적하는 파일(인덱스 기준). 내용은 작업 트리에서 읽는다. 디스크에 없는 파일은 건너뛴다."""
+    listed = git("ls-files", "-z", "--", src.relative_to(REPO).as_posix())
+    paths = [REPO / name for name in listed.split("\0") if name]
+    return sorted(path for path in paths if path.is_file())
+
+
 def copy_tree(src: Path, dest: Path) -> None:
-    """파일만 하나씩 복사한다(캐시·빈 폴더는 옮기지 않는다)."""
-    for path in sorted(src.rglob("*")):
+    """git이 추적하는 파일만 하나씩 복사한다(캐시·빈 폴더·무시된 파일은 옮기지 않는다)."""
+    for path in tracked_files(src):
         rel = path.relative_to(src)
-        if path.is_file() and not _skip(rel):
+        if not _skip(rel):
             copy_file(path, dest / rel)
 
 

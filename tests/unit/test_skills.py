@@ -269,7 +269,7 @@ def test_routing_eval_prompts():
         "run-all-routes-to-runset": ("전체 돌려줘", "runset"),
         "new-model-routes-to-newmodel": ("새 모델 재줘", "newmodel"),
     }
-    assert sorted(p.name for p in evals.iterdir() if p.is_dir()) == sorted(want)
+    assert sorted(p.name for p in evals.iterdir() if p.is_dir() and p.name != "results") == sorted(want)
     for case, (prompt, skill) in want.items():
         text = (evals / case / "prompt.md").read_text(encoding="utf-8")
         assert text.startswith("---\ndescription: ") and "allowed_tools: [Skill]" in text

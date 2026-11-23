@@ -120,6 +120,7 @@ def test_forbidden_files_stop(repo, rel, content, why):
     path = repo / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+    _git(repo, "add", rel)
     r = build(repo, "--allow-dirty")
     assert r.returncode == 1 and why in r.stderr, r.stderr
     assert not (repo / "dist/engine-skills").exists()
@@ -170,3 +171,15 @@ def test_installed_package_matches_built_stamp(repo, monkeypatch):
     eng = repo / "dist/engine-skills/skills/p3-engine"
     monkeypatch.setenv(engine.ENV_HOME, str(eng))
     assert engine.stamp_matches(eng / "src/t2s") is True
+
+
+def test_ignored_files_are_not_copied(repo):
+    """git이 추적하는 파일만 싣는다. .git/info/exclude로 가린 파일은 깨끗한 트리에서도 실리지 않는다."""
+    with open(repo / ".git/info/exclude", "a", encoding="utf-8") as f:
+        f.write("local-note.md\n")
+    (repo / "plugin/skills/connect/local-note.md").write_text("local only\n", encoding="utf-8")
+    assert _git(repo, "status", "--porcelain") == ""
+    r = build(repo)
+    assert r.returncode == 0, r.stderr
+    out = repo / "dist/engine-skills/skills/connect"
+    assert (out / "SKILL.md").is_file() and not (out / "local-note.md").exists()

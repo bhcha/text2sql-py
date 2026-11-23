@@ -149,3 +149,25 @@ def test_broken_stamp_does_not_use_root_git(tmp_path, monkeypatch):
     for info in (batch.git_info(repo), bird.git_info(repo)):
         assert info["head"] is None and info["dirty"] is not False
     assert ask_cmd.git_head(repo) is None
+
+
+def test_unstamped_git_engine_home_uses_engine_git(tmp_path, monkeypatch):
+    # 표식 없는 엔진 자리(개발용: 저장소 루트)가 git이면 작업 루트가 아니라 엔진 자리의 git을 적는다
+    home = _git_repo(tmp_path / "engine")
+    (home / "src" / "t2s").mkdir()
+    (home / "src" / "t2s" / "b.py").write_text("y = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(home), "add", "."], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(home), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "y"],
+        check=True,
+        capture_output=True,
+    )
+    head = subprocess.run(
+        ["git", "-C", str(home), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    root = _git_repo(tmp_path / "project")
+    monkeypatch.setenv(engine.ENV_HOME, str(home))
+    info = batch.git_info(root)
+    assert info["head"] == head and info["dirty"] is False
+    (home / "src" / "t2s" / "b.py").write_text("y = 2\n", encoding="utf-8")
+    assert batch.git_info(root)["dirty"] is True
