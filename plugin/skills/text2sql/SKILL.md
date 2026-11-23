@@ -1,0 +1,73 @@
+---
+name: text2sql
+description: 지금 연결된 데이터셋에 자연어 질문 하나를 보내 SQL로 바꾸고 읽기 전용으로 실행해 결과를 보여 준다. 사용자가 /text2sql 질문을 부르거나 "이 DB에 물어봐", "SQL로 바꿔줘", "financial에서 … 몇 개야"라고 할 때 쓴다. 세션 모델이 직접 SQL을 쓰지 않고 p3 ask를 돌린다. 모델은 세션 모델이 기본이고 대화로 지정하면 그 모델이다. 데이터셋을 바꾸거나 새 DB를 붙이는 일은 /connect가 한다.
+---
+
+# text2sql — 질문 하나를 SQL로
+
+사용자는 /text2sql 뒤에 질문만 말한다(BIRD면 DB 이름도). 이 스킬은 `p3 ask`를 한 번 돌리고 그 출력을 전달한다. 세션 모델(너)은 SQL을 직접 쓰지 않는다. 파이프라인 안의 호출만 모델을 쓴다.
+
+준비: 이 스킬은 엔진 스킬의 실행 스크립트로만 일한다. 이 SKILL.md가 있는 폴더의 옆 폴더 `p3-engine`의 `scripts/p3`를 `sh`로 부른다(`sh <이 SKILL.md가 있는 폴더>/../p3-engine/scripts/p3 <명령>`, 아래에서 `p3 <명령>`이라고 줄여 쓴다). 사용자가 지금 일하는 폴더(작업 폴더 `.text2sql/`가 있는 폴더)에서 부르고, 명령 인자의 상대 경로는 그 폴더 기준이다. 명령 출력에 `t2s <명령>`이라고 나오면 `p3 <명령>`으로 읽는다. 작업 폴더(`.text2sql/`)가 없다고 나오면 `p3 init`을 돌릴지 한 줄로 묻는다. `p3`가 `no_uv`(uv 없음)나 `setup_failed`(처음 환경 만들기 실패)를 돌려주면 그 메시지를 그대로 안내하고 멈춘다. 스킬 이름은 `/이름`으로 적었다. Codex에서는 `$이름`, 플러그인으로 깔았으면 `/text2sql:이름`으로 부른다.
+
+## 절차
+
+1. 대상을 정한다. 대상은 /connect로 정한 데이터셋이다. 기본 데이터셋은 없다.
+   - 먼저 `p3 datasets`를 돌린다. 첫 줄이 "지금 바라보는 데이터셋: 없음"이면 돌리지 않고 "먼저 /connect로 데이터셋을 정해 주세요(/connect bird, /connect olist, 또는 /connect <SQLite 경로>)"라고 알리고 멈춘다. 대신 정하지 않는다.
+   - 사용자가 지금과 다른 데이터셋이나 새 DB 파일을 말하면 이 스킬에서 바꾸지 않고 "/connect <그 이름 또는 경로>로 먼저 바꿔 주세요"라고 알리고 멈춘다. 예: BIRD면 "/connect bird", Olist면 "/connect olist".
+   - 소스가 하나인 데이터셋이면 `--source`를 붙이지 않는다.
+   - BIRD처럼 소스가 여럿이면 사용자가 말한 DB 이름을 `--source <이름>`으로 붙인다(financial, card_games, california_schools, codebase_community, debit_card_specializing, european_football_2, formula_1, student_club, superhero, thrombosis_prediction, toxicology).
+   - DB 이름을 말하지 않았으면 위 `datasets` 출력을 보여 주고 어느 DB인지 한 줄로 묻는다. 추측하지 않는다.
+2. 모델을 정한다(아래 "모델 정하기").
+3. 실행한다. 질문 문장은 사용자가 쓴 그대로 따옴표 안에 넣는다(고치거나 번역하지 않는다):
+
+   p3 ask [--source <이름>] <모델 인자> "<질문>"
+
+4. 종료 코드 0이면 출력을 그대로 보여 준다. 첫 줄(모델·추론·백엔드·출처), 대상, 밖으로 나가는 것, SQL, 실행 결과 앞 10행, 단계 요약, 호출·시간·토큰, DB 지문 전후, 실행 폴더가 들어 있다. 요약하거나 SQL을 고쳐 쓰지 않는다.
+5. 종료 코드별로:
+   - 2이고 "소스를 정해야 합니다"가 나오면 목록을 보여 주고 어느 것인지 묻는다.
+   - 2이고 "모델을 알 수 없습니다"가 나오면 그 문장으로 되묻는다.
+   - 5("준비 필요")면 `p3 prepare`를 돌린 뒤(BIRD 첫 준비는 약 2분) 3번을 한 번만 다시 한다. `prepare`가 "자료 없음"으로 멈추면 "먼저 /getbird"라고 알리고 멈춘다.
+   - 2이고 "데이터셋을 정하지 않았습니다"가 나오면 1번의 "먼저 /connect" 안내를 하고 멈춘다.
+   - 그 밖의 0이 아닌 코드면 마지막 오류 줄을 그대로 보여 주고 멈춘다. 같은 질문을 다시 돌리지 않는다(모델 호출마다 사용량이 든다).
+
+## 모델 정하기 (사용자에게 인자를 묻지 않는다)
+
+1. 사용자가 이번 대화에서 모델을 말했으면 그 모델로 돈다. 말 → 인자:
+   - 오푸스, opus → `--backend claude-code --model opus`
+   - 테라, terra → `--backend codex-cli --model terra`
+   - 솔, sol → `--backend codex-cli --model sol`
+   - 루나, luna → `--backend codex-cli --model luna`
+   - 아스트라, astra → `--backend codex-cli --model astra`
+   - 그 밖의 전체 모델 이름은 그대로 `--model`에 넣는다. `claude-`로 시작하면 `--backend claude-code`, `gpt-`로 시작하면 `--backend codex-cli`.
+
+   추론 단계를 말했으면(low·medium·high·xhigh·max) `--effort` 그 값, 말하지 않았으면 `--effort medium --effort-source default-medium`(추론 단계를 말하지 않았다는 표시. 이때는 추론 단계를 기본값 medium으로 보고 아래의 모델 이름 맞추기를 한다. newmodel이 같은 규칙으로 재고 저장한다). 조합이 gpt-5.6-terra·medium·codex-cli면 위 인자 대신 `--profile p3-ref`를 쓴다(원본 재현 조건). 이 경우들에 `--model-source conversation`을 붙인다.
+
+   사용자가 harness.toml의 프로필 이름을 말했으면("p3-claude로", "<이름> 프로필로") 위 인자 대신 `--profile <이름>`과 `--model-source conversation`을 쓴다. 프로필의 경로(single·harness·partial, /newmodel로 정한 것)는 프로필을 이름으로 골랐을 때 따르고, 모델 이름을 말했을 때도(추론 단계를 말하지 않았으면 medium으로 보고) 백엔드·모델·추론 단계가 글자 그대로 같고 근거가 맞는 프로필이 있으면 따른다(명령이 맞춘다. 맞는 프로필 여럿의 경로가 다르면 전체 P3. 추론 단계를 기본값 medium으로 보았으면 "경로 …" 줄 끝에 그렇다고 나온다). 세션 모델이면 전체 P3다. `p3-ref`는 경로를 갖지 않으므로 위의 p3-ref 규칙은 그대로다. 첫 줄 아래에 "경로 …" 줄이 나오면 그대로 보여 준다.
+2. 모델 말이 없으면 지금 네가 돌고 있는 모델을 `--model <전체 이름>`으로 반드시 명시하고 `--model-source session-self`를 붙인다.
+   Claude Code 세션이면 `--backend claude-code`. 추론 단계는 적지 않는다(명령이 세션 설정에서 읽는다).
+   Codex 세션이면 `--backend codex-cli`. 추론 단계를 알면 `--effort`로 적고, 모르면 적지 않는다(명령이 설정 파일 값을 쓴다).
+3. 모델 이름을 알아듣지 못하면 돌리지 않고 한 줄로 되묻는다. 임의로 고르지 않는다.
+4. 명령의 첫 줄(모델 · 추론 · 백엔드 · 출처)을 그대로 사용자에게 보여 준다. 그 줄이 사용자가 말한 모델과 다르면 멈추고 알린다.
+
+## 지킬 것
+
+- `.text2sql/gold/` 아래 파일, 받은 zip(`.text2sql/data/*/download/`), 공개 evidence 파일(`.text2sql/data/bird-minidev/hints.public.json`)을 열거나 내용을 출력하지 않는다.
+- 사용자에게 명령 인자를 치라고 하지 않는다.
+- 기본은 evidence not_used(퓨어 조건: 문항의 evidence와 사람이 쓴 설명을 모델에 주지 않는다)다. 사용자가 evidence(문항 조건)를 주라고 말했을 때만 used로 돈다.
+- 새 DB는 밖으로 나가는 것을 알리고 승인을 받은 뒤에만 등록한다. 민감한 DB에 쓰지 않는다.
+- DB 파일을 직접 열거나 DB 클라이언트·다른 도구로 스키마를 읽지 않는다.
+- 세션 모델이 SQL을 직접 쓰지 않는다. SQL은 `p3 ask`·`p3 run`이 만든다.
+- 점수 라벨을 줄이지 않는다. 백엔드·evidence 방식·경로가 다른 점수끼리 우열을 말하지 않고, 원 논문·리더보드·스터디 E0 점수를 덧붙이지 않는다.
+- 모델을 알 수 없으면 돌리지 않고 묻는다.
+- 채점한 run은 이어 돌릴 수 없다. 같은 run을 두 번 시작하지 않는다.
+- 커밋과 푸시는 사용자가 말할 때만 한다.
+- 플러그인 폴더와 엔진 스킬 폴더에는 아무것도 쓰지 않고, 엔진 소스를 읽지 않는다. 자료와 기록은 `.text2sql/`에만 생긴다.
+- run 폴더의 `records.jsonl`·`items/` 같은 큰 파일을 통째로 읽지 않는다.
+
+## 하지 말 것
+
+- SQL을 직접 쓰거나 결과를 손으로 고치지 않는다. 실행 폴더의 파일을 읽어 답을 바꾸지 않는다.
+- DB 파일을 직접 열어 내용을 보거나 다른 도구로 스키마를 읽지 않는다.
+- `.text2sql/gold/` 아래 파일과 `.text2sql/data/bird-minidev/download/` 아래 파일을 열어 보거나 내용을 출력하지 않는다.
+- 새 DB를 여기서 등록하지 않는다. 등록은 밖으로 나가는 것을 알리고 승인을 받는 /connect의 일이다.
+- `--backend`·`--model`·`--effort`·`--profile`·`--model-source`는 이 스킬과 명령 사이의 내부 계약이다. 사용자에게 치라고 요구하지 않는다.
