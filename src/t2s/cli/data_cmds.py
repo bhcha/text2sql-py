@@ -52,6 +52,19 @@ def err(line: str) -> None:
     print(line, file=sys.stderr, flush=True)
 
 
+# Codex 샌드박스(workspace-write 등) 안에서 codex-cli 백엔드가 안쪽 codex exec를 띄우지 못할 때의 오류 글
+CODEX_SANDBOX_MARK = "failed to initialize in-process app-server client"
+CODEX_SANDBOX_HINT = (
+    "안내: codex-cli 백엔드는 Codex 샌드박스 안에서 돌지 않습니다. "
+    "Codex를 전체 접근(danger-full-access)으로 열거나 샌드박스 없는 터미널에서 다시 돌리세요"
+)
+
+
+def sandbox_hint(message: object) -> str | None:
+    """오류 글이 Codex 샌드박스 때문이면 안내 한 줄, 아니면 None."""
+    return CODEX_SANDBOX_HINT if CODEX_SANDBOX_MARK in str(message or "") else None
+
+
 def run(args) -> int:
     try:
         root = find_root()

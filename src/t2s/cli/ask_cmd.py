@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from t2s import engine
-from t2s.cli.data_cmds import err, out
+from t2s.cli.data_cmds import err, out, sandbox_hint
 from t2s.dataset.config import ConfigError, find_root, load_config
 from t2s.dataset.state import StateError, current_dataset, load_state
 from t2s.datasource.base import DataSourceError
@@ -274,6 +274,8 @@ def run(args) -> int:
     if trace.exception is not None:
         ex = trace.exception
         out(f"예외: {ex.get('type')}: {str(ex.get('message', ''))[:300]}")
+        if hint := sandbox_hint(ex.get("message")):
+            err(hint)
     out("SQL:")
     if trace.sql is None:
         out("(생성 없음)")

@@ -177,6 +177,15 @@ def test_probe_failure_leaves_no_run(root, capsys, monkeypatch, tmp_path):
     assert entry["prompt"] == "Reply with OK."
 
 
+def test_probe_codex_sandbox_hint(root, capsys, monkeypatch, tmp_path):
+    from t2s.cli.data_cmds import CODEX_SANDBOX_HINT
+
+    _fake_codex(tmp_path, monkeypatch, "sandbox")
+    code, _, e = run(capsys, "run", "--profile", "p3-ref", "--questions", str(root / "q.txt"), "--run-id", "p9")
+    assert code == 1 and "모델 호출 확인 실패: CodexExit" in e
+    assert e.splitlines()[-1] == CODEX_SANDBOX_HINT and not (root / "runs/p9").exists()
+
+
 def test_probe_ok_once_then_detach(root, capsys, monkeypatch, tmp_path):
     log = _fake_codex(tmp_path, monkeypatch, "ok")
     sp = Spawned()

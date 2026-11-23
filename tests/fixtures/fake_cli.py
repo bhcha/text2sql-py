@@ -2,7 +2,7 @@
 
 make_fake_cli(tmp_path, kind)가 `#!<지금 Python>`으로 시작하는 실행 파일을 쓰고 경로를 돌려준다. 동작은 환경변수로 고른다.
 - FAKE_CLI_LOG: 받은 인자·작업 폴더·작업 폴더 파일·CLAUDE로 시작하는 환경변수 이름·프롬프트를 JSON 한 줄로 덧붙인다
-- FAKE_CLI_MODE: ok(기본) | exit | limit | hang | tool | noresponse | wrongmodel(claude만)
+- FAKE_CLI_MODE: ok(기본) | exit | limit | hang | tool | noresponse | wrongmodel(claude만) | sandbox(codex만, Codex 샌드박스 오류)
 - FAKE_CLI_RESPONSES: JSON 목록. 부를 때마다 차례로 하나씩(FAKE_CLI_STATE 파일로 센다). 없으면 "SELECT 1"
 - FAKE_CLI_PIDFILE: hang 모드에서 띄운 손자 프로세스의 pid를 적는다
 """
@@ -69,6 +69,9 @@ if KIND == "codex":
     emit({"type": "thread.started", "thread_id": "fake-thread"})
     if mode == "exit":
         sys.stderr.write("something went wrong\n")
+        sys.exit(1)
+    if mode == "sandbox":
+        sys.stderr.write("Error: failed to initialize in-process app-server client: Operation not permitted (os error 1)\n")
         sys.exit(1)
     if mode == "limit":
         emit({"type": "error", "message": "You've hit your usage limit."})

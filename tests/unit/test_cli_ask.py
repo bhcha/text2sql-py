@@ -164,6 +164,30 @@ def test_llm_failure(shop, capsys, monkeypatch):
     assert "(생성 없음)" in lines
 
 
+class _SandboxedCodex(FakeBackend):
+    """Codex 샌드박스 안의 codex-cli처럼 첫 호출부터 앱 서버를 띄우지 못한다."""
+
+    def call(self, prompt, call_dir, *, name, attempt):
+        from t2s.llm.base import LlmFailure, LlmOutcome
+
+        msg = (
+            f"호출 1({name}): exit 1: Error: failed to initialize in-process app-server client: "
+            "Operation not permitted (os error 1)"
+        )
+        return LlmOutcome(response=None, failure=LlmFailure("CodexExit", msg), meta={})
+
+
+def test_codex_sandbox_failure_hint(shop, capsys, monkeypatch):
+    monkeypatch.setattr(select, "backend_for", lambda llm: _SandboxedCodex())
+    code, lines, e = ask(capsys, "--backend", "fake", QUESTION)
+    assert code == 1 and "(생성 없음)" in lines
+    hints = [x for x in e.splitlines() if x.startswith("안내: ")]
+    assert hints == [data_cmds.CODEX_SANDBOX_HINT] and "danger-full-access" in hints[0]
+    monkeypatch.setattr(select, "backend_for", lambda llm: FakeBackend(fail="exit"))
+    _, _, e = ask(capsys, "--backend", "fake", QUESTION)
+    assert "안내: " not in e  # 다른 실패에는 붙이지 않는다
+
+
 def test_fake_codex_profile(shop, capsys, monkeypatch, tmp_path):
     exe = make_fake_cli(tmp_path, "codex")
     monkeypatch.setenv("T2S_CODEX_BIN", str(exe))

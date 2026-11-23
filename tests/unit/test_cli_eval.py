@@ -236,3 +236,22 @@ def test_study_run_folder_has_no_gold_path(study_root, capsys):
     assert cli(capsys, "leak-audit", "--run", "sg")[0] == 0
     assert _gold_path_hits(root, root / "runs/sg") == []
     assert (root / "gold/_work/sg/detail.jsonl").is_file()
+
+
+def test_status_shows_codex_sandbox_hint(root, capsys, monkeypatch):
+    """문항 예외가 Codex 샌드박스 오류면 status가 안내 한 줄을 더한다."""
+    from t2s.cli.data_cmds import CODEX_SANDBOX_HINT
+    from t2s.llm.base import LlmFailure, LlmOutcome
+    from t2s.llm.fake import FakeBackend
+    from t2s.runner import batch
+
+    class Sandboxed(FakeBackend):
+        def call(self, prompt, call_dir, *, name, attempt):
+            msg = f"호출 1({name}): exit 1: Error: failed to initialize in-process app-server client: x"
+            return LlmOutcome(response=None, failure=LlmFailure("CodexExit", msg), meta={})
+
+    monkeypatch.setattr(batch, "backend_for", lambda llm, single=False: Sandboxed())
+    cli(capsys, "run", "--foreground", "--backend", "fake", "--limit", "2", "--no-score", "--run-id", "sb")
+    code, lines, _ = cli(capsys, "status", "--run-id", "sb")
+    assert code == 0 and any(x.startswith("마지막 예외: ") for x in lines)
+    assert lines.count(CODEX_SANDBOX_HINT) == 1 and len(lines) <= 11

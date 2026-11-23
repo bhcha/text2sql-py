@@ -27,7 +27,7 @@ from datetime import datetime
 from pathlib import Path
 
 from t2s import engine
-from t2s.cli.data_cmds import err, out
+from t2s.cli.data_cmds import err, out, sandbox_hint
 from t2s.dataset import hints as H
 from t2s.dataset.config import Config, ConfigError, DatasetSpec, find_root, load_config
 from t2s.dataset.questions import (
@@ -344,6 +344,8 @@ def _probe(prep: _Prepared, args, *, single: bool) -> int:
         )
         if outcome.failure is not None:
             err(f"모델 호출 확인 실패: {outcome.failure.type}: {outcome.failure.message[:300]}")
+            if hint := sandbox_hint(outcome.failure.message):
+                err(hint)
             return EXIT_FAIL
     return EXIT_OK
 
@@ -750,6 +752,8 @@ def cmd_status(args, root: Path, state, config: Config) -> int:
     if last is not None:
         e = last["exception"]
         out(f"마지막 예외: 위치 {last['position']} {e.get('type')}: {str(e.get('message', ''))[:80]}")
+        if hint := sandbox_hint(e.get("message")):
+            out(hint)
 
     def yn(name: str) -> str:
         return "예" if (run / name).is_file() else "아니오"

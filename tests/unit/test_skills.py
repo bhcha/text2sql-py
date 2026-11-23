@@ -286,3 +286,15 @@ def test_plugin_user_text_single_quoted():
     assert "p3 register '<이름>' --sqlite '<경로>' --yes" in connect and "`'\\''`" in connect
     assert "`--questions '<경로>'`" in _new("runset")
     assert "/connect bird로 BIRD를 지금 데이터셋으로 정한 뒤" in _new("getbird")
+
+
+def test_plugin_codex_sandbox_note():
+    """Codex 샌드박스 오류 때 엔진이 내는 안내 줄과 오류 글을 text2sql·runset·명령 표가 같은 글자로 가리킨다."""
+    from t2s.cli.data_cmds import CODEX_SANDBOX_HINT, CODEX_SANDBOX_MARK
+
+    head = CODEX_SANDBOX_HINT.split(". ")[0]
+    commands = (REPO / "plugin/skills" / ENGINE_SKILL / "references/commands.md").read_text(encoding="utf-8")
+    for text in (_new("text2sql"), _new("runset"), commands):
+        assert head in text and CODEX_SANDBOX_MARK in text and "전체 접근" in text
+    for name in ("text2sql", "runset"):
+        assert '샌드박스 없는 터미널에서)만 돕니다"라고 알리고 멈춘다. 다시 돌리지 않는다' in _new(name)

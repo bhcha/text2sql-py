@@ -37,6 +37,8 @@
 
 사용자가 쓴 글(질문·경로·이름·세션 이름)은 명령에 작은따옴표로 감싸 넣는다(큰따옴표 안에서는 셸이 `$`·`` ` ``·`\`·`!`를 바꿔 엔진이 다른 글을 받는다). 글 속 작은따옴표 `'`는 `'\''`로 바꿔 쓰고, 그 밖에는 사용자가 쓴 그대로 넣는다. 질문을 표준 입력이나 파일로 받는 `ask` 인자는 없다.
 
+Codex의 샌드박스(`workspace-write`, `read-only`) 안에서는 codex-cli 백엔드가 첫 모델 호출에서 "failed to initialize in-process app-server client: Operation not permitted"로 끝난다. `ask`·`run`(시작 전 확인 호출)·`status`는 이 오류를 보면 "안내: codex-cli 백엔드는 Codex 샌드박스 안에서 돌지 않습니다…" 한 줄을 더하고, `ask`·`run`은 종료 코드 1이다. Codex를 전체 접근(`danger-full-access`)으로 열거나 샌드박스 없는 터미널에서 돌린다. claude-code 백엔드에서 이 경우는 확인하지 않았다.
+
 종료 코드: 0 성공, 1 실패, 2 쓰임새 오류(소스·모델을 정해야 함), 3 승인 필요(`register`, `route-apply`), 4 정답 없음(채점 생략), 5 준비 필요(`prepare`를 먼저).
 
 스킬이 부르는 차례는 각 스킬의 글에 적혀 있다. 엔진 스킬의 SKILL.md는 명령 묶음만 한 줄씩 적는다.
