@@ -284,7 +284,12 @@ def _prepare_run(args, root: Path, state, config: Config, forced: tuple[str | No
 
     try:
         llm = select.select_from_args(
-            args, config.profiles, config.default_profile, env=os.environ, cwd=root, home=Path.home()
+            args,
+            config.profiles,
+            config.default_profile,
+            env=os.environ,
+            cwd=Path(os.environ.get("T2S_CALLER_CWD") or root),  # 설치본: 세션 기록은 처음 불린 폴더 이름
+            home=Path.home(),
         )
     except select.ModelUnknown as e:
         err(str(e))

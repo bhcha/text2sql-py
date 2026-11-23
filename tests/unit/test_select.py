@@ -174,3 +174,48 @@ def test_from_args_and_json(tmp_path):
     args = p.parse_args([])
     assert select.select_from_args(args, PROFILES, "p3-ref", env={}, cwd=CWD, home=tmp_path).profile == "p3-ref"
     assert select.ResolvedLlm.from_json(r.to_json()) == r
+
+
+def test_cli_finds_transcript_by_caller_cwd(tmp_path, monkeypatch, capsys, shop_db):
+    """설치본: 작업 루트가 <폴더>/.text2sql이어도 환경변수 T2S_CALLER_CWD의 폴더 이름으로 세션 기록을 찾는다."""
+    from t2s.cli import ask_cmd, data_cmds, run_cmds
+    from t2s.cli.main import main
+
+    for mod in (ask_cmd, data_cmds, run_cmds):  # 읽기 감시 훅은 뗄 수 없으므로 시험 프로세스에 걸지 않는다
+        monkeypatch.setattr(mod, "install_guard", lambda *a, **kw: None)
+    caller = tmp_path / "proj"
+    root = caller / ".text2sql"
+    root.mkdir(parents=True)
+    (root / "harness.toml").write_text(
+        '[paths]\ndata = "data"\nruns = "runs"\n\n[profiles.session]\nbackend = "auto"\n\n'
+        f'[datasets.shop]\nkind = "single"\n[datasets.shop.sources.shop]\nkind = "sqlite"\npath = "{shop_db}"\n',
+        encoding="utf-8",
+    )
+    (caller / "q.txt").write_text("How many products?\n", encoding="utf-8")
+    home = tmp_path / "home"
+    for folder, model in ((caller, "claude-opus-5-5"), (root, "claude-from-root")):
+        d = home / ".claude/projects" / str(folder).replace("/", "-").replace(".", "-")
+        d.mkdir(parents=True)
+        (d / "s9.jsonl").write_text(json.dumps({"type": "assistant", "message": {"model": model}}) + "\n")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("T2S_ROOT", str(root))
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "s9")
+    assert main(["use", "shop"]) == 0
+    seen: list[tuple[Path, str]] = []
+    real = select.select_from_args
+
+    def spy(*a, **kw):
+        llm = real(*a, **kw)
+        seen.append((kw["cwd"], llm.model))
+        raise ModelUnknown("시험: 모델을 정한 뒤 멈춤")  # 실제 모델을 부르지 않는다
+
+    monkeypatch.setattr(select, "select_from_args", spy)
+    argv_run = ["run", "--foreground", "--no-probe", "--questions", str(caller / "q.txt")]
+    monkeypatch.delenv("T2S_CALLER_CWD", raising=False)
+    assert main(["ask", "How many products?"]) == 2 and main(argv_run) == 2
+    assert seen == [(root, "claude-from-root")] * 2  # 환경변수가 없으면 지금처럼 루트
+    seen.clear()
+    monkeypatch.setenv("T2S_CALLER_CWD", str(caller))
+    assert main(["ask", "How many products?"]) == 2 and main(argv_run) == 2
+    assert seen == [(caller, "claude-opus-5-5")] * 2
+    capsys.readouterr()
