@@ -47,6 +47,7 @@ class Way:
 
     def __init__(self, name: str, cwd: Path, root: Path, extra_env: dict[str, str]):
         self.name, self.cwd, self.root = name, cwd, root
+        self.runs = "runs" if name == "old" else "sessions"  # 작업 폴더의 실행 기록 자리는 세션 폴더(init이 바꿔 씀)
         env = {k: v for k, v in os.environ.items() if not k.startswith(("T2S_", "CLAUDE_CODE_", "CODEX_"))}
         env.update({"T2S_ROOT": str(root), **extra_env})
         self.env = env
@@ -123,7 +124,9 @@ def ways(tmp_path, shop_db):
     code, text = new("init", "--root", str(new_root))
     assert code == 0, text
     new.log.clear()  # init은 새 길에만 있다
-    assert (new_root / "harness.toml").read_text(encoding="utf-8") == _toml()
+    assert (new_root / "harness.toml").read_text(encoding="utf-8") == _toml().replace(
+        'runs = "runs"\n', 'runs = "sessions"\n'
+    )
     _mini_data(new_root, shop_db, tmp_path / "scratch-new")
     db = tmp_path / "user-shop.sqlite"
     shutil.copy(shop_db, db)
@@ -132,6 +135,7 @@ def ways(tmp_path, shop_db):
 
 MASKS = [
     (re.compile(r"\d{8}-\d{6}-[0-9a-f]{6}"), "<ask>"),
+    (re.compile(r"\d{4}-\d{2}-\d{2}-[a-z0-9-]+?-(set|ask)-[0-9a-f]{6}(-(harness|single))?"), "<세션>"),
     (re.compile(r"\d{8}-[a-z0-9]+-[0-9a-f]{6}(-(harness|single))?"), "<run>"),
     (re.compile(r"\d{4}-\d{2}-\d{2}T[\d:.]+Z?"), "<시각>"),
     (re.compile(r"\d+(\.\d+)?(초|ms|s\b)"), "<시간>"),
@@ -143,6 +147,7 @@ MASKS = [
 
 def mask(text: str, way: Way) -> str:
     text = text.replace(str(way.root), "<루트>").replace(str(way.cwd), "<부른 폴더>")
+    text = re.sub(rf"(?<![\w-]){way.runs}/", "<기록>/", text)  # 실행 기록 자리(옛 길 runs/, 새 길 sessions/)
     for pattern, repl in MASKS:
         text = pattern.sub(repl, text)
     return text
@@ -223,17 +228,18 @@ def test_old_and_new_layout_match(ways):
     assert codes["score --run r5"] == 0 and codes["report --run r5"] == 0
 
     # 만든 파일이 가린 칸 말고 같다
-    for rel in ("runs/r5/records.jsonl", "runs/r5/predictions.json", "runs/r5/ex.jsonl", "runs/r5/score.json"):
-        assert norm(_read(old.root / rel), old) == norm(_read(new.root / rel), new), rel
+    r5_old, r5_new = old.root / "runs/r5", new.root / "sessions/r5"
+    for rel in ("records.jsonl", "predictions.json", "ex.jsonl", "score.json"):
+        assert norm(_read(r5_old / rel), old) == norm(_read(r5_new / rel), new), rel
 
-    score_o, score_n = _read(old.root / "runs/r5/score.json"), _read(new.root / "runs/r5/score.json")
+    score_o, score_n = _read(r5_old / "score.json"), _read(r5_new / "score.json")
     assert score_o["integrity"]["predictions_sha256"] == score_n["integrity"]["predictions_sha256"]
-    ex_o = (old.root / "runs/r5/ex.jsonl").read_text(encoding="utf-8")
-    assert ex_o == (new.root / "runs/r5/ex.jsonl").read_text(encoding="utf-8").replace(str(new.root), str(old.root))
+    ex_o = (r5_old / "ex.jsonl").read_text(encoding="utf-8")
+    assert ex_o == (r5_new / "ex.jsonl").read_text(encoding="utf-8").replace(str(new.root), str(old.root))
 
     # 새 길의 run.json에만 engine 칸이 있고 git.head가 표식의 커밋이다
-    meta_old = _read(old.root / "runs/r5/run.json")
-    meta_new = _read(new.root / "runs/r5/run.json")
+    meta_old = _read(r5_old / "run.json")
+    meta_new = _read(r5_new / "run.json")
     assert "engine" not in meta_old and meta_old["git"]["head"] == _git(old.root, "rev-parse", "HEAD")
     assert meta_new["engine"]["matches"] is True and meta_new["git"] == {
         "head": COMMIT,
@@ -242,4 +248,4 @@ def test_old_and_new_layout_match(ways):
     }
     # 새 길의 자료는 작업 폴더 안에만 생긴다
     assert not (tmp / "work" / "runs").exists() and not (tmp / "work" / "var").exists()
-    assert (new.root / "var/state.json").is_file() and (new.root / "runs/r5").is_dir()
+    assert (new.root / "var/state.json").is_file() and r5_new.is_dir() and not (new.root / "runs").exists()

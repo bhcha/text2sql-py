@@ -13,6 +13,7 @@ from t2s.cli import data_cmds, run_cmds
 from t2s.cli.main import main
 from t2s.prep import embed
 from t2s.runner import records as R
+from t2s.session import names
 
 pytest.importorskip("func_timeout")
 
@@ -74,6 +75,8 @@ def test_route_start_spawns_two_paired_runs(root, capsys, monkeypatch):
     assert ids[0].endswith("-harness") and ids[1].endswith("-single")
     pair = ids[0].removesuffix("-harness")
     assert ids[1] == f"{pair}-single" and lines[-1].startswith(f"짝 {pair} · 진행: t2s route-status")
+    parsed = names.parse(pair)  # 세션 이름 규칙: YYYY-MM-DD-<데이터셋>-set-<16진 6자>
+    assert parsed is not None and not parsed.legacy and parsed.kind == "set" and parsed.role is None
     for cmd, kw in sp.calls:
         tail = [sys.executable, "-m", "t2s.cli.main", "run", "--worker", "--run-id"]
         assert cmd[-len(tail) - 1 : -1] == tail and kw["start_new_session"] is True

@@ -16,6 +16,7 @@ from t2s.llm.fake import FakeBackend, _finish
 from t2s.prep import embed
 from t2s.runner import batch
 from t2s.runner import records as R
+from t2s.session import names
 
 TOML = """
 [defaults]
@@ -139,6 +140,19 @@ def test_detached_command(root, capsys, monkeypatch):
     assert kw["cwd"] == str(root)
     assert any(line.startswith("시작: d1 (pid 424242)") for line in lines)
     assert R.read_json(root / "runs/d1/control.json")["pid"] == 424242
+
+
+def test_default_run_name_follows_session_rule(root, capsys, monkeypatch):
+    """--run-id가 없으면 세션 이름 규칙(YYYY-MM-DD-<데이터셋>-set-<16진 6자>)으로 짓는다."""
+    sp = Spawned()
+    monkeypatch.setattr(run_cmds, "_popen", sp)
+    code, _, _ = run(capsys, "run", "--backend", "fake", "--questions", str(root / "q.txt"))
+    assert code == 0
+    [(cmd, _)] = sp.calls
+    rid = cmd[-1]
+    parsed = names.parse(rid)
+    assert parsed is not None and parsed.kind == "set" and parsed.dataset == "shop" and not parsed.legacy
+    assert (root / "runs" / rid / "run.json").is_file()
 
 
 def _fake_codex(tmp_path, monkeypatch, mode):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -27,6 +28,13 @@ def engine_home(tmp_path, monkeypatch):
     return home
 
 
+def _work_toml() -> str:
+    """init이 쓰는 설정: 저장소의 harness.toml에서 [paths] runs 한 줄만 sessions로."""
+    text = (REPO / "harness.toml").read_text(encoding="utf-8")
+    assert text.count('runs = "runs"\n') == 1
+    return text.replace('runs = "runs"\n', 'runs = "sessions"\n')
+
+
 def _tree(root: Path) -> dict[str, bytes]:
     return {p.relative_to(root).as_posix(): p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
 
@@ -38,18 +46,25 @@ def test_new_folder(engine_home, tmp_path, capsys, monkeypatch):
     assert line.startswith(f"작업 폴더를 만들었습니다: {root.resolve()}")
     assert (root / ".gitignore").read_text() == "*\n"
     assert (root / "format").read_text() == "1\n"
-    assert (root / "harness.toml").read_bytes() == (REPO / "harness.toml").read_bytes()
+    assert (root / "harness.toml").read_text(encoding="utf-8") == _work_toml()
     assert sorted(p.name for p in (root / "baselines").iterdir()) == sorted(
         p.name for p in (REPO / "baselines").iterdir()
     )
     rec = json.loads((root / "init.json").read_text())
     assert rec["format"] == 1 and len(rec["harness_toml_sha256"]) == 64 and rec["engine"] is None
+    assert rec["harness_toml_sha256"] == hashlib.sha256((REPO / "harness.toml").read_bytes()).hexdigest()
+    assert rec["work_harness_toml_sha256"] == hashlib.sha256((root / "harness.toml").read_bytes()).hexdigest()
     # 정답 폴더와 자료는 만들지 않는다
     assert not (root / "gold").exists() and not (root / "data").exists()
     # 완료 조건: init 뒤 T2S_ROOT를 주고 datasets가 0
     monkeypatch.setenv("T2S_ROOT", str(root))
     assert main(["datasets"]) == 0
     assert "bird-minidev" in capsys.readouterr().out
+    # 작업 폴더의 실행 기록 자리는 세션 폴더다(저장소의 harness.toml은 runs 그대로)
+    from t2s.dataset.config import load_config
+    from t2s.dataset.state import load_state
+
+    assert load_config(root.resolve(), load_state(root.resolve())).runs_dir == root.resolve() / "sessions"
 
 
 def test_again_does_not_overwrite(engine_home, tmp_path, capsys):
@@ -129,5 +144,20 @@ def test_repo_layout_engine_home(tmp_path, monkeypatch):
     monkeypatch.setattr(data_cmds, "install_guard", lambda *a, **kw: None)
     root = tmp_path / ".text2sql"
     assert main(["init", "--root", str(root)]) == 0
-    assert (root / "harness.toml").read_bytes() == (REPO / "harness.toml").read_bytes()
+    assert (root / "harness.toml").read_text(encoding="utf-8") == _work_toml()
     assert (root / "baselines/ts-pure-fix.json").read_bytes() == (REPO / "baselines/ts-pure-fix.json").read_bytes()
+
+
+def test_engine_toml_without_runs_line(engine_home, tmp_path, capsys):
+    (engine_home / "assets/harness.toml").write_text('[paths]\ndata = "data"\n', encoding="utf-8")
+    assert main(["init", "--root", str(tmp_path / ".text2sql")]) == 1
+    assert "[paths] runs 줄을 찾지 못했습니다" in capsys.readouterr().err
+    assert not (tmp_path / ".text2sql").exists()
+
+
+def test_engine_toml_already_sessions(engine_home, tmp_path):
+    text = '[paths]\ndata = "data"\nruns = "sessions"\n'
+    (engine_home / "assets/harness.toml").write_text(text, encoding="utf-8")
+    root = tmp_path / ".text2sql"
+    assert main(["init", "--root", str(root)]) == 0
+    assert (root / "harness.toml").read_text(encoding="utf-8") == text

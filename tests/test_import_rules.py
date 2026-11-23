@@ -19,12 +19,13 @@ ALLOWED: dict[str, set[str]] = {
     "datasource": set(),
     "llm": set(),
     "fetch": set(),
+    "session": set(),
     "prep": {"datasource"},
     "pipeline": {"datasource", "prep", "llm"},
     "dataset": {"datasource"},
-    "runner": {"dataset", "pipeline", "prep", "llm", "datasource"},
+    "runner": {"dataset", "pipeline", "prep", "llm", "datasource", "session"},
     "eval": {"dataset", "runner"},
-    "cli": {"datasource", "dataset", "prep", "pipeline", "llm", "runner", "eval", "fetch"},
+    "cli": {"datasource", "dataset", "prep", "pipeline", "llm", "runner", "eval", "fetch", "session"},
 }
 # eval이 runner에서 가져와도 되는 것은 기록 꼴뿐이다.
 EVAL_RUNNER_ALLOWED = {"t2s.runner.records"}

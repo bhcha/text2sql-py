@@ -17,7 +17,6 @@ run이 끝난 뒤). 채점기가 DB를 일반 연결로 열기 때문에 같은 
 from __future__ import annotations
 
 import os
-import secrets
 import shutil
 import signal
 import subprocess
@@ -51,6 +50,7 @@ from t2s.prep import assets, embed
 from t2s.runner import batch
 from t2s.runner import records as R
 from t2s.runner.guard import install_guard
+from t2s.session import names
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
 OUTGOING = "질문, CREATE 원문·예시 3행, 질문과 비슷한 값, 열 프로파일, 실행 오류 글"
@@ -439,7 +439,7 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
     if isinstance(prep, int):
         return prep
     [decision] = prep.decisions
-    run_id = args.run_id or f"{datetime.now().strftime('%Y%m%d')}-{prep.name}-{secrets.token_hex(3)}"
+    run_id = args.run_id or names.new_name(prep.name, names.SET)
     run = _new_run_dir(config, run_id)
     if run is None:
         return EXIT_USAGE
@@ -468,8 +468,8 @@ def cmd_route_start(args, root: Path, state, config: Config) -> int:
     prep = _prepare_run(args, root, state, config, roles)
     if isinstance(prep, int):
         return prep
-    pair_id = f"{datetime.now().strftime('%Y%m%d')}-{prep.name}-{secrets.token_hex(3)}"
-    ids = {role: f"{pair_id}-{role}" for role in roles}
+    pair_id = names.new_name(prep.name, names.SET)
+    ids = {role: names.pair_names(pair_id)[role] for role in roles}
     runs = {role: _new_run_dir(config, rid) for role, rid in ids.items()}
     if any(r is None for r in runs.values()):
         return EXIT_USAGE

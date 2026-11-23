@@ -1,6 +1,7 @@
 """명령 datasets, use, register, prepare, route-apply, init, verify. init·verify 밖의 명령은 첫머리에서 읽기 감시를 건다.
 
-init은 설정을 읽기 전에 돌고(작업 루트가 아직 없다) 엔진 자리의 기본 설정·기준선만 복사한다.
+init은 설정을 읽기 전에 돌고(작업 루트가 아직 없다) 엔진 자리의 기본 설정·기준선만 복사한다. 복사한 설정에서는
+[paths] runs 한 줄만 세션 폴더(sessions)로 바꿔 쓴다.
 verify는 엔진 자리의 파일, 깔린 패키지, 표식만 본다.
 
 route-apply는 하네스 run 폴더의 경로 판정 파일(t2s route-judge가 쓴 것)만 읽고, --yes가 있을 때만 harness.toml에 쓴다.
@@ -8,6 +9,7 @@ route-apply는 하네스 run 폴더의 경로 판정 파일(t2s route-judge가 �
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import platform
@@ -352,6 +354,9 @@ INIT_FILE = "init.json"
 ASSETS_DIR = "assets"
 ENGINE_HARNESS = "harness.toml"
 ENGINE_BASELINES = "baselines"
+# 작업 폴더의 설정에서는 실행 기록 자리를 세션 폴더(sessions/)로 둔다. 엔진의 기본 설정(저장소의 harness.toml)은 runs 그대로다
+RUNS_LINE = re.compile(r'^runs = "runs"$', re.MULTILINE)
+SESSIONS_LINE = 'runs = "sessions"'
 
 
 def _asset_hashes(folder: Path) -> dict[str, str]:
@@ -379,6 +384,10 @@ def cmd_init(args) -> int:
     root = Path(args.root).resolve()
     if args.refresh:
         return _init_refresh(root, src_toml, src_base)
+    work_toml = _work_harness_text(src_toml.read_text(encoding="utf-8"))
+    if work_toml is None:
+        err(f"엔진의 기본 설정에서 [paths] runs 줄을 찾지 못했습니다: {src_toml}")
+        return EXIT_FAIL
     if (root / "format").is_file():
         out(f"작업 폴더가 이미 있습니다: {root} (아무것도 덮어쓰지 않음)")
         return EXIT_OK
@@ -393,7 +402,7 @@ def cmd_init(args) -> int:
 
     put_text(".gitignore", "*\n")
     if not (root / ENGINE_HARNESS).exists():
-        shutil.copyfile(src_toml, root / ENGINE_HARNESS)
+        (root / ENGINE_HARNESS).write_text(work_toml, encoding="utf-8")
         made.append(ENGINE_HARNESS)
     for rel in _asset_hashes(src_base):
         dest = root / ENGINE_BASELINES / rel
@@ -404,6 +413,7 @@ def cmd_init(args) -> int:
     record = {
         "format": int(WORK_FORMAT),
         "harness_toml_sha256": R.sha256_file(src_toml),
+        "work_harness_toml_sha256": hashlib.sha256(work_toml.encode("utf-8")).hexdigest(),
         "baselines_sha256": _asset_hashes(src_base),
         "engine": engine.engine_stamp(),
     }
@@ -426,7 +436,8 @@ def _init_refresh(root: Path, src_toml: Path, src_base: Path) -> int:
     work = root / ENGINE_HARNESS
     work_sha = R.sha256_file(work) if work.is_file() else None
     engine_changed = then != now_engine
-    out(f"엔진 기본 설정: {'바뀜' if engine_changed else '그대로'} · 작업 폴더 설정: {_work_state(work_sha, then)}")
+    written = record.get("work_harness_toml_sha256") or then  # 세션 폴더 줄을 바꿔 쓰기 전에 만든 작업 폴더는 then
+    out(f"엔진 기본 설정: {'바뀜' if engine_changed else '그대로'} · 작업 폴더 설정: {_work_state(work_sha, written)}")
     then_base = record.get("baselines_sha256") or {}
     now_base = _asset_hashes(src_base)
     new = sorted(set(now_base) - set(then_base))
@@ -435,6 +446,15 @@ def _init_refresh(root: Path, src_toml: Path, src_base: Path) -> int:
     if engine_changed or new or changed:
         out(f"작업 폴더의 파일은 고치지 않았습니다. 엔진의 것: {src_toml.parent}")
     return EXIT_OK
+
+
+def _work_harness_text(text: str) -> str | None:
+    """작업 폴더에 쓸 설정 글: [paths] runs 한 줄을 세션 폴더로 바꾼다. 이미 sessions면 그대로, 줄이 없으면 None."""
+    if SESSIONS_LINE in text.splitlines():
+        return text
+    if len(RUNS_LINE.findall(text)) != 1:
+        return None
+    return RUNS_LINE.sub(SESSIONS_LINE, text)
 
 
 def _work_state(work_sha: str | None, then: str | None) -> str:
