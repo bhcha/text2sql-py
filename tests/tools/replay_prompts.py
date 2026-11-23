@@ -172,7 +172,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"주의: DB 지문이 옛 run과 다릅니다: {', '.join(changed)}", file=sys.stderr)
     questions = load_public_questions(root / meta["questions"]["path"])[: meta["count"]]
     positions = parse_positions(args.positions) if args.positions else spread_positions(questions, args.spread)
-    targets = [questions[p] for p in positions if 0 <= p < len(questions)]
+    if not positions or any(not 0 <= p < len(questions) for p in positions):
+        print(f"위치가 비었거나 0~{len(questions) - 1} 밖입니다", file=sys.stderr)
+        return 2
+    targets = [questions[p] for p in positions]
 
     model_hashes = embed.check_model_files(config.embedding_model_dir)
     embedder = CachedEmbedder(batch.LockedEmbedder(embed.load_embedder(config.embedding_model_dir)))
@@ -191,6 +194,10 @@ def main(argv: list[str] | None = None) -> int:
             results = list(pool.map(lambda q: replay_one(q, ctx, old_run, scratch), targets))
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
+    after = batch.fingerprints(spec, sorted(meta.get("databases") or {}))
+    moved = [n for n, v in fingerprints.items() if after.get(n) != v]
+    if moved:
+        print(f"DB 지문이 재생 앞뒤로 다릅니다: {', '.join(moved)}", file=sys.stderr)
 
     same = [r for r in results if r["result"] == "same"]
     diff = [r for r in results if r["result"] == "different"]
@@ -210,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
             print("옛 run 폴더 안에는 쓰지 않습니다", file=sys.stderr)
             return 2
         out.write_text(json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8")
-    return 0 if not diff else 1
+    return 3 if moved else (0 if not diff else 1)
 
 
 if __name__ == "__main__":
