@@ -88,7 +88,17 @@ def test_two_builds_same_checksum(repo):
     )
     assert (eng / "scripts/p3").stat().st_mode & 0o111
     skills = sorted(p.name for p in (repo / "dist/engine-skills/skills").iterdir())
-    assert skills == ["connect", "getbird", "getolist", "newmodel", "p3-engine", "runset", "sessions", "text2sql"]
+    assert skills == [
+        "connect",
+        "getbird",
+        "getmetrics",
+        "getolist",
+        "newmodel",
+        "p3-engine",
+        "runset",
+        "sessions",
+        "text2sql",
+    ]
     assert not any(p.name == "__pycache__" for p in eng.rglob("*"))
     assert _git(repo, "status", "--porcelain") == ""  # dist/는 git 밖
 

@@ -26,7 +26,7 @@ description: 지금 연결된 데이터셋의 문항 전체(또는 "앞 N문항�
 
    "자료 없음"으로 멈추면 "먼저 /getbird로 BIRD 자료를 받아야 합니다"라고 알리고 멈춘다. "임베딩 모델이 없다"로 멈추면 "모델 파일 417MB를 받아야 합니다"라고 알리고, 사용자가 좋다고 하면 `p3 fetch model` 뒤 다시 한다.
 2. 모델을 정한다(아래 "모델 정하기").
-3. evidence 방식을 정한다(아래 "evidence 정하기").
+3. evidence 방식을 정한다(아래 "evidence 정하기"). 지표 정의를 넣을지 정한다(아래 "지표 정의 정하기").
 4. 규모를 한 줄로 알린다. BIRD 전체면 "500문항, 약 1,000~1,500회 호출, 30~70분 예상입니다. evidence not_used(또는 used)로 돕니다.", Olist면 "49문항, 약 100~150회 호출입니다. evidence not_used(또는 used)로 돕니다." 묻지 않고 바로 시작한다(/runset을 부른 것이 시작 요청이다).
 5. 시작한다:
 
@@ -34,6 +34,7 @@ description: 지금 연결된 데이터셋의 문항 전체(또는 "앞 N문항�
 
    - "앞 N문항만", "N개만"이면 `--limit N`(N에는 숫자만 쓴다. 사용자가 쓴 글을 그대로 넣지 않는다). "소표본"이면 `--limit 20`. 아니면 `--limit` 없이 지금 데이터셋 전체.
    - evidence used로 정했으면 `--evidence used`를 붙인다. not_used면 붙이지 않는다(기본이 not_used다).
+   - 지표 정의를 넣기로 정했으면 `--semantic used`를 붙인다. 그 밖에는 붙이지 않는다(기본이 not_used다). `--evidence used`와 함께 붙이지 않는다.
    - 지금 데이터셋이 `olist`면(1단계 `prepare` 출력이나 `p3 datasets`의 "지금 바라보는 데이터셋" 줄) 늘 `--questions .text2sql/data/olist/model_inputs.v0.3.json`을 붙인다. 이 파일로 돌린 run만 스터디 채점기가 채점한다. 파일이 없으면 "먼저 /getolist로 스터디 평가셋을 받아야 합니다"라고 알리고 멈춘다(파일 존재만 보고 열지 않는다). 문항 조건(task_conditions)은 말이 없으면 주지 않는다(evidence not_used). 사용자가 문항 조건을 주라고 말했을 때만 `--evidence used`를 붙인다.
    - "먼저 /getbird(다시 부르면 evidence 파일을 만든다)"가 나오면 그 줄을 보여 주고 멈춘다. 이미 BIRD를 받은 사람도 /getbird를 한 번 더 부르면 공개 evidence 파일이 생긴다.
    - "이 문항에는 evidence가 없습니다"가 나오면(/connect로 붙인 DB, 텍스트 문항) evidence used로 돌 수 없다고 알리고 멈춘다.
@@ -58,6 +59,7 @@ description: 지금 연결된 데이터셋의 문항 전체(또는 "앞 N문항�
 플러그인 설치본에서 잰 점수는 대표 측정이 아니다. 대표 측정은 text2sql-py 저장소 클론에서 한다.
 
 - Olist run이면 셋째 줄이 "정답 대조"(정답 SQL을 같은 규칙으로 돌려 기대 결과와 같은지)다. 비교 대상(기준 run)이 없으면 "비교 대상 없음"이 맞는 출력이다. 스터디 E0 점수와 같은 줄에 두지 않는다.
+- semantic used run이면 기본 기준(semantic not_used)과 견주지 않으므로 "비교 대상 없음(기준은 semantic not_used, 이번은 used라 견주지 않는다)"이 맞는 출력이다. "semantic 조건이 달라 견주지 않는다"나 "지표 정의가 달라 견주지 않는다"가 나오면 그대로 보여 준다.
 - evidence used run이면 기본 기준(evidence not_used 기준선)과 견주지 않으므로 "비교 대상 없음(기준은 evidence not_used, 이번은 used라 견주지 않는다)"이 맞는 출력이다. "evidence 조건이 달라 견주지 않는다"가 나오면 그대로 보여 준다. evidence 방식이 다른 run끼리는 우열을 말하지 않는다.
 
 - "아직 생성 중입니다"가 나오면 status 출력을 보여 준다.
@@ -72,6 +74,16 @@ description: 지금 연결된 데이터셋의 문항 전체(또는 "앞 N문항�
 - "둘 다"라고 하면 어느 것부터 돌릴지 한 줄로 묻는다(한 번에 run 하나만 돈다).
 - evidence used run에서는 문항의 evidence 글(BIRD 공식 evidence, Olist 문항 조건)도 모델 제공자 서버로 나간다.
 - used 점수는 퓨어 조건 점수라고 부르지 않는다. evidence 방식이 다른 run끼리 우열을 말하지 않는다.
+
+## 지표 정의 정하기 (사용자에게 인자를 묻지 않는다)
+
+- 기본은 semantic not_used다. 받아들인 지표 정의가 있어도 말이 없으면 넣지 않는다.
+- 사용자가 이번 대화에서 "지표 정의 넣어서", "지표 정의 써서", "semantic 써서", "시맨틱 써서", "semantic used로"처럼 지표 정의를 넣으라고 말했을 때만 `--semantic used`를 붙인다. 말이 없으면 붙이지 않는다.
+- evidence(문항 조건)를 주라는 말과 함께 나오면 돌리지 않고 "evidence와 지표 정의는 함께 쓰지 않습니다. 어느 쪽으로 돌릴까요?"를 묻는다.
+- semantic used면 받아들인 승인 지표 정의 글(지표 이름·설명·동의어·쓰임 안내·기준 SQL)도 모델 제공자 서버로 나간다. 출력의 "밖으로 나감" 줄 끝에 ", 지표 정의 글"이 붙고 그 아래에 "지표 정의: 모델 … 판 … · 승인 지표 …개 · 받은 때 …" 줄이 나온다. 그대로 보여 준다.
+- 종료 코드 2이고 "받아들인 지표 정의가 없습니다", "BIRD Mini-Dev에는 지표 정의가 없습니다", "함께 쓰지 않습니다" 가운데 하나가 나오면 그 줄을 그대로 보여 주고 멈춘다. 대신 정의를 받지 않는다(받는 것은 /getmetrics의 일이다).
+- 종료 코드 1이고 "/getmetrics를 다시"로 끝나는 줄이 나오면 그대로 보여 주고 멈춘다.
+- semantic used 점수는 퓨어 조건 점수라고 부르지 않는다. semantic 조건이나 지표 정의가 다른 run끼리 우열을 말하지 않는다.
 
 ## 모델 정하기 (사용자에게 인자를 묻지 않는다)
 
@@ -99,6 +111,8 @@ description: 지금 연결된 데이터셋의 문항 전체(또는 "앞 N문항�
 - `.text2sql/gold/` 아래 파일, 받은 zip(`.text2sql/data/*/download/`), 공개 evidence 파일(`.text2sql/data/bird-minidev/hints.public.json`)을 열거나 내용을 출력하지 않는다.
 - 사용자에게 명령 인자를 치라고 하지 않는다.
 - 기본은 evidence not_used(퓨어 조건: 문항의 evidence와 사람이 쓴 설명을 모델에 주지 않는다)다. 사용자가 evidence(문항 조건)를 주라고 말했을 때만 used로 돈다.
+- 기본은 semantic not_used다. 사용자가 지표 정의를 넣으라고 말했을 때만 semantic used로 돈다. evidence와 함께 쓰지 않는다.
+- 지표 정의 파일(`.text2sql/data/*/semantic.approved.json`, `.text2sql/var/semantic-inbox/` 아래 파일)을 통째로 읽거나 내용을 출력하지 않는다. 명령이 낸 요약 줄만 보인다.
 - 새 DB는 밖으로 나가는 것을 알리고 승인을 받은 뒤에만 등록한다. 민감한 DB에 쓰지 않는다.
 - DB 파일을 직접 열거나 DB 클라이언트·다른 도구로 스키마를 읽지 않는다.
 - 세션 모델이 SQL을 직접 쓰지 않는다. SQL은 `p3 ask`·`p3 run`이 만든다.
@@ -117,4 +131,4 @@ description: 지금 연결된 데이터셋의 문항 전체(또는 "앞 N문항�
 - run이 도는 동안 플러그인을 업데이트하거나 엔진 스킬 폴더를 건드리지 않는다.
 - 같은 run을 두 번 시작하지 않는다. 멈춘 run은 resume으로 잇는다. 채점한 run은 이어 돌릴 수 없다.
 - 점수 라벨을 줄여 쓰지 않는다.
-- `--backend`·`--model`·`--effort`·`--profile`·`--model-source`·`--limit`·`--questions`·`--evidence`는 이 스킬과 명령 사이의 내부 계약이다. 사용자에게 치라고 요구하지 않는다.
+- `--backend`·`--model`·`--effort`·`--profile`·`--model-source`·`--limit`·`--questions`·`--evidence`·`--semantic`은 이 스킬과 명령 사이의 내부 계약이다. 사용자에게 치라고 요구하지 않는다.

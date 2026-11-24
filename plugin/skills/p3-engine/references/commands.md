@@ -14,14 +14,17 @@
 | `use` | 바라볼 데이터셋 바꾸기 | `p3 use shop` |
 | `register` | SQLite 파일을 데이터셋으로 등록(고지 뒤 `--yes`) | `p3 register shop --sqlite '<경로>/shop.sqlite' --yes` |
 | `prepare` | 값 색인·프로파일 만들기(준비된 것은 건너뜀) | `p3 prepare` |
-| `ask` | 질문 하나 → SQL → 읽기 전용 실행 → 앞 10행 | `p3 ask --source financial --profile p3-ref 'How many accounts are there?'` |
-| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지). 이름은 세션 이름 규칙(`--run-id`로 줄 수도 있다). `--questions`는 공개 문항 꼴 JSON, 스터디 모델 입력 JSON, 한 줄에 질문 하나인 텍스트. `--evidence used`면 문항의 evidence를 준다(기본 not_used) | `p3 run --profile p3-ref --limit 20` |
+| `semantic-check` | 받기 자리(`.text2sql/var/semantic-inbox/<이름>.json`)의 지표 정의를 그 데이터셋 DB와 대조해 한 줄로 알리기만 함(맞음·안 맞음 둘 다 0). 받아들이지 않고, 끝나면 받기 자리의 파일을 지움. SQLite 하나인 데이터셋만(BIRD 등은 2) | `p3 semantic-check shop` |
+| `semantic-import` | 받기 자리의 정의를 꼴·승인·크기·테이블로 검사하고 고지(종료 코드 3), `--yes`면 `.text2sql/data/<이름>/semantic.approved.json`으로 옮겨 sha256을 `var/state.json`에 고정. 승인 전 항목이 하나라도 있거나 테이블이 DB에 없으면 1 | `p3 semantic-import shop --yes` |
+| `semantic-remove` | 받아들인 정의와 고정 기록을 지움. `--inbox`면 받기 자리의 파일만 | `p3 semantic-remove shop --inbox` |
+| `ask` | 질문 하나 → SQL → 읽기 전용 실행 → 앞 10행. `--semantic used`면 받아들인 지표 정의 글을 힌트 자리에 준다(기본 not_used. 사용자가 말했을 때만) | `p3 ask --source financial --profile p3-ref 'How many accounts are there?'` |
+| `run` | 문항 묶음 실행(분리 실행, 끝나면 채점·보고까지). 이름은 세션 이름 규칙(`--run-id`로 줄 수도 있다). `--questions`는 공개 문항 꼴 JSON, 스터디 모델 입력 JSON, 한 줄에 질문 하나인 텍스트. `--evidence used`면 문항의 evidence를 준다(기본 not_used). `--semantic used`면 받아들인 지표 정의 글을 모든 문항에 준다(기본 not_used. `--evidence used`와 함께 쓰지 않는다. BIRD는 2) | `p3 run --profile p3-ref --limit 20` |
 | `status` | 가장 최근(또는 `--run-id`) run의 진행, 10줄 안. 세션 폴더에 없는 이름은 옛 run 폴더(`legacy_runs`)에서 찾아 읽기만 한다 | `p3 status` |
 | `stop` | 도는 run 멈추기 | `p3 stop` |
 | `resume` | 멈춘 run 이어 돌기(채점 전, 같은 커밋일 때만) | `p3 resume` |
 | `score` | 정답 설정의 채점기(BIRD 공식 채점기 또는 스터디 채점기)로 채점. BIRD는 예측 파일을 받아 채점도 한다(스터디는 종료 코드 2, 예측 파일 채점의 라벨은 `evidence 미확인`). evidence used run이면 run에 준 evidence 글이 정답 쪽 원본과 글자 그대로 같은지도 본다. `--meta-time-out`이 없으면 BIRD 30초, 스터디 10초 | `p3 score --run <id>` |
-| `report` | 라벨, EX, 기준과 위치별 비교, 누설 검사 한 줄. evidence 방식이 다른 run·기준선과는 견주지 않는다 | `p3 report` |
-| `leak-audit` | 프롬프트에 정답·evidence가 들어갔는지 검사(evidence used run이면 evidence는 세지 않고 빠진 위치를 센다) | `p3 leak-audit --run <id>` |
+| `report` | 라벨, EX, 기준과 위치별 비교, 누설 검사 한 줄. evidence 방식이 다른 run·기준선과는 견주지 않는다. semantic 조건이나 지표 정의가 다른 run과도 견주지 않는다 | `p3 report` |
+| `leak-audit` | 프롬프트에 정답·evidence가 들어갔는지 검사(evidence used run이면 evidence는 세지 않고 빠진 위치를 센다. semantic used run이면 지표 정의 글이 빠진 위치도 센다) | `p3 leak-audit --run <id>` |
 | `route-start` | 하네스(전체 P3)·단일 호출 두 run을 짝으로 만들어 분리 프로세스 둘로 함께 돌림(끝나면 각각 채점·보고, 단일 호출 run이 먼저 채점) | `p3 route-start --profile p3-claude` |
 | `route-status` | 가장 최근(또는 `--pair`) 짝 두 run의 진행, 10줄 안 | `p3 route-status` |
 | `route-judge` | 짝 두 run(또는 `--harness`·`--candidate`)을 위치별로 견주어 경로를 판정하고 하네스 run 폴더에 판정 파일을 씀(덮어쓰지 않음) | `p3 route-judge` |
@@ -39,6 +42,8 @@
 
 Codex의 샌드박스(`workspace-write`, `read-only`) 안에서는 codex-cli 백엔드가 첫 모델 호출에서 "failed to initialize in-process app-server client: Operation not permitted"로 끝난다. `ask`·`run`(시작 전 확인 호출)·`status`는 이 오류를 보면 "안내: codex-cli 백엔드는 Codex 샌드박스 안에서 돌지 않습니다…" 한 줄을 더하고, `ask`·`run`은 종료 코드 1이다. Codex를 전체 접근(`danger-full-access`)으로 열거나 샌드박스 없는 터미널에서 돌린다. claude-code 백엔드에서 이 경우는 확인하지 않았다.
 
-종료 코드: 0 성공, 1 실패, 2 쓰임새 오류(소스·모델을 정해야 함), 3 승인 필요(`register`, `route-apply`), 4 정답 없음(채점 생략), 5 준비 필요(`prepare`를 먼저).
+`--semantic used`의 거절은 모두 모델을 부르기 전이다. 종료 코드 2: 받아들인 지표 정의가 없음("먼저 /getmetrics"), BIRD Mini-Dev, `--evidence used`와 함께. 종료 코드 1: 받아들인 정의 파일이나 DB가 받아들인 뒤 바뀜("/getmetrics를 다시"). `resume`과 분리된 프로세스는 run 폴더의 사본(`semantic.json`)만 읽고 `run.json`의 sha256과 대조한다. `route-start`에는 `--semantic`이 없다.
+
+종료 코드: 0 성공, 1 실패, 2 쓰임새 오류(소스·모델을 정해야 함), 3 승인 필요(`register`, `route-apply`, `semantic-import`), 4 정답 없음(채점 생략), 5 준비 필요(`prepare`를 먼저).
 
 스킬이 부르는 차례는 각 스킬의 글에 적혀 있다. 엔진 스킬의 SKILL.md는 명령 묶음만 한 줄씩 적는다.

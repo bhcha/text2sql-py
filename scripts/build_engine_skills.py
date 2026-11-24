@@ -31,7 +31,7 @@ from t2s import engine
 REPO = Path(__file__).resolve().parent.parent
 OUT = Path("dist") / "engine-skills"
 ENGINE_NAME = "p3-engine"
-SKILLS = ("connect", "getbird", "getolist", "text2sql", "runset", "newmodel", "sessions")
+SKILLS = ("connect", "getbird", "getolist", "getmetrics", "text2sql", "runset", "newmodel", "sessions")
 ENGINE_FILES = ("pyproject.toml", "uv.lock", ".python-version", "LICENSE")
 ENGINE_DIRS = ("LICENSES",)
 COPIES = (("AGENTS.md", "references/rules.md"), ("docs/provenance.md", "references/provenance.md"))

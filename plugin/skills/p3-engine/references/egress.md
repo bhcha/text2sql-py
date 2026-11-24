@@ -2,7 +2,9 @@
 
 - 모델 호출은 이 기기의 `codex` 또는 `claude` 명령으로 한다. 그 호출에 실려 모델 제공자 서버(OpenAI 또는 Anthropic)로 나가는 것: 질문, 스키마(CREATE 원문과 예시 3행), 질문과 비슷한 값, 열 프로파일(범주형 열은 값 전부), 고치기 때의 SQLite 오류 글.
 - evidence used run에서는 문항의 evidence 글(BIRD 공식 evidence 칸, 또는 Olist 문항 조건을 '; '로 이은 글)도 나간다.
-- 단일 호출 경로는 질문과 CREATE 원문만 나간다(evidence used면 evidence 글도).
+- semantic used일 때는 받아들인 지표 정의 글(승인 지표의 이름·설명·동의어·쓰임 안내·기준 SQL)도 나간다. 지표 정의를 받아들일 때(`p3 semantic-import`가 고지를 내고 종료 코드 3으로 승인을 기다린다) 이것을 알린다. 밖으로 내보내면 안 되는 내용이 든 정의를 받아들이지 않는다.
+- 단일 호출 경로는 질문과 CREATE 원문만 나간다(evidence used면 evidence 글도, semantic used면 지표 정의 글도).
+- 엔진은 Graph MCP 서버로 아무것도 보내지 않는다. `/connect`와 `/getmetrics`가 부르는 text2sql-plugin의 `t2s export`는 Graph MCP 서버에 토큰과 모델 이름만 보내고 DB의 내용은 보내지 않는다.
 - 정답 SQL은 나가지 않는다.
 - DB를 등록할 때(`p3 register`가 고지를 내고 종료 코드 3으로 승인을 기다린다)와 질문할 때 이것을 알린다. 민감한 DB에는 쓰지 않는다.
 - 가짜 백엔드(`--backend fake`)는 아무것도 내보내지 않는다.

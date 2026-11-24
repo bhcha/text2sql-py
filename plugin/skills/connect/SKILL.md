@@ -45,8 +45,9 @@ description: 질문을 보낼 데이터셋을 보고, 고르고, 새로 붙인�
    p3 use '<이름>'
 
    `prepare`가 "임베딩 모델이 없다"로 멈추면 "모델 파일 417MB를 받아야 합니다"라고 알리고, 사용자가 좋다고 하면 `p3 fetch model`을 돌린 뒤 `prepare`부터 다시 한다.
-4. 끝으로 `p3 datasets` 출력을 보여 준다.
-5. 사용자가 거절하면 아무것도 하지 않고 끝낸다.
+4. 등록·준비·전환이 끝나면 아래 "지표 모델 확인"을 한다.
+5. 끝으로 `p3 datasets` 출력을 보여 준다.
+6. 사용자가 거절하면 아무것도 하지 않고 끝낸다.
 
 ## BIRD 붙이기
 
@@ -62,6 +63,35 @@ description: 질문을 보낼 데이터셋을 보고, 고르고, 새로 붙인�
 2. 없으면 `.text2sql/data/olist/olist.db`가 있는지 파일 존재만 확인한다(열지 않는다). 없으면 "먼저 /getolist로 Olist 자료를 받아야 합니다"라고 알리고 멈춘다. 이 스킬이 대신 받지 않는다.
 3. 있으면 이름 `olist`, 경로 `.text2sql/data/olist/olist.db`로 "새 SQLite 붙이기"의 2단계부터 한다(고지 → 승인 → 등록·준비·전환). 승인 없이 등록하지 않는다.
 4. `.text2sql/data/olist/` 아래 다른 파일(모델 입력, 평가셋 manifest, 스키마 스냅숏)은 쓰지 않는다. 스냅숏의 사람이 쓴 설명은 퓨어 조건(문항의 evidence와 사람이 쓴 설명을 모델에 주지 않는 조건)에서 모델에 주지 않는다.
+
+## 지표 모델 확인 (알리기만)
+
+"새 SQLite 붙이기"와 "Olist 붙이기"에서 등록·준비·전환이 끝난 뒤에만 한다. "BIRD 붙이기", "바꾸기", "목록"에서는 하지 않는다. 이 DB에 맞는 활성 지표 모델이 Graph MCP에 있는지 알리기만 한다. 정의를 받아들이지 않고 SQL 생성에 넣지 않는다.
+
+플러그인 폴더의 `scripts/t2s`는 지표 길의 도구다(엔진의 `p3`와 다른 프로그램이다). 여기서는 `export` 하나만 부른다. 명령 출력의 `t2s <명령>`을 `p3 <명령>`으로 읽는 규칙은 엔진 출력에만 해당한다.
+
+1. 플러그인 폴더(이 SKILL.md에서 두 단계 위)에 `scripts/t2s`가 있는지 파일 존재만 본다. 없으면 아래 표의 "도구 없음" 줄을 보이고 끝낸다.
+2. 부른다. `DATABASE_URL`은 주지 않는다. 이 호출은 Graph MCP 서버에 토큰과 모델 이름만 보내고 DB의 내용은 보내지 않는다:
+
+   sh <이 SKILL.md가 있는 폴더>/../../scripts/t2s export --out '.text2sql/var/semantic-inbox/<이름>.json'
+
+3. 종료 코드 0이면 이어서 부르고 출력 한 줄을 그대로 보인다. 이 명령은 받기 자리의 파일을 이 DB와 대조한 뒤 지운다. 정의를 받아들이지 않는다:
+
+   p3 semantic-check '<이름>'
+
+   이 명령이 0이 아니면 마지막 오류 줄을 그대로 보이고 끝낸다.
+4. `export`가 0이 아니면 출력 JSON의 `error.kind`에 따라 아래 줄을 그대로 보이고 끝낸다. 다시 부르지 않는다. 출력 JSON 전체나 오류 글(`error.message`)은 보이지 않는다.
+
+| 경우 | 보일 줄 |
+|---|---|
+| 맞는 모델이 있음(`semantic-check`가 낸다) | `이 DB에 맞는 활성 지표 모델이 있습니다: <모델 이름> (판 <version_id 앞 8자>, 승인 지표 <N>개). 지표 질문은 /ask로 물으세요. /text2sql과 /runset의 SQL 생성에는 이 정의를 넣지 않습니다.` |
+| 모델은 있으나 이 DB와 안 맞음(`semantic-check`가 낸다) | `활성 지표 모델 <모델 이름>은 이 DB와 맞지 않습니다(모델의 테이블 <M>개 가운데 <K>개가 이 DB에 없음).` |
+| 토큰이 없거나 연결 실패(`graph_unavailable`) | `Graph MCP에 연결하지 못해 이 DB에 맞는 지표 모델이 있는지 확인하지 못했습니다. DB 등록은 끝났습니다.` |
+| 활성 모델 없음(`no_active_model`) | `Graph MCP에 활성 지표 모델이 없습니다.` |
+| 도구 없음(`scripts/t2s` 없음, `no_uv`, `setup_failed`, 그 밖의 종류) | `지표 길 도구를 쓸 수 없어 지표 모델 확인을 건너뜁니다. DB 등록은 끝났습니다.` |
+| 정의를 SQL로 바꾸지 못함(`bad_definition`) | `활성 지표 모델의 승인 지표 가운데 SQL로 바꿀 수 없는 것이 있어 지표 모델을 확인하지 못했습니다. DB 등록은 끝났습니다.` |
+
+확인이 실패해도 connect는 실패가 아니다. 등록·준비·전환은 끝난 것으로 보고한다. `/getmetrics`나 semantic used를 권하지 않는다.
 
 ## 바꾸기
 
@@ -80,6 +110,8 @@ description: 질문을 보낼 데이터셋을 보고, 고르고, 새로 붙인�
 - `.text2sql/gold/` 아래 파일, 받은 zip(`.text2sql/data/*/download/`), 공개 evidence 파일(`.text2sql/data/bird-minidev/hints.public.json`)을 열거나 내용을 출력하지 않는다.
 - 사용자에게 명령 인자를 치라고 하지 않는다.
 - 기본은 evidence not_used(퓨어 조건: 문항의 evidence와 사람이 쓴 설명을 모델에 주지 않는다)다. 사용자가 evidence(문항 조건)를 주라고 말했을 때만 used로 돈다.
+- 기본은 semantic not_used다. 사용자가 지표 정의를 넣으라고 말했을 때만 semantic used로 돈다. evidence와 함께 쓰지 않는다.
+- 지표 정의 파일(`.text2sql/data/*/semantic.approved.json`, `.text2sql/var/semantic-inbox/` 아래 파일)을 통째로 읽거나 내용을 출력하지 않는다. 명령이 낸 요약 줄만 보인다.
 - 새 DB는 밖으로 나가는 것을 알리고 승인을 받은 뒤에만 등록한다. 민감한 DB에 쓰지 않는다.
 - DB 파일을 직접 열거나 DB 클라이언트·다른 도구로 스키마를 읽지 않는다.
 - 세션 모델이 SQL을 직접 쓰지 않는다. SQL은 `p3 ask`·`p3 run`이 만든다.
@@ -97,3 +129,5 @@ description: 질문을 보낼 데이터셋을 보고, 고르고, 새로 붙인�
 - `harness.toml`을 고치지 않는다. 등록은 `.text2sql/var/state.json`에 적힌다.
 - `.text2sql/gold/` 아래 파일과 `.text2sql/data/bird-minidev/download/` 아래 파일을 열거나 내용을 출력하지 않는다.
 - 종료 코드가 0도 3도 아니면 마지막 오류 줄을 그대로 보여 주고 멈춘다. 같은 명령을 되풀이하지 않는다.
+- 지표 정의를 받아들이지 않는다. `/getmetrics`나 semantic used를 권하지 않는다. Graph MCP 도구를 직접 부르지 않고, 정의의 테이블 이름을 스스로 DB와 견주지 않는다.
+- 플러그인 폴더의 `scripts/t2s`는 `export` 하나만 부른다.

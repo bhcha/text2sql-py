@@ -10,7 +10,11 @@ from pathlib import Path
 from t2s.cli.main import build_parser
 
 REPO = Path(__file__).resolve().parents[2]
-SKILLS = ("getbird", "getolist", "connect", "text2sql", "runset", "newmodel", "sessions")
+SKILLS = ("getbird", "getolist", "getmetrics", "connect", "text2sql", "runset", "newmodel", "sessions")
+# 지표 길의 도구(text2sql-plugin의 scripts/t2s)를 부르는 스킬과, 그 도구에서 부르는 명령·인자(export 하나뿐)
+T2S_CALLERS = ("connect", "getmetrics")
+T2S_CALL = re.compile(r"scripts/t2s ([a-z][a-z-]*)")
+T2S_FLAGS = {"--out"}
 FLAG = re.compile(r"(?<![\w-])(--[a-z][a-z-]*)")
 
 
@@ -208,7 +212,7 @@ def test_plugin_commands_exist():
         for cmd in P3_COMMAND.findall(text):
             assert cmd in subs or cmd in SCRIPT_ONLY, (name, cmd)
         for flag in FLAG.findall(text):
-            assert flag in flags, (name, flag)
+            assert flag in flags or (name in T2S_CALLERS and flag in T2S_FLAGS), (name, flag)
 
 
 def test_plugin_newmodel_and_model_rules_kept():
@@ -237,6 +241,7 @@ def test_routing_eval_prompts():
         "run-all-routes-to-runset": ("전체 돌려줘", "runset"),
         "new-model-routes-to-newmodel": ("새 모델 재줘", "newmodel"),
         "sessions-list-routes-to-sessions": ("세션 목록 보여줘", "sessions"),
+        "metrics-sync-routes-to-getmetrics": ("지표 정의 받아줘", "getmetrics"),
     }
     assert sorted(p.name for p in evals.iterdir() if p.is_dir() and p.name != "results") == sorted(want)
     for case, (prompt, skill) in want.items():
@@ -316,3 +321,125 @@ def test_plugin_failure_stop_rule():
         "- `p3` 명령이 실패했을 때 결과를 다른 방법으로 만들지 않는다. SQL을 직접 쓰지 않고, 자료 폴더나 DB 파일을 직접 "
         "읽지 않고, 웹을 검색하지 않는다. 오류를 보여 주고 멈춘다." in _new("runset").partition("## 하지 말 것\n")[2]
     )
+
+
+# ── semantic used 조건(계획 2-7·2-8, AGENTS 규칙 13) ──
+
+# 계획 2-7절의 알림 글(정해진 글자). 앞의 둘은 p3 semantic-check가 낸다
+METRIC_NOTICES = (
+    (
+        "이 DB에 맞는 활성 지표 모델이 있습니다: <모델 이름> (판 <version_id 앞 8자>, 승인 지표 <N>개). "
+        "지표 질문은 /ask로 물으세요. /text2sql과 /runset의 SQL 생성에는 이 정의를 넣지 않습니다."
+    ),
+    "활성 지표 모델 <모델 이름>은 이 DB와 맞지 않습니다(모델의 테이블 <M>개 가운데 <K>개가 이 DB에 없음).",
+    "Graph MCP에 연결하지 못해 이 DB에 맞는 지표 모델이 있는지 확인하지 못했습니다. DB 등록은 끝났습니다.",
+    "Graph MCP에 활성 지표 모델이 없습니다.",
+    "지표 길 도구를 쓸 수 없어 지표 모델 확인을 건너뜁니다. DB 등록은 끝났습니다.",
+    "활성 지표 모델의 승인 지표 가운데 SQL로 바꿀 수 없는 것이 있어 지표 모델을 확인하지 못했습니다. DB 등록은 끝났습니다.",
+)
+T2S_NOTE = (
+    "플러그인 폴더의 `scripts/t2s`는 지표 길의 도구다(엔진의 `p3`와 다른 프로그램이다). 여기서는 `export` 하나만 부른다. "
+    "명령 출력의 `t2s <명령>`을 `p3 <명령>`으로 읽는 규칙은 엔진 출력에만 해당한다."
+)
+SEMANTIC_PHRASES = '"지표 정의 넣어서", "지표 정의 써서", "semantic 써서", "시맨틱 써서", "semantic used로"'
+
+
+def test_connect_metric_notices_match_plan():
+    text = _new("connect")
+    for line in METRIC_NOTICES:
+        assert f"`{line}`" in text, line
+    for kind in ("`graph_unavailable`", "`no_active_model`", "`no_uv`", "`setup_failed`", "`bad_definition`"):
+        assert kind in text, kind
+    assert "\n   p3 semantic-check '<이름>'\n" in text and T2S_NOTE in text
+    assert "`/getmetrics`나 semantic used를 권하지 않는다" in text and "Graph MCP 도구를 직접 부르지 않고" in text
+    assert "확인이 실패해도 connect는 실패가 아니다" in text and "`DATABASE_URL`은 주지 않는다" in text
+    section = text.partition("## 지표 모델 확인 (알리기만)")[2].partition("\n## ")[0]
+    assert "semantic-import" not in section and "--semantic" not in section
+
+
+def test_engine_check_lines_match_plan_notices():
+    """connect가 보이는 앞 두 줄은 엔진(semantic-check)이 내는 글과 틀이 같다."""
+    import inspect
+
+    from t2s.cli import data_cmds
+
+    src = inspect.getsource(data_cmds.cmd_semantic_check)
+    assert "이 DB에 맞는 활성 지표 모델이 있습니다: {model} (판 " in src
+    assert (
+        "지표 질문은 /ask로 물으세요. " in src and "/text2sql과 /runset의 SQL 생성에는 이 정의를 넣지 않습니다." in src
+    )
+    assert (
+        "활성 지표 모델 {model}은 이 DB와 맞지 않습니다(모델의 테이블 {total}개 가운데 {missing}개가 이 DB에 없음)."
+        in src
+    )
+
+
+def test_t2s_only_in_connect_and_getmetrics_and_only_export():
+    for name in (*SKILLS, ENGINE_SKILL):
+        text = _new(name)
+        if name in T2S_CALLERS:
+            assert set(T2S_CALL.findall(text)) == {"export"}, name
+            assert T2S_NOTE in text, name
+            assert (
+                "sh <이 SKILL.md가 있는 폴더>/../../scripts/t2s export --out '.text2sql/var/semantic-inbox/<이름>.json'"
+                in text
+            ), name
+        else:
+            assert "scripts/t2s" not in text, name
+
+
+def test_getmetrics_flow():
+    text = _new("getmetrics")
+    assert "지표 정의 받아줘" in text and "시맨틱 정의 가져와" in text and "지표 정의 넣어서 돌릴 준비" in text
+    assert "/ask" in text and "매출 얼마야" in text
+    for line in METRIC_NOTICES[2:]:
+        assert f"`{line}`" in text, line
+    for word in (
+        "\n   p3 datasets\n",
+        "\n   p3 semantic-import '<이름>'\n",
+        "\n   p3 semantic-import '<이름>' --yes\n",
+        "\n   p3 semantic-remove '<이름>' --inbox\n",
+        "BIRD Mini-Dev에는 지표 정의가 없습니다",
+        "진행할까요?",
+        "사용자에게 칠 명령으로 보이지 않는다",
+        "사용자가 진행하라고 답한 뒤에만",
+        "로컬 정의 파일(`*.ossie.yaml` 같은 것)",
+        "지표 정의를 넣어 돌리려면 /text2sql이나 /runset에 '지표 정의 넣어서'라고 말하세요. 말하지 않으면 넣지 않습니다.",
+        "승인 전 지표를 쓰자고 권하지 않는다",
+    ):
+        assert word in text, word
+    # 승인 앞에서는 --yes를 돌리지 않는다: --yes 줄은 "진행하라고 답한 뒤에만" 뒤에만 나온다
+    before = text.partition("사용자가 진행하라고 답한 뒤에만")[0]
+    assert "p3 semantic-import '<이름>' --yes" not in before
+
+
+def test_semantic_opt_in_in_text2sql_and_runset():
+    for name in ("text2sql", "runset"):
+        text = _new(name)
+        section = text.partition("## 지표 정의 정하기 (사용자에게 인자를 묻지 않는다)")[2].partition("\n## ")[0]
+        assert "기본은 semantic not_used다. 받아들인 지표 정의가 있어도 말이 없으면 넣지 않는다." in section, name
+        assert f"{SEMANTIC_PHRASES}처럼 지표 정의를 넣으라고 말했을 때만 `--semantic used`를 붙인다" in section
+        assert '"evidence와 지표 정의는 함께 쓰지 않습니다. 어느 쪽으로 돌릴까요?"' in section
+        for word in ("받아들인 지표 정의가 없습니다", "BIRD Mini-Dev에는 지표 정의가 없습니다", "함께 쓰지 않습니다"):
+            assert f'"{word}"' in section, (name, word)
+        assert "`--semantic`" in text.partition("## 하지 말 것\n")[2], name
+    runset = _new("runset")
+    assert "비교 대상 없음(기준은 semantic not_used, 이번은 used라 견주지 않는다)" in runset
+
+
+def test_common_keep_has_semantic_lines():
+    keep = _keep(_new("connect"))
+    assert "- 기본은 semantic not_used다. 사용자가 지표 정의를 넣으라고 말했을 때만 semantic used로 돈다." in keep
+    assert "통째로 읽거나 내용을 출력하지 않는다. 명령이 낸 요약 줄만 보인다." in keep
+
+
+def test_engine_guides_mention_semantic():
+    refs = REPO / "plugin/skills" / ENGINE_SKILL / "references"
+    commands = (refs / "commands.md").read_text(encoding="utf-8")
+    for word in ("`semantic-check`", "`semantic-import`", "`semantic-remove`", "`--semantic used`"):
+        assert word in commands, word
+    egress = (refs / "egress.md").read_text(encoding="utf-8")
+    assert "semantic used일 때는 받아들인 지표 정의 글" in egress and "토큰과 모델 이름만 보내고" in egress
+    labels = (refs / "labels.md").read_text(encoding="utf-8")
+    assert "/ semantic used(<받아들인 정의 파일의 sha256 앞 8자>)" in labels and "시험용 정의·점수 아님" in labels
+    assert "`references/semantic-file.md`" in _new(ENGINE_SKILL)

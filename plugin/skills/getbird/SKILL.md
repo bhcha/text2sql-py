@@ -28,6 +28,8 @@ description: BIRD Mini-Dev 자료(공식 zip 0.8GB, SQLite DB 11개, 정답·문
 - `.text2sql/gold/` 아래 파일, 받은 zip(`.text2sql/data/*/download/`), 공개 evidence 파일(`.text2sql/data/bird-minidev/hints.public.json`)을 열거나 내용을 출력하지 않는다.
 - 사용자에게 명령 인자를 치라고 하지 않는다.
 - 기본은 evidence not_used(퓨어 조건: 문항의 evidence와 사람이 쓴 설명을 모델에 주지 않는다)다. 사용자가 evidence(문항 조건)를 주라고 말했을 때만 used로 돈다.
+- 기본은 semantic not_used다. 사용자가 지표 정의를 넣으라고 말했을 때만 semantic used로 돈다. evidence와 함께 쓰지 않는다.
+- 지표 정의 파일(`.text2sql/data/*/semantic.approved.json`, `.text2sql/var/semantic-inbox/` 아래 파일)을 통째로 읽거나 내용을 출력하지 않는다. 명령이 낸 요약 줄만 보인다.
 - 새 DB는 밖으로 나가는 것을 알리고 승인을 받은 뒤에만 등록한다. 민감한 DB에 쓰지 않는다.
 - DB 파일을 직접 열거나 DB 클라이언트·다른 도구로 스키마를 읽지 않는다.
 - 세션 모델이 SQL을 직접 쓰지 않는다. SQL은 `p3 ask`·`p3 run`이 만든다.

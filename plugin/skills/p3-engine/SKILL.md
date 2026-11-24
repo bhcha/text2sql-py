@@ -1,6 +1,6 @@
 ---
 name: p3-engine
-description: P3 text-to-SQL 엔진(코드, 기본 설정, 기준선)을 담은 스킬이다. 사용자가 직접 부르지 않고, 다른 스킬(connect, getbird, getolist, text2sql, runset, newmodel, sessions)이 이 폴더의 scripts/p3 를 부른다.
+description: P3 text-to-SQL 엔진(코드, 기본 설정, 기준선)을 담은 스킬이다. 사용자가 직접 부르지 않고, 다른 스킬(connect, getbird, getolist, getmetrics, text2sql, runset, newmodel, sessions)이 이 폴더의 scripts/p3 를 부른다.
 when_to_use: 직접 부르지 않는다. 다른 스킬의 글이 이 폴더의 scripts/p3 를 가리킬 때만 그 스크립트를 쓴다.
 disable-model-invocation: true
 ---
@@ -24,13 +24,15 @@ disable-model-invocation: true
 - 이 폴더의 소스(`src/`)와 `assets/`를 읽지 않는다. 엔진이 하는 일은 명령 출력으로만 안다.
 - 이 폴더와 플러그인 폴더에 아무것도 쓰지 않는다. 엔진의 `t2s`를 PATH에 올리지 않는다.
 - `.text2sql/gold/` 아래 파일, 받은 zip(`.text2sql/data/*/download/`), 공개 evidence 파일(`.text2sql/data/bird-minidev/hints.public.json`)을 열거나 내용을 출력하지 않는다.
+- 지표 정의 파일(`.text2sql/data/*/semantic.approved.json`, `.text2sql/var/semantic-inbox/` 아래 파일)을 통째로 읽거나 내용을 출력하지 않는다. 엔진은 Graph MCP를 부르지 않는다.
 - 해시 대조를 건너뛰는 옵션이나 환경변수를 더하지 않는다.
 
 ## 명령 묶음
 
 - 받기: `p3 fetch bird`, `p3 fetch model`, `p3 fetch olist`
 - 데이터셋: `p3 datasets`, `p3 use '<이름>'`, `p3 register '<이름>' --sqlite '<경로>'`(고지 뒤 `--yes`), `p3 prepare ['<이름>']`
-- 질문 하나: `p3 ask [--source '<DB>'] <모델 인자> '<질문>'`
+- 질문 하나: `p3 ask [--source '<DB>'] <모델 인자> '<질문>'`(사용자가 지표 정의를 넣으라고 말했을 때만 `--semantic used`)
+- 지표 정의: `p3 semantic-check '<이름>'`(알리기만), `p3 semantic-import '<이름>'`(고지 뒤 `--yes`), `p3 semantic-remove '<이름>' [--inbox]`
 - 묶음 실행: `p3 run`, `p3 status`, `p3 stop`, `p3 resume`
 - 채점과 보고: `p3 score`, `p3 report`, `p3 leak-audit`
 - 경로 판정: `p3 route-start`, `p3 route-status`, `p3 route-judge`, `p3 route-apply`
@@ -45,3 +47,4 @@ disable-model-invocation: true
 - `references/labels.md`: 점수 라벨과 견주는 규칙.
 - `references/session-layout.md`: `.text2sql/` 아래에 무엇이 놓이는지와 세션 이름 규칙.
 - `references/egress.md`: 모델 제공자 서버로 무엇이 나가는지.
+- `references/semantic-file.md`: 지표 정의 파일 꼴(`t2s-semantic/1`), 승인 규칙, 한 줄 글 규칙.
