@@ -185,6 +185,17 @@ def test_check_zero_metrics(root, capsys):
     assert code == 1 and errs == ["오류: 승인 지표가 없습니다"]
 
 
+def test_check_zero_metrics_and_no_tables(root, capsys):
+    doc = _fixture()
+    doc["metrics"], doc["tables"] = [], []
+    _inbox(root, doc=doc)
+    code, lines, _ = call(capsys, "semantic-check", "shop")
+    assert code == 0 and "(판 fixture-, 승인 지표 0개)" in lines[0]
+    _inbox(root, doc=doc)
+    code, _, errs = call(capsys, "semantic-import", "shop")
+    assert code == 1 and errs == ["오류: 승인 지표가 없습니다"]
+
+
 def test_missing_tables_check_tells_import_refuses(root, capsys):
     doc = _fixture()
     doc["tables"] = ["order", "warehouse", "region"]

@@ -184,3 +184,13 @@ def test_missing_tables(shop_db):
     assert S.missing_tables(doc, src) == (0, 3)
     doc["tables"] = ["main.ORDER", "Product", "warehouse", "sales.region"]
     assert S.missing_tables(doc, src) == (2, 4)
+
+
+def test_long_space_run_without_break_kept_and_fast():
+    import time
+
+    long = " " * 300000 + "a"
+    started = time.monotonic()
+    assert S.shown(long) == long
+    assert S.shown("x" + " " * 300000 + "\n" + " " * 5 + "y") == "x y"
+    assert time.monotonic() - started < 5
