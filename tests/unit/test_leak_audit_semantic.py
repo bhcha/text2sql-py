@@ -219,3 +219,35 @@ def test_route_judge_refuses_semantic_used(sroot, capsys):
     assert code == 1
     assert lines[-1] == "semantic used run으로는 경로 판정을 하지 않는다(하네스 not_used, 후보 used)"
     assert not R.judgment_path(root / "runs", "h-pure", "c-used").exists()
+
+
+def test_definition_with_own_gold_sql_is_a_leak(sroot, capsys):
+    """정의 글 안에 그 문항의 정답 SQL이 있으면, 모델이 같은 SQL을 썼더라도(rounds old_sql) 모델 생성으로 빼지 않는다."""
+    root, MS = sroot
+    doc = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    doc["source"]["kind"] = "graph_mcp"
+    doc["metrics"][2]["sql"] = MS.GOLD_SQL[0]  # 평가셋 정답을 그대로 담은 정의
+    _import(root, capsys, doc)
+    run = _run(root, MS, capsys, "sg", "--semantic", "used", "--no-score")
+    trace_path = run / "items/0000" / R.TRACE_FILE
+    trace = json.loads(trace_path.read_text(encoding="utf-8"))
+    trace["rounds"] = [{"old_sql": MS.GOLD_SQL[0]}]
+    trace_path.write_text(json.dumps(trace), encoding="utf-8")
+    code, lines, err = cli(capsys, "leak-audit", "--run", "sg")
+    leak = R.read_json(run / R.LEAK_FILE)
+    assert 0 in leak["gold_sql_hits"] and 0 not in leak["model_made"]
+    assert code != 0
+    assert MS.MARK not in "\n".join(lines + err)
+
+
+def test_report_against_run_folder_ex_jsonl_refuses(sroot, capsys):
+    """--against에 run 폴더의 ex.jsonl을 주어도 곁의 run.json으로 semantic 조건을 대조한다."""
+    root, MS = sroot
+    _import(root, capsys)
+    _run(root, MS, capsys, "x-used", "--semantic", "used")
+    _run(root, MS, capsys, "x-pure")
+    for mine, theirs in (("x-pure", "x-used"), ("x-used", "x-pure")):
+        code, lines, _ = cli(capsys, "report", "--run", mine, "--against", f"runs/{theirs}/ex.jsonl")
+        assert code == 1, (mine, lines)
+        assert any(x.startswith("semantic 조건이 달라 견주지 않는다(") for x in lines)
+        assert not any(x.startswith("새로 맞음") for x in lines)

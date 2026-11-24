@@ -7,7 +7,7 @@ evidence 방식(used·not_used)이 다른 run·기준선끼리는 견주지 않�
 방식을 모르는 쪽(ex.jsonl, 칸 없는 기준선·옛 run, 재채점 run)은 not_used로 본다.
 semantic 방식(used·not_used)이 다른 쪽끼리, 그리고 둘 다 used인데 정의 파일 sha256이 다른 쪽끼리도 견주지 않는다.
 기본 기준선은 semantic not_used라 semantic used run의 보고는 --against가 없으면 비교 대상 없음이다.
-기준선·ex.jsonl·칸 없는 옛 run·재채점 run은 semantic not_used로 본다. semantic not_used run의 출력은 그 전과 같다.
+기준선·run 폴더 밖의 ex.jsonl·칸 없는 옛 run·재채점 run은 semantic not_used로 본다. semantic not_used run의 출력은 그 전과 같다.
 경로(run.json `route`)가 기준과 다르면(기준선·옛 run·ex.jsonl은 harness로 본다) "경로가 달라 재현 비교 아님"을 붙인다.
 """
 
@@ -101,7 +101,7 @@ class Side:
     summary: dict = field(default_factory=dict)
     evidence: str | None = G.EVIDENCE_NOT_USED  # None이면 알 수 없음(ex.jsonl, 재채점 run)
     route: str = R.HARNESS_ROUTE  # 기준선·ex.jsonl·옛 run은 harness
-    semantic: str = G.SEMANTIC_NOT_USED  # 기준선·ex.jsonl·옛 run·재채점 run은 not_used
+    semantic: str = G.SEMANTIC_NOT_USED  # 기준선·run 폴더 밖의 ex.jsonl·옛 run·재채점 run은 not_used
     semantic_sha: str | None = None  # semantic used면 받아들인 정의 파일의 sha256
 
 
@@ -141,7 +141,9 @@ def load_side(config: Config, ref: str) -> Side:
     if path.suffix == ".jsonl" and path.is_file():
         rows = {int(r["position"]): r for r in R.read_jsonl(path)}
         correct = sum(int(r["ex_match"]) for r in rows.values())
-        return Side(ref, f"{ref} (ex.jsonl, EX {correct}/{len(rows)})", rows, evidence=None)
+        s_mode, s_sha = _run_semantic(R.read_json_if(path.parent / R.RUN_FILE))  # 곁에 run.json이 없으면 not_used
+        desc = f"{ref} (ex.jsonl, EX {correct}/{len(rows)})"
+        return Side(ref, desc, rows, evidence=None, semantic=s_mode, semantic_sha=s_sha)
     found = R.find_run(config.runs_dir, ref, config.legacy_runs_dirs)  # 세션 폴더에 없으면 옛 run 폴더에서(읽기만)
     run = found[0] if found else R.run_dir(config.runs_dir, ref)
     score = R.read_json_if(run / R.SCORE_FILE)

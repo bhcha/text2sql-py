@@ -161,7 +161,8 @@ def audit(config: Config, run_id: str) -> dict:
         for f in files:
             text = normalize(f.read_text(encoding="utf-8"))
             if own and own in text:
-                (result["model_made"] if own in rounds else result["gold_sql_hits"]).append(pos)
+                made = own in rounds and not (semantic and own in semantic)  # 정의 글이 준 정답은 모델 생성이 아니다
+                (result["model_made"] if made else result["gold_sql_hits"]).append(pos)
             if any(h in text for h in hints[pos]):
                 result["evidence_hits"].append(pos)
             if any(i != pos and s != own and s in text for i, s in others):
