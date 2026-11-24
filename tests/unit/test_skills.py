@@ -337,6 +337,13 @@ METRIC_NOTICES = (
     "지표 길 도구를 쓸 수 없어 지표 모델 확인을 건너뜁니다. DB 등록은 끝났습니다.",
     "활성 지표 모델의 승인 지표 가운데 SQL로 바꿀 수 없는 것이 있어 지표 모델을 확인하지 못했습니다. DB 등록은 끝났습니다.",
 )
+# 계획 부록(2026-11-24 사용자 결정): getmetrics의 내보내기 실패 글
+GETMETRICS_NOTICES = (
+    "Graph MCP에 연결하지 못해 지표 정의를 받아 오지 못했습니다. 받아들인 것은 없습니다.",
+    "Graph MCP에 활성 지표 모델이 없습니다.",
+    "지표 길 도구를 쓸 수 없어 지표 정의를 받아 오지 못했습니다. 받아들인 것은 없습니다.",
+    "활성 지표 모델의 승인 지표 가운데 SQL로 바꿀 수 없는 것이 있어 지표 정의를 받아들이지 않았습니다.",
+)
 T2S_NOTE = (
     "플러그인 폴더의 `scripts/t2s`는 지표 길의 도구다(엔진의 `p3`와 다른 프로그램이다). 여기서는 `export` 하나만 부른다. "
     "명령 출력의 `t2s <명령>`을 `p3 <명령>`으로 읽는 규칙은 엔진 출력에만 해당한다."
@@ -392,8 +399,9 @@ def test_getmetrics_flow():
     text = _new("getmetrics")
     assert "지표 정의 받아줘" in text and "시맨틱 정의 가져와" in text and "지표 정의 넣어서 돌릴 준비" in text
     assert "/ask" in text and "매출 얼마야" in text
-    for line in METRIC_NOTICES[2:]:
+    for line in GETMETRICS_NOTICES:  # 계획 부록: connect의 글이 아니라 getmetrics에 맞는 끝말
         assert f"`{line}`" in text, line
+    assert "DB 등록은 끝났습니다" not in text
     for word in (
         "\n   p3 datasets\n",
         "\n   p3 semantic-import '<이름>'\n",
