@@ -24,6 +24,8 @@ class State:
     current_dataset: str | None = None
     # 이름 → {"kind":"single","sources":{이름:{"kind":"sqlite","path":절대경로}},"registered_at":…,"fingerprint":{sha256,size}}
     registered: dict[str, dict] = field(default_factory=dict)
+    # 이름 → 받아들인 지표 정의의 고정 기록(semantic-import가 쓴다). 칸이 없는 옛 파일은 빈 값
+    semantic: dict[str, dict] = field(default_factory=dict)
 
 
 def state_path(root: Path) -> Path:
@@ -41,7 +43,14 @@ def load_state(root: Path) -> State:
         raise StateError(f"{p}를 읽지 못했습니다: {e}") from e
     if raw.get("format") != STATE_FORMAT:
         raise StateError(f"{p}의 format이 {STATE_FORMAT}이 아닙니다")
-    return State(current_dataset=raw.get("current_dataset"), registered=dict(raw.get("registered", {})))
+    semantic = raw.get("semantic", {})
+    if not isinstance(semantic, dict):
+        raise StateError(f"{p}의 semantic 칸이 객체가 아닙니다")
+    return State(
+        current_dataset=raw.get("current_dataset"),
+        registered=dict(raw.get("registered", {})),
+        semantic=dict(semantic),
+    )
 
 
 def save_state(root: Path, state: State) -> None:
@@ -50,6 +59,8 @@ def save_state(root: Path, state: State) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_name(p.name + ".tmp")
     body = {"format": STATE_FORMAT, "current_dataset": state.current_dataset, "registered": state.registered}
+    if state.semantic:  # 받아들인 지표 정의가 없으면 칸을 쓰지 않는다(옛 꼴 그대로)
+        body["semantic"] = state.semantic
     tmp.write_text(json.dumps(body, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     os.replace(tmp, p)
 

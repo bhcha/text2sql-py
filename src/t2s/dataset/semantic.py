@@ -22,6 +22,9 @@ FORMAT = "t2s-semantic/1"
 SEMANTIC_RULES_VERSION = "1.0.0"
 MAX_CHARS = 20000  # 만든 한 줄 글의 글자 수 한도
 MAX_FILE_BYTES = 1_000_000  # 정의 파일 크기 한도
+# 작업 루트 기준 자리. 읽기 감시(runner/guard.py의 SEMANTIC_GLOBS)가 이 두 자리를 막는다.
+INBOX_DIR = Path("var") / "semantic-inbox"  # 받기 자리: 내보내기가 <데이터셋 이름>.json으로 쓴다
+APPROVED_NAME = "semantic.approved.json"  # 받아들인 파일: data/<데이터셋 이름>/에 둔다
 
 TOP_KEYS = frozenset({"format", "source", "dialect", "tables", "metrics", "excluded"})
 SOURCE_REQUIRED = frozenset({"kind", "model", "version_id", "exported_at", "exporter"})
@@ -61,8 +64,20 @@ def _is_text(v: object, *, nonempty: bool = False) -> bool:
     return isinstance(v, str) and (not nonempty or bool(v.strip()))
 
 
-def parse_semantic(raw: bytes) -> dict:
-    """정의 파일의 바이트를 읽어 검사한 문서(dict). 받아들일 수 없으면 SemanticError."""
+def inbox_rel(name: str) -> Path:
+    return INBOX_DIR / f"{name}.json"
+
+
+def approved_rel(name: str) -> Path:
+    return Path("data") / name / APPROVED_NAME
+
+
+def parse_semantic(raw: bytes, *, allow_empty: bool = False) -> dict:
+    """정의 파일의 바이트를 읽어 검사한 문서(dict). 받아들일 수 없으면 SemanticError.
+
+    allow_empty=True는 대조(semantic-check)만 쓴다. 승인 지표가 0개인 모델도 "승인 지표 0개"로 알리기 위해서다.
+    받아들이기는 늘 False다(승인 지표가 없으면 받아들이지 않는다).
+    """
     if len(raw) > MAX_FILE_BYTES:
         raise SemanticError(f"정의 파일이 크기 한도({MAX_FILE_BYTES}바이트)를 넘습니다")
     try:
@@ -89,7 +104,7 @@ def parse_semantic(raw: bytes) -> dict:
     for k in sorted(EXCLUDED_KEYS):
         if not _is_count(excluded[k]):
             raise SemanticError(f"excluded의 {k}가 0 이상의 정수가 아닙니다")
-    _check_metrics(doc["metrics"])
+    _check_metrics(doc["metrics"], allow_empty=allow_empty)
     return doc
 
 
@@ -130,10 +145,10 @@ def _check_source(source: object) -> None:
         raise SemanticError("source의 revision이 0 이상의 정수가 아닙니다")
 
 
-def _check_metrics(metrics: object) -> None:
+def _check_metrics(metrics: object, *, allow_empty: bool = False) -> None:
     if not isinstance(metrics, list):
         raise SemanticError("정의 파일의 metrics가 목록이 아닙니다")
-    if not metrics:
+    if not metrics and not allow_empty:
         raise SemanticError("승인 지표가 없습니다")
     # 승인 상태를 먼저 모두 본다. 승인 전 항목은 다른 꼴 오류보다 먼저, 같은 글로 거절한다.
     for i, m in enumerate(metrics):
@@ -189,3 +204,19 @@ def missing_tables(doc: dict, source: DataSource) -> tuple[int, int]:
     have = {_table_key(t) for t in source.tables()}
     want = {_table_key(t) for t in doc["tables"]}
     return len(want - have), len(want)
+
+
+def shown(value: str, limit: int | None = None) -> str:
+    """출력 줄에 넣을 이름·판 글: 줄을 나누는 공백 묶음을 빈칸 하나로 줄이고, limit이 있으면 앞 limit자만."""
+    s = _one_line(str(value))
+    return s[:limit] if limit else s
+
+
+def summary_line(record: dict) -> str:
+    """받아들인 정의의 고정 기록(var/state.json의 semantic 칸 한 항목)을 사람에게 보일 한 줄로. 정의 본문은 넣지 않는다."""
+    source = record.get("source") or {}
+    when = str(record.get("accepted_at") or "")[:10] or "기록 없음"
+    return (
+        f"지표 정의: 모델 {shown(source.get('model', ''))} 판 {shown(source.get('version_id', ''), 8)} · "
+        f"승인 지표 {record.get('metrics')}개 · 받은 때 {when}"
+    )

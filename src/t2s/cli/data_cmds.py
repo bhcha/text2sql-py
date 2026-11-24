@@ -1,4 +1,7 @@
-"""명령 datasets, use, register, prepare, route-apply, init, verify. init·verify 밖의 명령은 첫머리에서 읽기 감시를 건다.
+"""명령 datasets, use, register, prepare, route-apply, semantic-check·import·remove, init, verify.
+
+init·verify 밖의 명령은 첫머리에서 읽기 감시를 건다. 지표 정의 파일과 받기 자리를 여는 것은 semantic-check와
+semantic-import뿐이고(allow_semantic=True), 다른 명령은 기본 감시로 그 두 자리도 막는다.
 
 init은 설정을 읽기 전에 돌고(작업 루트가 아직 없다) 엔진 자리의 기본 설정·기준선만 복사한다. 복사한 설정에서는
 [paths] runs 한 줄만 세션 폴더(sessions)로 바꿔 쓴다.
@@ -24,6 +27,7 @@ from pathlib import Path
 
 from t2s import engine
 from t2s.dataset import route_store
+from t2s.dataset import semantic as SEM
 from t2s.dataset.config import Config, ConfigError, DatasetSpec, find_root, load_config
 from t2s.dataset.state import State, StateError, current_dataset, load_state, save_state
 from t2s.datasource.base import DataSourceError
@@ -42,6 +46,10 @@ NOTICE = (
     "다른 프로그램이 이 DB에 쓰고 있지 않아야 합니다.",
     "민감한 DB에는 쓰지 마세요.",
 )
+
+
+# 지표 정의 파일과 받기 자리를 여는 명령(읽기 감시 allow_semantic=True). semantic-remove는 열지 않고 지우기만 한다
+SEMANTIC_OPENERS = ("semantic-check", "semantic-import")
 
 
 def out(line: str = "") -> None:
@@ -71,7 +79,10 @@ def run(args) -> int:
     except ConfigError as e:
         err(f"오류: {e}")
         return EXIT_FAIL
-    install_guard(root)
+    if args.command in SEMANTIC_OPENERS:
+        install_guard(root, allow_semantic=True)
+    else:
+        install_guard(root)
     try:
         state = load_state(root)
         config = load_config(root, state)
@@ -84,6 +95,9 @@ def run(args) -> int:
         "register": cmd_register,
         "prepare": cmd_prepare,
         "route-apply": cmd_route_apply,
+        "semantic-check": cmd_semantic_check,
+        "semantic-import": cmd_semantic_import,
+        "semantic-remove": cmd_semantic_remove,
     }[args.command]
     try:
         return handler(args, config, state)
@@ -140,6 +154,8 @@ def cmd_datasets(args, config: Config, state: State) -> int:
         mark = "*" if spec.name == name else " "
         status = prep_status(config, spec, hashes)
         out(f"{mark} {spec.name}  {spec.kind}  소스 {len(spec.sources)}  {status}  ({spec.origin})")
+        if spec.name in state.semantic:
+            out("    " + SEM.summary_line(state.semantic[spec.name]))
     if not config.datasets:
         out("  (데이터셋 없음)")
     out(_model_line(config, hashes))
@@ -233,9 +249,191 @@ def _remove(name: str, config: Config, state: State) -> int:
     del state.registered[name]
     if state.current_dataset == name:
         state.current_dataset = None
+    had_semantic = state.semantic.pop(name, None) is not None
     save_state(config.root, state)
     shutil.rmtree(Path(config.data_dir) / "assets" / name, ignore_errors=True)
     out(f"지움: {name} (등록 기록과 자산)")
+    if _unlink(config.root / SEM.approved_rel(name)) or had_semantic:
+        out(f"지움: {name}의 지표 정의(받아들인 파일과 고정 기록)")
+    _unlink(config.root / SEM.inbox_rel(name))
+    return EXIT_OK
+
+
+# ── 지표 정의(semantic) ──────────────────────────────────
+
+SEMANTIC_NOTICE_TAIL = (
+    "말하지 않으면 쓰지 않습니다(기본은 semantic not_used).",
+    "밖으로 내보내면 안 되는 내용이 든 정의에는 쓰지 마세요.",
+)
+
+
+def _unlink(path: Path) -> bool:
+    """있으면 지우고 True. 없으면 False."""
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _semantic_spec(name: str, config: Config) -> tuple[DatasetSpec | None, int]:
+    """지표 정의를 쓸 수 있는 데이터셋(등록된 단일 SQLite 소스 하나)인지. 아니면 (None, 종료 코드)를 돌려준다."""
+    if not NAME_RE.match(name):
+        err(f"데이터셋 이름 꼴이 아닙니다(소문자로 시작하고 소문자·숫자·밑줄·하이픈, 최대 41자): {name}")
+        return None, EXIT_USAGE
+    spec = config.datasets.get(name)
+    if spec is None:
+        err(f"없는 데이터셋: {name}")
+        return None, EXIT_USAGE
+    if spec.kind == "bird-minidev":
+        err("BIRD Mini-Dev에는 지표 정의가 없습니다")
+        return None, EXIT_USAGE
+    if spec.kind != "single" or len(spec.sources) != 1 or any(s.kind != "sqlite" for s in spec.sources.values()):
+        err(f"지표 정의는 SQLite 소스가 하나인 데이터셋에만 씁니다: {name}")
+        return None, EXIT_USAGE
+    if spec.missing:
+        err(f"{name}: {spec.missing}")
+        return None, EXIT_FAIL
+    return spec, EXIT_OK
+
+
+def _semantic_db(spec: DatasetSpec):
+    [s] = spec.sources.values()
+    return open_source(s.kind, path=str(s.path))
+
+
+def _read_inbox(config: Config, name: str, *, allow_empty: bool) -> tuple[bytes, dict] | None:
+    path = config.root / SEM.inbox_rel(name)
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        err(f"받기 자리에 지표 정의 파일이 없습니다: {SEM.inbox_rel(name).as_posix()}")
+        return None
+    try:
+        return raw, SEM.parse_semantic(raw, allow_empty=allow_empty)
+    except SEM.SemanticError as e:
+        err(f"오류: {e}")
+        return None
+
+
+def cmd_semantic_check(args, config: Config, state: State) -> int:
+    """받기 자리의 정의가 이 DB와 맞는지 한 줄로 알린다. 받아들이지 않는다. 끝나면(성공이든 실패든) 받기 자리 파일을 지운다."""
+    name = args.name
+    if not NAME_RE.match(name):
+        return _semantic_spec(name, config)[1]
+    try:
+        spec, code = _semantic_spec(name, config)
+        if spec is None:
+            return code
+        got = _read_inbox(config, name, allow_empty=True)
+        if got is None:
+            return EXIT_FAIL
+        _, doc = got
+        missing, total = SEM.missing_tables(doc, _semantic_db(spec))
+        model = SEM.shown(doc["source"]["model"])
+        if missing:
+            out(
+                f"활성 지표 모델 {model}은 이 DB와 맞지 않습니다(모델의 테이블 {total}개 가운데 {missing}개가 이 DB에 없음)."
+            )
+        else:
+            out(
+                f"이 DB에 맞는 활성 지표 모델이 있습니다: {model} (판 {SEM.shown(doc['source']['version_id'], 8)}, "
+                f"승인 지표 {len(doc['metrics'])}개). 지표 질문은 /ask로 물으세요. "
+                "/text2sql과 /runset의 SQL 생성에는 이 정의를 넣지 않습니다."
+            )
+        return EXIT_OK
+    finally:
+        _unlink(config.root / SEM.inbox_rel(name))
+
+
+def cmd_semantic_import(args, config: Config, state: State) -> int:
+    """받기 자리의 정의를 검사하고, --yes가 없으면 고지와 종료 코드 3, 있으면 받아들여 sha256을 고정한다."""
+    name = args.name
+    spec, code = _semantic_spec(name, config)
+    if spec is None:
+        return code
+    got = _read_inbox(config, name, allow_empty=False)
+    if got is None:
+        return EXIT_FAIL
+    raw, doc = got
+    try:
+        text = SEM.render(doc)
+    except SEM.SemanticError as e:
+        err(f"오류: {e}")
+        return EXIT_FAIL
+    db = _semantic_db(spec)
+    missing, total = SEM.missing_tables(doc, db)
+    if missing:
+        err(f"정의의 테이블 {total}개 가운데 {missing}개가 이 DB에 없어 받아들이지 않습니다")
+        return EXIT_FAIL
+    source = doc["source"]
+    model, version = SEM.shown(source["model"]), SEM.shown(source["version_id"], 8)
+    n = len(doc["metrics"])
+    if not args.yes:
+        ex = doc["excluded"]
+        out(
+            f"받아들일 지표 정의: 모델 {model} (판 {version}, 승인 지표 {n}개, 뺀 것: 승인 전 지표 "
+            f"{ex['draft_metrics']}개·승인 전 연결을 기다리는 지표 {ex['pending_metrics']}개)"
+        )
+        out(
+            f"semantic used로 돌릴 때 이 정의 글(지표 이름·설명·동의어·쓰임 안내·기준 SQL, {len(text)}자)이 "
+            "모델 제공자 서버(OpenAI 또는 Anthropic)로 나갑니다."
+        )
+        for line in SEMANTIC_NOTICE_TAIL:
+            out(line)
+        out(f"승인하면 --yes를 붙여 다시 실행: t2s semantic-import {name} --yes")
+        return EXIT_NEEDS_APPROVAL
+    root = config.root
+    dest = root / SEM.approved_rel(name)
+    before = state.semantic.get(name, {}).get("sha256")
+    if before is None and dest.is_file():
+        before = R.sha256_file(dest)
+    # 받기 자리(읽기 감시가 막는 곳)에 쓴 뒤 옮긴다. 검사한 바이트 그대로 쓴다
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = root / SEM.INBOX_DIR / f".{name}.importing"
+    tmp.write_bytes(raw)
+    os.replace(tmp, dest)
+    sha = hashlib.sha256(raw).hexdigest()
+    fp = db.fingerprint()
+    state.semantic[name] = {
+        "path": SEM.approved_rel(name).as_posix(),
+        "sha256": sha,
+        "size": len(raw),
+        "format": doc["format"],
+        "source": doc["source"],
+        "metrics": n,
+        "chars": len(text),
+        "rules": SEM.SEMANTIC_RULES_VERSION,
+        "db_fingerprint": {"sha256": fp.sha256, "size": fp.size},
+        "accepted_at": datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+    save_state(root, state)
+    _unlink(root / SEM.inbox_rel(name))
+    out(f"받아들임: {name} (모델 {model} 판 {version}, 승인 지표 {n}개, sha256 {sha[:8]})")
+    if before and before != sha:
+        out(f"바꿈: 이전 정의 sha256 {before[:8]}")
+    return EXIT_OK
+
+
+def cmd_semantic_remove(args, config: Config, state: State) -> int:
+    """--inbox면 받기 자리의 파일만, 아니면 받아들인 파일과 고정 기록을 지운다. 파일을 열지 않는다."""
+    name = args.name
+    if not NAME_RE.match(name):
+        return _semantic_spec(name, config)[1]
+    if args.inbox:
+        if _unlink(config.root / SEM.inbox_rel(name)):
+            out(f"지움: 받기 자리의 지표 정의 파일({name})")
+        else:
+            out(f"받기 자리에 지울 파일이 없습니다({name})")
+        return EXIT_OK
+    had = state.semantic.pop(name, None) is not None
+    if had:
+        save_state(config.root, state)
+    removed = _unlink(config.root / SEM.approved_rel(name))
+    if not (had or removed):
+        err(f"받아들인 지표 정의가 없습니다: {name}")
+        return EXIT_FAIL
+    out(f"지움: {name}의 지표 정의(받아들인 파일과 고정 기록)")
     return EXIT_OK
 
 

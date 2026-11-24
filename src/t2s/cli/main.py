@@ -59,6 +59,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--yes", action="store_true", help="고지를 읽고 승인함")
     p.add_argument("--remove", action="store_true", help="등록 기록과 자산을 지운다")
 
+    p = sub.add_parser(
+        "semantic-check",
+        help="받기 자리의 지표 정의가 이 DB와 맞는지 알리기만 한다(받아들이지 않음. 끝나면 받기 자리 파일을 지운다)",
+    )
+    p.add_argument("name", metavar="데이터셋")
+
+    p = sub.add_parser("semantic-import", help="받기 자리의 승인 지표 정의를 받아들여 sha256을 고정한다")
+    p.add_argument("name", metavar="데이터셋")
+    p.add_argument("--yes", action="store_true", help="고지를 읽고 승인함")
+
+    p = sub.add_parser("semantic-remove", help="받아들인 지표 정의와 고정 기록을 지운다")
+    p.add_argument("name", metavar="데이터셋")
+    p.add_argument("--inbox", action="store_true", help="받기 자리의 파일만 지운다")
+
     p = sub.add_parser("prepare", help="값 색인·프로파일을 만든다")
     p.add_argument("dataset", nargs="?")
     p.add_argument("--source", action="append", default=[], metavar="이름")
