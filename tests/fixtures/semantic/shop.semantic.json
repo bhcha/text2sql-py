@@ -1,0 +1,39 @@
+{
+  "format": "t2s-semantic/1",
+  "source": {
+    "kind": "fixture",
+    "model": "shop-fixture",
+    "version_id": "fixture-shop-v1",
+    "exported_at": "2026-11-24T00:00:00Z",
+    "exporter": "text2sql-py tests/fixtures (hand-written)"
+  },
+  "dialect": "sqlite",
+  "tables": ["order", "product", "customer"],
+  "metrics": [
+    {
+      "name": "orders.paid_order_count",
+      "status": "approved",
+      "description": "Number of orders whose status is paid.",
+      "synonyms": ["paid orders", "settled orders"],
+      "instructions": "Count rows of the order table; only the status value 'paid' counts as paid.",
+      "sql": "SELECT COUNT(*) FROM \"order\" WHERE status = 'paid'"
+    },
+    {
+      "name": "orders.ordering_customer_count",
+      "status": "approved",
+      "description": "Number of distinct customers who placed at least one order.",
+      "synonyms": [],
+      "instructions": "",
+      "sql": "SELECT COUNT(DISTINCT customer_id)\nFROM \"order\""
+    },
+    {
+      "name": "products.priced_product_count",
+      "status": "approved",
+      "description": "Number of products that have a price.",
+      "synonyms": ["products with price"],
+      "instructions": "",
+      "sql": "SELECT COUNT(*) FROM product WHERE price IS NOT NULL"
+    }
+  ],
+  "excluded": {"draft_metrics": 0, "pending_metrics": 0}
+}
