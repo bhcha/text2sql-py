@@ -104,6 +104,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="not_used",
         help="문항의 evidence(BIRD 공식 evidence, Olist 문항 조건)를 모델에 줄지. 기본 not_used(퓨어 조건)",
     )
+    p.add_argument(
+        "--semantic",
+        choices=SEMANTIC_MODES,
+        default="not_used",
+        help="받아들인 승인 지표 정의 글을 모든 문항에 줄지. 사용자가 말했을 때만 used. evidence used와 함께 쓰지 않는다",
+    )
     p.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--route", choices=ROUTES, help="측정용으로 경로를 강제한다(내부 인자). 없으면 프로필의 경로 규칙")
     add_model_arguments(p)

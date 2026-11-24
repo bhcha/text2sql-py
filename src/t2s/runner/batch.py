@@ -142,6 +142,9 @@ class RunContext:
     model_hashes: dict[str, str]
     backend_factory: Callable[[], LlmBackend] | None = None
     hints: list[str] | None = None  # 위치 순서의 힌트 글(run 폴더의 hints.json에서). None이면 힌트를 주지 않는다
+    semantic: str | None = (
+        None  # 모든 위치에 같은 지표 정의 한 줄 글(run 폴더의 semantic.json에서). hints와 함께 쓰지 않는다
+    )
     route: str = R.HARNESS_ROUTE  # single이면 단일 호출, harness·partial이면 answer(settings에 덮어쓴 값이 들어 있다)
     stop: threading.Event = field(default_factory=threading.Event)
     halt_reason: str | None = None
@@ -243,7 +246,7 @@ def run_item(q: PublicQuestion, ctx: RunContext, attempt: int) -> dict:
     final = None
     try:
         source = ctx.source(q.db_id)
-        hint = None if ctx.hints is None else ctx.hints[q.position]
+        hint = ctx.semantic if ctx.semantic is not None else None if ctx.hints is None else ctx.hints[q.position]
         if ctx.route == "single":
             trace = answer_single(q.question, source, ctx.backend(), calls_dir=folder / "calls", hint=hint)
         else:

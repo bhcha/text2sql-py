@@ -8,6 +8,10 @@ evidence(`--evidence used|not_used`, 기본 not_used): used면 run을 시작하�
 걸어 공개 evidence 파일(BIRD) 또는 스터디 모델 입력 파일의 문항 조건(Olist)을 읽고, 위치별 글을 run 폴더의 hints.json에
 쓴다. 분리된 프로세스와 resume은 hints.json만 읽는다(run.json의 sha256과 대조).
 
+semantic(`--semantic used|not_used`, 기본 not_used, 사용자가 말했을 때만 used): used면 run을 시작하는 이 프로세스만 읽기
+감시를 allow_semantic=True로 걸어 받아들인 지표 정의를 고정 기록대로 읽고, 한 줄 글을 run 폴더의 semantic.json에 쓴다.
+분리된 프로세스와 resume은 semantic.json만 읽는다(run.json의 sha256과 대조). evidence used와 함께 쓰지 않는다.
+
 경로(run.json `route`): `pipeline/route.py`가 정한다. `--route`(내부 인자)는 측정용 강제다.
 `route-start`는 같은 확인을 한 번 하고 하네스·단일 호출 run 둘을 짝(`route.pair`)으로 만들어 함께 띄운다. 짝 run은 서로를
 "이미 도는 run"으로 막지 않는다. 채점은 차례를 지킨다(단일 호출 run은 하네스 run의 생성이 끝난 뒤, 하네스 run은 단일 호출
@@ -27,8 +31,9 @@ from datetime import datetime
 from pathlib import Path
 
 from t2s import engine
-from t2s.cli.data_cmds import err, out, sandbox_hint
+from t2s.cli.data_cmds import _semantic_spec, err, out, sandbox_hint
 from t2s.dataset import hints as H
+from t2s.dataset import semantic as SEM
 from t2s.dataset.config import Config, ConfigError, DatasetSpec, find_root, load_config
 from t2s.dataset.questions import (
     PublicQuestion,
@@ -56,6 +61,8 @@ from t2s.session import names
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
 OUTGOING = "질문, CREATE 원문·예시 3행, 질문과 비슷한 값, 열 프로파일, 실행 오류 글"
 OUTGOING_EVIDENCE = "문항 evidence 글"
+OUTGOING_SEMANTIC = "지표 정의 글"
+SEMANTIC_USED, SEMANTIC_NOT_USED = "used", "not_used"
 OUTGOING_SINGLE = "질문, CREATE 원문"  # 단일 호출 경로(지금 목록의 부분집합)
 EVIDENCE_USED, EVIDENCE_NOT_USED = "used", "not_used"
 NEEDS_GETBIRD = "먼저 /getbird(다시 부르면 evidence 파일을 만든다)"
@@ -87,13 +94,15 @@ def _spawn(cmd: list[str], *, cwd: Path, env: dict, log: Path) -> int:
     return proc.pid
 
 
-def _setup(allow_hints: bool = False):
+def _setup(allow_hints: bool = False, allow_semantic: bool = False):
     try:
         root = find_root()
     except ConfigError as e:
         err(f"오류: {e}")
         return None
-    if allow_hints:
+    if allow_semantic:
+        install_guard(root, allow_semantic=True)  # semantic used run을 시작하는 프로세스 한 곳뿐
+    elif allow_hints:
         install_guard(root, allow_hints=True)  # evidence used run을 시작하는 프로세스 한 곳뿐
     else:
         install_guard(root)
@@ -112,7 +121,13 @@ def run(args) -> int:
         and not getattr(args, "worker", False)
         and getattr(args, "evidence", EVIDENCE_NOT_USED) == EVIDENCE_USED
     )
-    setup = _setup(allow_hints)
+    allow_semantic = (
+        args.command == "run"
+        and not getattr(args, "worker", False)
+        and getattr(args, "semantic", SEMANTIC_NOT_USED) == SEMANTIC_USED
+    )
+    # 둘 다 used면 감시를 넓히지 않고 기본으로 건다(_prepare_run이 모델을 부르기 전에 거절한다)
+    setup = _setup(allow_hints and not allow_semantic, allow_semantic and not allow_hints)
     if setup is None:
         return EXIT_FAIL
     root, state, config = setup
@@ -220,10 +235,14 @@ class _Prepared:
     llm: select.ResolvedLlm
     db_ids: list[str]
     decisions: list[RT.RouteDecision]
+    semantic_text: str | None = None  # semantic used면 한 줄 글
+    semantic_rec: dict | None = None  # semantic used면 var/state.json의 고정 기록
 
 
-def _decide(args, config: Config, name: str, llm: select.ResolvedLlm, forced: str | None, used: bool):
-    """경로를 정하고(pipeline/route.py), 근거의 evidence 방식이 이번과 다르면 경고를 더한다(이 비교만 여기서 한다)."""
+def _decide(
+    args, config: Config, name: str, llm: select.ResolvedLlm, forced: str | None, used: bool, semantic: bool = False
+):
+    """경로를 정하고(pipeline/route.py), 근거의 evidence·semantic 방식이 이번과 다르면 경고를 더한다(이 비교만 여기서 한다)."""
     base = PipelineSettings.from_mapping(config.pipeline)
     decision = RT.resolve_route(
         profile_name=getattr(args, "profile", None),
@@ -243,6 +262,10 @@ def _decide(args, config: Config, name: str, llm: select.ResolvedLlm, forced: st
     then = (decision.basis or {}).get("evidence")
     if decision.source in ("profile", RT.MATCH_SOURCE) and then != mode:
         decision.warnings.append(f"근거 evidence 조건이 다릅니다({then or '기록 없음'} → {mode}). 잠정 경로입니다")
+    smode = SEMANTIC_USED if semantic else SEMANTIC_NOT_USED
+    s_then = (decision.basis or {}).get("semantic") or SEMANTIC_NOT_USED  # 칸이 없는 근거는 not_used
+    if decision.source in ("profile", RT.MATCH_SOURCE) and s_then != smode:
+        decision.warnings.append(f"근거 semantic 조건이 다릅니다({s_then} → {smode}). 잠정 경로입니다")
     return decision
 
 
@@ -253,12 +276,31 @@ def _prepare_run(args, root: Path, state, config: Config, forced: tuple[str | No
         err("데이터셋을 정하지 않았습니다(/connect)")
         return EXIT_USAGE
     spec = config.datasets[name]
+    used = getattr(args, "evidence", EVIDENCE_NOT_USED) == EVIDENCE_USED
+    semantic = getattr(args, "semantic", SEMANTIC_NOT_USED) == SEMANTIC_USED
+    semantic_text = semantic_rec = None
+    if semantic:  # 모델을 고르거나 부르기 전에 모두 확인한다
+        if used:
+            err("evidence와 지표 정의는 함께 쓰지 않습니다(--evidence used와 --semantic used 가운데 하나만)")
+            return EXIT_USAGE
+        ok_spec, code = _semantic_spec(name, config)  # BIRD·소스 여럿은 2
+        if ok_spec is None:
+            return code
+        semantic_rec = state.semantic.get(name)
+        if semantic_rec is None:
+            err("받아들인 지표 정의가 없습니다. 먼저 /getmetrics")
+            return EXIT_USAGE
+        [s0] = spec.sources.values()
+        try:
+            semantic_text = SEM.load_pinned(root, name, semantic_rec, open_source(s0.kind, path=str(s0.path)))
+        except SEM.SemanticError as e:
+            err(f"오류: {e}")
+            return EXIT_FAIL
     if spec.missing:
         hint = "먼저 /getbird" if spec.kind == "bird-minidev" else "등록한 경로를 확인"
         err(f"{name}: {spec.missing} ({hint})")
         return EXIT_FAIL
 
-    used = getattr(args, "evidence", EVIDENCE_NOT_USED) == EVIDENCE_USED
     if used and spec.kind == "bird-minidev" and args.questions:
         err("evidence used는 BIRD 공개 문항 전체(--questions 없이)에서만 쓴다")
         return EXIT_USAGE
@@ -297,7 +339,7 @@ def _prepare_run(args, root: Path, state, config: Config, forced: tuple[str | No
         return EXIT_USAGE
     out(select.first_line(llm))
     try:
-        decisions = [_decide(args, config, name, llm, f, used) for f in forced]
+        decisions = [_decide(args, config, name, llm, f, used, semantic) for f in forced]
     except ValueError as e:
         err(f"오류: {e}")
         return EXIT_USAGE
@@ -333,7 +375,21 @@ def _prepare_run(args, root: Path, state, config: Config, forced: tuple[str | No
         err(f"이미 도는 run이 있습니다: {busy}")
         return EXIT_FAIL
     return _Prepared(
-        name, spec, questions, given, extra, total, count, used, hint_texts, evidence_source, llm, db_ids, decisions
+        name,
+        spec,
+        questions,
+        given,
+        extra,
+        total,
+        count,
+        used,
+        hint_texts,
+        evidence_source,
+        llm,
+        db_ids,
+        decisions,
+        semantic_text,
+        semantic_rec,
     )
 
 
@@ -353,10 +409,19 @@ def _probe(prep: _Prepared, args, *, single: bool) -> int:
 def _outgoing(prep: _Prepared, routes: list[str]) -> None:
     if prep.llm.backend == "fake":
         out("밖으로 나가는 것 없음(가짜 백엔드)")
+        _semantic_line(prep)
         return
     base = OUTGOING_SINGLE if all(r == RT.SINGLE for r in routes) else OUTGOING
     outgoing = f"{base}, {OUTGOING_EVIDENCE}" if prep.used else base
+    if prep.semantic_text is not None:
+        outgoing += f", {OUTGOING_SEMANTIC}"
     out(f"밖으로 나감({select.provider_name(prep.llm.backend)}): {outgoing}")
+    _semantic_line(prep)
+
+
+def _semantic_line(prep: _Prepared) -> None:
+    if prep.semantic_rec is not None:
+        out(SEM.summary_line(prep.semantic_rec))
 
 
 def _new_run_dir(config: Config, run_id: str) -> Path | None:
@@ -394,6 +459,12 @@ def _create_run(
             "rules": H.HINT_RULES_VERSION,
             **({"join": src["join"]} if "join" in src else {}),
         }
+    semantic: dict = {"mode": SEMANTIC_NOT_USED}
+    if prep.semantic_text is not None and prep.semantic_rec is not None:
+        copy_raw = SEM.copy_body(prep.semantic_text, prep.semantic_rec)
+        spath = run / R.SEMANTIC_FILE
+        spath.write_bytes(copy_raw)
+        semantic = SEM.used_record(_rel(root, spath), copy_raw, prep.semantic_rec, prep.semantic_text)
     settings = decision.settings or PipelineSettings.from_mapping(config.pipeline)
     route = {**decision.to_json(), "pair": pair}
     git = batch.git_info(root)
@@ -415,6 +486,7 @@ def _create_run(
         "limit": args.limit,
         "sample": prep.count != prep.total,
         "evidence": evidence,
+        "semantic": semantic,
         "workers": args.workers,
         "llm": prep.llm.to_json(),
         "route": route,
@@ -456,6 +528,8 @@ def cmd_run(args, root: Path, state, config: Config) -> int:
     _outgoing(prep, [decision.applied])
     mode = _create_run(root, config, args, prep, run, decision, None)
     what = f"{prep.name} {prep.count}문항 · 동시 {args.workers} · evidence {mode}"
+    if prep.semantic_text is not None:
+        what += f" · semantic {SEMANTIC_USED}"
     if decision.applied != RT.HARNESS:
         what += f" · 경로 {decision.applied}"
     return _launch(root, config, run, run_id, args.foreground, what)
@@ -535,6 +609,7 @@ def work(root: Path, config: Config, run_id: str) -> int:
     questions = load_public_questions(root / meta["questions"]["path"])[: meta["count"]]
     try:
         hint_texts = _run_hints(run, meta)
+        semantic_text = _run_semantic(run, meta)
     except _Refused as e:
         err(e.message)
         R.update_control(run, state="failed")
@@ -560,6 +635,7 @@ def work(root: Path, config: Config, run_id: str) -> int:
         model_hashes=model_hashes,
         backend_factory=BACKEND_FACTORY,
         hints=hint_texts,
+        semantic=semantic_text,
         route=R.route_of(meta),
     )
     done = R.read_item_records(run)
@@ -626,9 +702,42 @@ def evidence_mode(meta: dict) -> str | None:
 
 
 def evidence_word(meta: dict) -> str:
-    """status·sessions 줄의 evidence 칸: "evidence used|not_used", 재채점 run은 "evidence 미확인"."""
+    """status·sessions 줄의 evidence 칸: "evidence used|not_used", 재채점 run은 "evidence 미확인".
+
+    semantic used run이면 뒤에 " · semantic used"가 붙는다(not_used와 옛 run은 그 전과 같은 글).
+    """
     mode = evidence_mode(meta)
-    return "evidence 미확인" if mode is None else f"evidence {mode}"
+    word = "evidence 미확인" if mode is None else f"evidence {mode}"
+    if semantic_mode(meta) == SEMANTIC_USED:
+        word += f" · semantic {SEMANTIC_USED}"
+    return word
+
+
+def semantic_mode(meta: dict) -> str | None:
+    """run.json의 semantic 방식. 칸이 없는 옛 run은 not_used, 재채점 run은 None(미확인)."""
+    if meta.get("kind") == "rescore":
+        return None
+    return (meta.get("semantic") or {}).get("mode", SEMANTIC_NOT_USED)
+
+
+def _run_semantic(run: Path, meta: dict) -> str | None:
+    """semantic used run이면 run 폴더의 semantic.json을 run.json의 sha256과 대조해 한 줄 글을 읽는다. not_used면 None."""
+    if semantic_mode(meta) != SEMANTIC_USED:
+        return None
+    sem = meta["semantic"]
+    spath = run / R.SEMANTIC_FILE
+    if not spath.is_file() or R.sha256_file(spath) != sem.get("sha256"):
+        raise _Refused(EXIT_FAIL, "run의 지표 정의 파일(semantic.json)이 run.json의 sha256과 다릅니다")
+    body = R.read_json(spath)
+    text = body.get("text") if isinstance(body, dict) else None
+    if (
+        not isinstance(text, str)
+        or len(text.splitlines()) != 1
+        or body.get("source_sha256") != sem.get("source_sha256")
+        or body.get("rules") != sem.get("rules")
+    ):
+        raise _Refused(EXIT_FAIL, "run의 지표 정의 파일(semantic.json)의 꼴이 run.json과 다릅니다")
+    return text
 
 
 def _run_hints(run: Path, meta: dict) -> list[str] | None:
@@ -898,6 +1007,10 @@ def cmd_resume(args, root: Path, state, config: Config) -> int:
         _run_hints(run, meta)  # evidence 방식은 run.json 그대로 이어 간다
     except _Refused:
         return refuse("evidence 파일(hints.json)이 run.json과 다릅니다")
+    try:
+        _run_semantic(run, meta)  # semantic 방식도 run.json 그대로 이어 간다
+    except _Refused as e:
+        return refuse(e.message.removeprefix("run의 "))
     if batch.fingerprints(spec, list(meta.get("databases", {}))) != meta.get("databases"):
         return refuse("DB 지문이 다릅니다")
     pair = R.pair_of(meta)
@@ -925,6 +1038,8 @@ def cmd_resume(args, root: Path, state, config: Config) -> int:
     R.update_control(run, resumes=resumes, sessions=sessions, started_at=batch.now(), state="starting")
     out(select.first_line(select.ResolvedLlm.from_json(meta["llm"])))
     what = f"이어 돌기 {len(retry)}문항 · evidence {evidence_mode(meta)}"
+    if semantic_mode(meta) == SEMANTIC_USED:
+        what += f" · semantic {SEMANTIC_USED}"
     return _launch(root, config, run, rid, args.foreground, what)
 
 
