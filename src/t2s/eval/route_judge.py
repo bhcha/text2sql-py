@@ -245,6 +245,11 @@ def judge(config: Config, pair: str | None, harness: str | None, candidate: str 
     if he != ce:
         lines.append(f"evidence 조건이 달라 견주지 않는다(하네스 {he}, 후보 {ce})")
         return lines, {}, 1
+    hs = G.semantic_mode(h.meta) or G.SEMANTIC_NOT_USED
+    cs = G.semantic_mode(c.meta) or G.SEMANTIC_NOT_USED
+    if G.SEMANTIC_USED in (hs, cs):  # 방식이 다르거나 어느 쪽이든 used면 판정하지 않는다(AGENTS 규칙 6)
+        lines.append(f"semantic used run으로는 경로 판정을 하지 않는다(하네스 {hs}, 후보 {cs})")
+        return lines, {}, 1
     h_llm, c_llm = h.meta.get("llm") or {}, c.meta.get("llm") or {}
     differs = [k for k in ("backend", "model", "reasoning_effort") if h_llm.get(k) != c_llm.get(k)]
     if (h.meta.get("git") or {}).get("head") != (c.meta.get("git") or {}).get("head"):

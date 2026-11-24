@@ -43,6 +43,7 @@ from t2s.eval.bird import (
     ScoreError,
     _generating,
     check_run_evidence,
+    check_run_semantic,
     db_state,
     now,
     official_percent,
@@ -197,7 +198,7 @@ def label(run: dict, count: int, sample: bool, name: str, answers_sha256: str) -
     llm = run.get("llm") or {}
     text = (
         f"{name} / SQLite / {answers_sha256[:8]} / {count}문제 / EX(스터디 결과 비교)"
-        f" / {G.evidence_word(G.evidence_mode(run))} / 로컬 측정"
+        f" / {G.evidence_word(G.evidence_mode(run))}{G.semantic_label(run)} / 로컬 측정"
         f" / {llm.get('model')}·추론 {llm.get('reasoning_effort')}·{llm.get('backend')} / 1회 실행"
         f"{R.route_label(run)} / 구현 Python {commit}"
     )
@@ -207,6 +208,8 @@ def label(run: dict, count: int, sample: bool, name: str, answers_sha256: str) -
         text += " / 소표본·점수 아님"
     if llm.get("backend") == "fake":
         text += " / 가짜 백엔드·점수 아님"
+    if G.semantic_fixture(run):
+        text += G.FIXTURE_TAIL
     return text
 
 
@@ -310,6 +313,7 @@ def score(config: Config, run_id: str, *, meta_time_out: float | None = None, le
     mode = G.evidence_mode(meta)
     expected = task_condition_texts(items[:count]) if mode == G.EVIDENCE_USED else []
     evidence = check_run_evidence(run, meta, expected)
+    semantic = check_run_semantic(run, meta)
 
     side_before = _side_files(spec)
     hashes_before, _ = db_state(spec)
@@ -396,6 +400,7 @@ def score(config: Config, run_id: str, *, meta_time_out: float | None = None, le
         "evaluator": {"id": EVALUATOR_ID, "source": SOURCE, "rules": RULES, "timeout_seconds": timeout_s},
         "conditions": mode,
         "evidence": evidence,
+        **({"semantic": semantic} if semantic is not None else {}),
         "per_question": {"file": R.EX_FILE, "method": "eval/study.py: execute·compare", "elapsed_seconds": elapsed},
         "integrity": {
             "records_sha256": sha256_file(run / R.RECORDS_FILE),

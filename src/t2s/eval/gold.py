@@ -60,6 +60,38 @@ def evidence_word(mode: str | None) -> str:
     return "evidence 미확인" if mode is None else f"evidence {mode}"
 
 
+SEMANTIC_USED, SEMANTIC_NOT_USED = "used", "not_used"
+FIXTURE_TAIL = " / 시험용 정의·점수 아님"
+
+
+def semantic_mode(run_meta: dict) -> str | None:
+    """run.json의 semantic 방식. 칸이 없는 옛 run은 not_used, 재채점 run(예측 파일)은 None(미확인)."""
+    if run_meta.get("kind") == "rescore":
+        return None
+    return (run_meta.get("semantic") or {}).get("mode", SEMANTIC_NOT_USED)
+
+
+def semantic_sha(run_meta: dict) -> str | None:
+    """semantic used run이 받아들인 정의 파일의 sha256. used가 아니면 None."""
+    if semantic_mode(run_meta) != SEMANTIC_USED:
+        return None
+    return (run_meta.get("semantic") or {}).get("source_sha256")
+
+
+def semantic_label(run_meta: dict) -> str:
+    """라벨의 semantic 칸(evidence 칸 바로 뒤). not_used·미확인이면 빈 글(지금 라벨이 바뀌지 않는다)."""
+    if semantic_mode(run_meta) != SEMANTIC_USED:
+        return ""
+    return f" / semantic used({str(semantic_sha(run_meta) or '')[:8]})"
+
+
+def semantic_fixture(run_meta: dict) -> bool:
+    """시험용 정의(source.kind가 fixture)로 돈 semantic used run인가."""
+    if semantic_mode(run_meta) != SEMANTIC_USED:
+        return False
+    return ((run_meta.get("semantic") or {}).get("source") or {}).get("kind") == "fixture"
+
+
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:

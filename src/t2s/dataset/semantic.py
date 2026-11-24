@@ -265,4 +265,6 @@ def used_record(copy_rel: str, copy_raw: bytes, record: dict, text: str) -> dict
         "metrics": record.get("metrics"),
         "chars": len(text),
         "rules": SEMANTIC_RULES_VERSION,
+        # 계획 2-3절 4번(받은 때를 기록에 남김)을 2-6절의 칸 목록에 한 칸으로 더한 것
+        "accepted_at": record.get("accepted_at"),
     }

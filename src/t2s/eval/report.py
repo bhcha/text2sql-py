@@ -5,6 +5,9 @@ SQL 바뀜 세기), harness/allbird.ts report(보고 줄). 원 논문·리더보
 
 evidence 방식(used·not_used)이 다른 run·기준선끼리는 견주지 않는다(새로 맞음·새로 틀림도 내지 않는다, AGENTS 규칙 6).
 방식을 모르는 쪽(ex.jsonl, 칸 없는 기준선·옛 run, 재채점 run)은 not_used로 본다.
+semantic 방식(used·not_used)이 다른 쪽끼리, 그리고 둘 다 used인데 정의 파일 sha256이 다른 쪽끼리도 견주지 않는다.
+기본 기준선은 semantic not_used라 semantic used run의 보고는 --against가 없으면 비교 대상 없음이다.
+기준선·ex.jsonl·칸 없는 옛 run·재채점 run은 semantic not_used로 본다. semantic not_used run의 출력은 그 전과 같다.
 경로(run.json `route`)가 기준과 다르면(기준선·옛 run·ex.jsonl은 harness로 본다) "경로가 달라 재현 비교 아님"을 붙인다.
 """
 
@@ -98,6 +101,8 @@ class Side:
     summary: dict = field(default_factory=dict)
     evidence: str | None = G.EVIDENCE_NOT_USED  # None이면 알 수 없음(ex.jsonl, 재채점 run)
     route: str = R.HARNESS_ROUTE  # 기준선·ex.jsonl·옛 run은 harness
+    semantic: str = G.SEMANTIC_NOT_USED  # 기준선·ex.jsonl·옛 run·재채점 run은 not_used
+    semantic_sha: str | None = None  # semantic used면 받아들인 정의 파일의 sha256
 
 
 def _run_evidence(meta: dict | None, score: dict | None) -> str | None:
@@ -106,6 +111,12 @@ def _run_evidence(meta: dict | None, score: dict | None) -> str | None:
     if isinstance(ev, dict) and "mode" in ev:
         return ev["mode"]
     return G.evidence_mode(meta or {})
+
+
+def _run_semantic(meta: dict | None) -> tuple[str, str | None]:
+    """(semantic 방식, 정의 sha256). 칸이 없는 옛 run과 재채점 run은 not_used."""
+    mode = G.semantic_mode(meta or {}) or G.SEMANTIC_NOT_USED
+    return mode, G.semantic_sha(meta or {})
 
 
 def _effective(mode: str | None) -> str:
@@ -144,7 +155,9 @@ def load_side(config: Config, ref: str) -> Side:
     ex = score["ex_total"]
     meta = R.read_json_if(run / R.RUN_FILE)
     evidence = _run_evidence(meta, score)
-    return Side(ref, f"run {ref} (EX {ex['correct']}/{ex['denominator']})", rows, score, evidence, R.route_of(meta))
+    s_mode, s_sha = _run_semantic(meta)
+    desc = f"run {ref} (EX {ex['correct']}/{ex['denominator']})"
+    return Side(ref, desc, rows, score, evidence, R.route_of(meta), s_mode, s_sha)
 
 
 def compare(a_rows: dict[int, dict], b_rows: dict[int, dict]) -> dict:
@@ -275,7 +288,9 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
     rescore = meta.get("kind") == "rescore"
     mine_evidence = _run_evidence(meta, score)
     mode = _effective(mine_evidence)
-    ref = against or DEFAULT_BASELINES.get((meta["dataset"], mode))
+    s_mode, s_sha = _run_semantic(meta)
+    # 기본 기준선은 semantic not_used뿐이다. semantic used run은 --against가 없으면 견주지 않는다
+    ref = against or (None if s_mode == G.SEMANTIC_USED else DEFAULT_BASELINES.get((meta["dataset"], mode)))
     comparison = None
     side = None
     refused = None
@@ -288,6 +303,17 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
             else:
                 refused = f"비교 대상 없음(기준은 evidence {theirs}, 이번은 {mode}라 견주지 않는다)"
             lines.append(refused)
+        elif side.semantic != s_mode:
+            refused = f"semantic 조건이 달라 견주지 않는다(이번 {s_mode}, 기준 {side.semantic})"
+            lines.append(refused)
+        elif s_mode == G.SEMANTIC_USED and side.semantic_sha != s_sha:
+            refused = (
+                f"지표 정의가 달라 견주지 않는다(이번 {str(s_sha or '')[:8]}, 기준 {str(side.semantic_sha or '')[:8]})"
+            )
+            lines.append(refused)
+    elif not against and s_mode == G.SEMANTIC_USED:
+        refused = "비교 대상 없음(기준은 semantic not_used, 이번은 used라 견주지 않는다)"
+        lines.append(refused)
     elif not against and mode != G.EVIDENCE_NOT_USED:
         other = DEFAULT_BASELINES.get((meta["dataset"], G.EVIDENCE_NOT_USED))
         if other and _resolve(config, other).is_file():
@@ -352,6 +378,16 @@ def report(config: Config, run_id: str, against: str | None) -> tuple[list[str],
         "evidence": mine_evidence,
         "against_evidence": None if side is None else side.evidence,
         "comparison_refused": refused,
+        **(
+            {
+                "semantic": {"mode": s_mode, "source_sha256": s_sha},
+                "against_semantic": None
+                if side is None
+                else {"mode": side.semantic, "source_sha256": side.semantic_sha},
+            }
+            if s_mode == G.SEMANTIC_USED or (side is not None and side.semantic == G.SEMANTIC_USED)
+            else {}
+        ),
         "leak": leak_audit.short(leak),
         "route": meta.get("route"),
     }

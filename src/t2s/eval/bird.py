@@ -149,7 +149,7 @@ def label(run: dict, count: int, sample: bool) -> str:
         head = f"BIRD Mini-Dev / SQLite / {str(run.get('archive_sha256') or '')[:8]} / {count}문제"
     else:
         head = f"{run.get('dataset')} / SQLite / {count}문제"
-    text = f"{head} / EX / {G.evidence_word(G.evidence_mode(run))} / 로컬 측정"
+    text = f"{head} / EX / {G.evidence_word(G.evidence_mode(run))}{G.semantic_label(run)} / 로컬 측정"
     if run.get("kind") == "rescore":
         text += f" / 재채점(예측 파일 {str((run.get('source') or {}).get('sha256', ''))[:8]}) / 채점 Python {commit}"
     else:
@@ -163,7 +163,41 @@ def label(run: dict, count: int, sample: bool) -> str:
         text += " / 소표본·점수 아님"
     if (run.get("llm") or {}).get("backend") == "fake":
         text += " / 가짜 백엔드·점수 아님"
+    if G.semantic_fixture(run):
+        text += G.FIXTURE_TAIL
     return text
+
+
+# ── semantic 대조 ────────────────────────────────────────
+
+
+def check_run_semantic(run: Path, meta: dict) -> dict | None:
+    """score.json의 semantic 칸. used면 run 폴더의 semantic.json을 한 번 읽어 run.json의 sha256·정의 sha256과 견준다.
+
+    다르면 ScoreError. not_used와 재채점 run이면 None(score.json에 칸을 더하지 않는다: 지금 꼴 그대로).
+    """
+    if G.semantic_mode(meta) != G.SEMANTIC_USED:
+        return None
+    sem = meta.get("semantic") or {}
+    try:
+        raw = (run / R.SEMANTIC_FILE).read_bytes()
+    except OSError:
+        raw = None
+    if raw is None or hashlib.sha256(raw).hexdigest() != sem.get("sha256"):
+        raise ScoreError("run의 지표 정의 파일(semantic.json)이 run.json의 sha256과 다릅니다")
+    body = json.loads(raw)
+    if not isinstance(body, dict) or body.get("source_sha256") != sem.get("source_sha256"):
+        raise ScoreError("run의 지표 정의 파일(semantic.json)의 정의 sha256이 run.json과 다릅니다")
+    source = sem.get("source") or {}
+    return {
+        "mode": G.SEMANTIC_USED,
+        "source_sha256": sem.get("source_sha256"),
+        "model": source.get("model"),
+        "version_id": source.get("version_id"),
+        "kind": source.get("kind"),
+        "accepted_at": sem.get("accepted_at"),
+        "checked": True,
+    }
 
 
 # ── evidence 대조 ────────────────────────────────────────
@@ -308,6 +342,7 @@ def score(config: Config, run_id: str, *, num_cpus: int = 4, meta_time_out: floa
         if not same:
             raise ScoreError(f"공개 문항과 정답 파일이 어긋납니다(위치 {i})")
     evidence = check_run_evidence(run, meta, [it.get("evidence") for it in items[:count]])
+    semantic = check_run_semantic(run, meta)
 
     work = G.work_dir(config.root, run_id)
     shutil.rmtree(work, ignore_errors=True)
@@ -452,6 +487,7 @@ def score(config: Config, run_id: str, *, num_cpus: int = 4, meta_time_out: floa
         "label": label(meta, count, sample),
         "sample": sample,
         "evidence": evidence,
+        **({"semantic": semantic} if semantic is not None else {}),
         "denominator": count,
         "ex_total": {"correct": total_correct, "denominator": count, "percent": None if pct is None else float(pct)},
         "by_difficulty": by_diff,

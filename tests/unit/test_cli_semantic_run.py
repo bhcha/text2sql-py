@@ -161,6 +161,7 @@ def test_foreground_used_run(imported, capsys, guard_calls):
         "metrics": 3,
         "chars": len(TEXT),
         "rules": "1.0.0",
+        "accepted_at": st["accepted_at"],
     }
     assert meta["evidence"] == {"mode": "not_used"} and not (run / R.HINTS_FILE).exists()
     code, lines, _ = cli(capsys, "status", "--run-id", "u1")

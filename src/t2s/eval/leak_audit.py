@@ -9,10 +9,17 @@ evidence used run(run.json evidence.mode가 used)이면 그 문항의 evidence �
 누설로 세지 않는다. 정답 SQL·다른 문항 정답·프롬프트 누락·Olist 채점 메모는 그대로 센다. 대신 evidence_missing을 센다:
 빈 글이 아닌 evidence가 그 문항(지금 시도)의 어느 프롬프트에도 없으면 그 위치를 넣는다(0이 아니면 실패).
 not_used run의 셈과 요약 글은 이 갈래를 두기 전과 같다.
+
+semantic used run(run.json semantic.mode가 used)이면 run 폴더의 semantic.json(run.json의 sha256과 대조)의 지표 정의 글을
+semantic_missing으로만 다룬다: 그 글이 그 문항(지금 시도)의 어느 프롬프트에도 없으면 위치를 넣는다(0이 아니면 실패).
+정의 글이 들어 있다는 것 자체는 누설로 세지 않지만, 다른 셈은 하나도 빼지 않는다. 정답 SQL·다른 문항 정답·문항 조건·
+채점 메모가 정의 글 안에 글자 그대로 있으면 그대로 누설로 잡힌다(정의가 평가셋을 보고 쓰였다는 신호).
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -27,7 +34,15 @@ RESCORE_NOTE = "프롬프트 없음(재채점 run)"
 EVIDENCE_LABEL = "evidence"
 STUDY_EVIDENCE_LABEL = "문항 조건·채점 메모"
 STUDY_NOTES_LABEL = "채점 메모"  # evidence used run에서 Olist evidence_hits가 세는 것
-HIT_KEYS = ("gold_sql_hits", "evidence_hits", "other_gold_hits", "prompts_missing", "evidence_missing")
+HIT_KEYS = (
+    "gold_sql_hits",
+    "evidence_hits",
+    "other_gold_hits",
+    "prompts_missing",
+    "evidence_missing",
+    "semantic_missing",
+)
+SEMANTIC_SUMMARY = "지표 정의 제공(used)·빠짐"
 _WS = re.compile(r"\s+")
 
 
@@ -57,6 +72,20 @@ def _prompts(folder: Path) -> list[Path]:
     if not calls.is_dir():
         return []
     return [c / "prompt.txt" for c in sorted(calls.iterdir()) if c.name.isdigit() and (c / "prompt.txt").is_file()]
+
+
+def _semantic_text(run: Path, meta: dict) -> str | None:
+    """semantic used run이면 run 폴더 semantic.json의 글(정규화). sha256이 run.json과 다르면 GoldError. 아니면 None."""
+    if G.semantic_mode(meta) != G.SEMANTIC_USED:
+        return None
+    try:
+        raw = (run / R.SEMANTIC_FILE).read_bytes()
+    except OSError:
+        raw = None
+    if raw is None or hashlib.sha256(raw).hexdigest() != (meta.get("semantic") or {}).get("sha256"):
+        raise G.GoldError("run의 지표 정의 파일(semantic.json)이 run.json의 sha256과 다릅니다")
+    body = json.loads(raw)
+    return normalize(str(body.get("text") or "")) if isinstance(body, dict) else ""
 
 
 def audit(config: Config, run_id: str) -> dict:
@@ -103,6 +132,10 @@ def audit(config: Config, run_id: str) -> dict:
     if used:
         result["evidence_mode"] = G.EVIDENCE_USED
         result["evidence_missing"] = []
+    semantic = _semantic_text(run, meta)
+    if semantic is not None:
+        result["semantic_mode"] = G.SEMANTIC_USED
+        result["semantic_missing"] = []
     hints = [[h for h in hs if len(h) >= EVIDENCE_MIN] for hs in hints]
     others = [(i, s) for i, s in enumerate(gold_sql) if len(s) >= OTHER_GOLD_MIN]
     records = (
@@ -124,6 +157,7 @@ def audit(config: Config, run_id: str) -> dict:
         rounds = {normalize(r.get("old_sql") or "") for r in trace.get("rounds") or []}
         own = gold_sql[pos]
         seen_given = False
+        seen_semantic = False
         for f in files:
             text = normalize(f.read_text(encoding="utf-8"))
             if own and own in text:
@@ -134,8 +168,12 @@ def audit(config: Config, run_id: str) -> dict:
                 result["other_gold_hits"].append(pos)
             if used and given[pos] and given[pos] in text:
                 seen_given = True
+            if semantic and semantic in text:
+                seen_semantic = True
         if used and current and files and given[pos] and not seen_given:
             result["evidence_missing"].append(pos)
+        if semantic is not None and current and files and not seen_semantic:
+            result["semantic_missing"].append(pos)
     R.write_json_atomic(run / R.LEAK_FILE, result)
     return result
 
@@ -157,6 +195,8 @@ def leak_summary(result: dict) -> str:
             middle += f"{STUDY_NOTES_LABEL} {len(result['evidence_hits'])}, "
     else:
         middle = f"{result.get('evidence_label', EVIDENCE_LABEL)} {len(result['evidence_hits'])}, "
+    if result.get("semantic_mode") == G.SEMANTIC_USED:
+        middle += f"{SEMANTIC_SUMMARY} {len(result.get('semantic_missing') or [])}, "
     return (
         f"누설 검사: 프롬프트 {result['prompts']}개, 정답 SQL {len(result['gold_sql_hits'])}, "
         f"{middle}다른 문항 정답 {len(result['other_gold_hits'])}, "
@@ -180,4 +220,7 @@ def short(result: dict) -> dict:
     if result.get("evidence_mode") == G.EVIDENCE_USED:
         out["evidence_mode"] = G.EVIDENCE_USED
         out["evidence_missing"] = len(result.get("evidence_missing") or [])
+    if result.get("semantic_mode") == G.SEMANTIC_USED:
+        out["semantic_mode"] = G.SEMANTIC_USED
+        out["semantic_missing"] = len(result.get("semantic_missing") or [])
     return out

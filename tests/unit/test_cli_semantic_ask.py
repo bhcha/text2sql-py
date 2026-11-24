@@ -150,6 +150,7 @@ def test_used_text_in_all_three_slots(imported, capsys, monkeypatch):
         "metrics": 3,
         "chars": len(TEXT),
         "rules": "1.0.0",
+        "accepted_at": st["accepted_at"],
     }
     assert code in (0, 1)
 
