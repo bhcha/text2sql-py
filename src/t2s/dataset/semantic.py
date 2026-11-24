@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -25,6 +26,8 @@ MAX_FILE_BYTES = 1_000_000  # 정의 파일 크기 한도
 # 작업 루트 기준 자리. 읽기 감시(runner/guard.py의 SEMANTIC_GLOBS)가 이 두 자리를 막는다.
 INBOX_DIR = Path("var") / "semantic-inbox"  # 받기 자리: 내보내기가 <데이터셋 이름>.json으로 쓴다
 APPROVED_NAME = "semantic.approved.json"  # 받아들인 파일: data/<데이터셋 이름>/에 둔다
+COPY_NAME = "semantic.json"  # semantic used로 돈 ask·run 폴더의 사본: {"text", "source_sha256", "rules"}
+AGAIN = "/getmetrics를 다시"
 
 TOP_KEYS = frozenset({"format", "source", "dialect", "tables", "metrics", "excluded"})
 SOURCE_REQUIRED = frozenset({"kind", "model", "version_id", "exported_at", "exporter"})
@@ -223,3 +226,43 @@ def summary_line(record: dict) -> str:
         f"지표 정의: 모델 {shown(source.get('model', ''))} 판 {shown(source.get('version_id', ''), 8)} · "
         f"승인 지표 {record.get('metrics')}개 · 받은 때 {when}"
     )
+
+
+def load_pinned(root: Path, name: str, record: dict, source: DataSource) -> str:
+    """고정 기록(var/state.json의 semantic 칸 한 항목)대로 받아들인 파일을 읽어 한 줄 글을 만든다.
+
+    파일 sha256, 규칙 판, DB 지문이 받아들인 때와 다르면 모델을 부르기 전에 SemanticError로 멈춘다.
+    읽은 바이트 하나로 sha256을 보고 같은 바이트로 글을 만든다(그 사이에 파일이 바뀌어도 어긋나지 않게).
+    """
+    try:
+        raw = (Path(root) / approved_rel(name)).read_bytes()
+    except FileNotFoundError:
+        raise SemanticError(f"받아들인 지표 정의 파일이 없습니다. {AGAIN}") from None
+    if hashlib.sha256(raw).hexdigest() != record.get("sha256"):
+        raise SemanticError(f"지표 정의 파일이 받아들인 뒤 바뀌었습니다. {AGAIN}")
+    if record.get("rules") != SEMANTIC_RULES_VERSION:
+        raise SemanticError(f"지표 정의 글의 규칙 판이 받아들인 때와 다릅니다. {AGAIN}")
+    if source.fingerprint().sha256 != (record.get("db_fingerprint") or {}).get("sha256"):
+        raise SemanticError(f"DB가 받아들인 뒤 바뀌었습니다. {AGAIN}")
+    return render(parse_semantic(raw))
+
+
+def copy_body(text: str, record: dict) -> bytes:
+    """ask·run 폴더에 둘 사본(COPY_NAME)의 바이트."""
+    body = {"text": text, "source_sha256": record["sha256"], "rules": SEMANTIC_RULES_VERSION}
+    return (json.dumps(body, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def used_record(copy_rel: str, copy_raw: bytes, record: dict, text: str) -> dict:
+    """ask.json·run.json의 semantic 칸(used). not_used는 {"mode": "not_used"} 하나다."""
+    return {
+        "mode": "used",
+        "path": copy_rel,
+        "sha256": hashlib.sha256(copy_raw).hexdigest(),
+        "source_path": record.get("path"),
+        "source_sha256": record["sha256"],
+        "source": record.get("source"),
+        "metrics": record.get("metrics"),
+        "chars": len(text),
+        "rules": SEMANTIC_RULES_VERSION,
+    }

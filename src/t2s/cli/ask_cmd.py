@@ -3,6 +3,9 @@
 TS 하네스(text2sql-harness) harness/ask.ts의 출력 줄을 옮겼다. 데이터셋을 고르는 인자는 두지 않는다(t2s use).
 종료 코드: 0 성공, 1 실패(예외, DB 지문 다름), 2 쓰임새(소스·모델을 정해야 함), 5 준비 필요.
 경로는 run과 같은 규칙(pipeline/route.py)을 따르고 ask.json에 `route` 칸을 남긴다. single이면 단일 호출 하나만 부른다.
+--semantic used(사용자가 말했을 때만)면 읽기 감시를 allow_semantic=True로 걸고, 고정 기록대로 받아들인 지표 정의를
+한 줄 글로 만들어 hint 인자로 넘긴다. 확인은 모두 모델을 부르기 전에 한다(BIRD·정의 없음 2, 파일·DB 바뀜 1).
+not_used(기본)면 hint를 넘기지 않고 화면 글과 프롬프트가 그 전과 같다. ask.json에는 semantic 칸 하나만 더해진다.
 """
 
 from __future__ import annotations
@@ -15,7 +18,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from t2s import engine
-from t2s.cli.data_cmds import err, out, sandbox_hint
+from t2s.cli.data_cmds import _semantic_spec, err, out, sandbox_hint
+from t2s.dataset import semantic as SEM
 from t2s.dataset.config import ConfigError, find_root, load_config
 from t2s.dataset.state import StateError, current_dataset, load_state
 from t2s.datasource.base import DataSourceError
@@ -34,16 +38,18 @@ from t2s.session import names as session_names
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_NEEDS_PREP = 0, 1, 2, 5
 OUTGOING = "질문, CREATE 원문·예시 3행, 질문과 비슷한 값, 열 프로파일, 실행 오류 글"
 OUTGOING_SINGLE = "질문, CREATE 원문"
+OUTGOING_SEMANTIC = ", 지표 정의 글"
 SQL_MAX_LINES = 12
 SHOW_ROWS = 10
 CELL_MAX = 60
 LINE_MAX = 200
 
 
-def outgoing_line(backend: str, route: str = RT.HARNESS) -> str:
+def outgoing_line(backend: str, route: str = RT.HARNESS, semantic: bool = False) -> str:
     if backend == "fake":
         return "밖으로 나가는 것 없음(가짜 백엔드)"
-    return f"밖으로 나감({select.provider_name(backend)}): {OUTGOING_SINGLE if route == RT.SINGLE else OUTGOING}"
+    what = OUTGOING_SINGLE if route == RT.SINGLE else OUTGOING
+    return f"밖으로 나감({select.provider_name(backend)}): {what}{OUTGOING_SEMANTIC if semantic else ''}"
 
 
 def cell(value) -> str:
@@ -121,7 +127,11 @@ def run(args) -> int:
     except ConfigError as e:
         err(f"오류: {e}")
         return EXIT_FAIL
-    install_guard(root)
+    used = args.semantic == "used"
+    if used:
+        install_guard(root, allow_semantic=True)
+    else:
+        install_guard(root)
     try:
         state = load_state(root)
         config = load_config(root, state)
@@ -134,6 +144,10 @@ def run(args) -> int:
         err("데이터셋을 정하지 않았습니다(/connect)")
         return EXIT_USAGE
     spec = config.datasets[name]
+    if used:  # BIRD·소스 여럿은 2(자료가 있든 없든). 모델을 고르거나 부르기 전에 모두 확인한다
+        ok_spec, code = _semantic_spec(name, config)
+        if ok_spec is None:
+            return code
     if spec.missing:
         hint = "먼저 /getbird" if spec.kind == "bird-minidev" else "등록한 경로를 확인"
         err(f"{name}: {spec.missing} ({hint})")
@@ -151,6 +165,19 @@ def run(args) -> int:
         err(f"소스를 정해야 합니다({name}의 소스 {len(names)}개)")
         err("소스: " + ", ".join(names))
         return EXIT_USAGE
+
+    semantic_text = semantic_rec = None
+    if used:
+        semantic_rec = state.semantic.get(name)
+        if semantic_rec is None:
+            err("받아들인 지표 정의가 없습니다. 먼저 /getmetrics")
+            return EXIT_USAGE
+        s0 = spec.sources[sname]
+        try:
+            semantic_text = SEM.load_pinned(root, name, semantic_rec, open_source(s0.kind, path=str(s0.path)))
+        except SEM.SemanticError as e:
+            err(f"오류: {e}")
+            return EXIT_FAIL
 
     try:
         llm = select.select_from_args(
@@ -197,7 +224,9 @@ def run(args) -> int:
         return EXIT_NEEDS_PREP
 
     out(f"데이터셋 {name} · 소스 {sname} · {source.describe()}")
-    out(outgoing_line(llm.backend, decision.applied))
+    out(outgoing_line(llm.backend, decision.applied, semantic=used))
+    if used:
+        out(SEM.summary_line(semantic_rec))
     side_before = source.side_files()
     if side_before:
         out(
@@ -211,9 +240,19 @@ def run(args) -> int:
     run_dir.mkdir(parents=True, exist_ok=False)
     started_at = _now()
     settings = decision.settings or PipelineSettings.from_mapping(config.pipeline)
+    semantic_field: dict = {"mode": "not_used"}
+    hint_kw: dict = {}  # not_used면 hint를 넘기지 않는다(그 전과 같은 호출)
+    if used:
+        copy_raw = SEM.copy_body(semantic_text, semantic_rec)
+        (run_dir / SEM.COPY_NAME).write_bytes(copy_raw)
+        copy_rel = os.path.relpath(run_dir / SEM.COPY_NAME, root)
+        semantic_field = SEM.used_record(copy_rel, copy_raw, semantic_rec, semantic_text)
+        hint_kw = {"hint": semantic_text}
     try:
         if decision.applied == RT.SINGLE:
-            trace = answer_single(args.question, source, select.backend_for(llm, single=True), calls_dir=calls_dir)
+            trace = answer_single(
+                args.question, source, select.backend_for(llm, single=True), calls_dir=calls_dir, **hint_kw
+            )
         else:
             embedder = embed.load_embedder(config.embedding_model_dir)
             trace = answer(
@@ -224,6 +263,7 @@ def run(args) -> int:
                 embedder=embedder,
                 settings=settings,
                 calls_dir=calls_dir,
+                **hint_kw,
             )
     except (embed.EmbeddingFailed, embed.EmbeddingModelMissing, DataSourceError, sqlite3.Error) as e:
         err(f"실행 실패: {type(e).__name__}: {e}")
@@ -248,6 +288,7 @@ def run(args) -> int:
         "format": "t2s-ask/1",
         "llm": llm.to_json(),
         "route": decision.to_json(),
+        "semantic": semantic_field,
         "dataset": name,
         "source": sname,
         "database": source.describe(),

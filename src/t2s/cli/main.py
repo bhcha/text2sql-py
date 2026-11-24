@@ -21,6 +21,7 @@ EXIT_NEEDS_PREP = 5
 # t2s.llm.select.BACKENDS와 같다(채점 프로세스가 llm을 불러오지 않게 여기 따로 둔다. test_select가 대조한다)
 BACKENDS = ("codex-cli", "claude-code", "fake")
 EVIDENCE_MODES = ("used", "not_used")
+SEMANTIC_MODES = ("used", "not_used")
 # t2s.pipeline.route.ROUTES와 같다(채점 프로세스가 pipeline을 불러오지 않게 여기 따로 둔다. test_route_resolve가 대조한다)
 ROUTES = ("single", "harness", "partial")
 
@@ -80,6 +81,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("ask", help="지금 데이터셋에 질문 하나")
     p.add_argument("--source", metavar="이름", help="소스가 여럿이면 고른다(BIRD는 DB 이름)")
+    p.add_argument(
+        "--semantic",
+        choices=SEMANTIC_MODES,
+        default="not_used",
+        help="받아들인 승인 지표 정의 글을 모델에 줄지. 사용자가 말했을 때만 used. 기본 not_used",
+    )
     add_model_arguments(p)
     p.add_argument("question", metavar="질문")
 
