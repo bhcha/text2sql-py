@@ -22,6 +22,7 @@ description: Graph MCP의 활성 지표 모델에서 승인된 지표 정의를 
 
    sh <이 SKILL.md가 있는 폴더>/../../scripts/t2s export --out '.text2sql/var/semantic-inbox/<이름>.json'
 
+   출력 JSON(한 줄)은 명령의 표준 출력에서 바로 읽는다. 파일로 옮기지 않고, 꼭 파일이 필요하면 `.text2sql/var/` 아래에만 쓴다. 작업 폴더 밖(`/tmp` 같은 곳)에는 아무것도 쓰지 않는다.
    0이 아니면 출력 JSON의 `error.kind`에 따라 아래 줄을 그대로 보이고 멈춘다. 다시 부르지 않는다. 출력 JSON 전체나 오류 글(`error.message`)은 보이지 않는다. 로컬 정의 파일(`*.ossie.yaml` 같은 것)을 찾거나 대신 쓰지 않는다.
 
 | 경우 | 보일 줄 |
