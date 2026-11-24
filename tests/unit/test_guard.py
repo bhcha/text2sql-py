@@ -135,3 +135,96 @@ def test_is_protected_hints(tmp_path):
     assert not is_protected(tmp_path, hints, allow_hints=True)
     assert is_protected(tmp_path, tmp_path / "gold" / "a", allow_hints=True)
     assert not is_protected(tmp_path, tmp_path / "data" / "bird-minidev" / "questions.public.json")
+
+
+SEMANTIC_SCRIPT = textwrap.dedent(
+    r"""
+    import json, os, sqlite3, sys
+    from pathlib import Path
+    from t2s.runner.guard import GoldAccessBlocked, install_guard
+    root = Path(sys.argv[1])
+    mode = sys.argv[2]
+    install_guard(root, allow_hints=mode in ("hints", "both"), allow_semantic=mode in ("semantic", "both"))
+    cases = {
+        "approved": lambda: open(str(root / "data/x/semantic.approved.json")).read(),
+        "inbox": lambda: open(str(root / "var/semantic-inbox/x.json")).read(),
+        "inbox_write": lambda: open(str(root / "var/semantic-inbox/new.json"), "w").close(),
+        "approved_write": lambda: open(str(root / "data/y/semantic.approved.json"), "w").close(),
+        "relative": lambda: (os.chdir(root), open("data/x/semantic.approved.json").read()),
+        "dotdot": lambda: open(str(root / "data/x/../x/semantic.approved.json")).read(),
+        "symlink": lambda: open(str(root / "link_inbox" / "x.json")).read(),
+        "sqlite_uri": lambda: sqlite3.connect(
+            "file:" + str(root / "var/semantic-inbox/x.json") + "?mode=ro", uri=True
+        ).close(),
+        "hints": lambda: open(str(root / "data/x/hints.public.json")).read(),
+        "gold": lambda: open(str(root / "gold/x.txt")).read(),
+        "download": lambda: open(str(root / "data/x/download/a.zip"), "rb").read(),
+        "run_copy": lambda: open(str(root / "runs/r/semantic.json")).read(),
+        "state": lambda: open(str(root / "var/state.json")).read(),
+    }
+    out = {}
+    for name, fn in cases.items():
+        try:
+            fn()
+            out[name] = "ok"
+        except GoldAccessBlocked:
+            out[name] = "blocked"
+        except Exception as e:
+            out[name] = "other:" + type(e).__name__
+    print(json.dumps(out))
+    """
+)
+
+SEMANTIC_FILES = ("approved", "inbox", "inbox_write", "approved_write", "relative", "dotdot", "symlink", "sqlite_uri")
+
+
+def test_guard_semantic_files(tmp_path):
+    root = tmp_path / "repo"
+    for rel, text in (
+        ("gold/x.txt", "g"),
+        ("data/x/hints.public.json", "[]"),
+        ("data/x/semantic.approved.json", "{}"),
+        ("var/semantic-inbox/x.json", "{}"),
+        ("data/x/download/a.zip", "z"),
+        ("runs/r/semantic.json", "{}"),
+        ("var/state.json", "{}"),
+    ):
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text)
+    (root / "data/y").mkdir(parents=True)
+    os.symlink(root / "var/semantic-inbox", root / "link_inbox")
+    got = {}
+    for mode in ("default", "hints", "semantic", "both"):
+        r = subprocess.run(
+            [sys.executable, "-c", SEMANTIC_SCRIPT, str(root), mode], capture_output=True, text=True, check=True
+        )
+        got[mode] = json.loads(r.stdout)
+    for mode in ("default", "hints"):
+        for name in SEMANTIC_FILES:
+            assert got[mode][name] == "blocked", (mode, name)
+    for mode in ("semantic", "both"):
+        for name in SEMANTIC_FILES:
+            assert got[mode][name] == "ok", (mode, name)
+    # allow_semantic는 공개 힌트 파일을 열어 주지 않고, allow_hints는 정의 파일을 열어 주지 않는다
+    assert got["semantic"]["hints"] == "blocked" and got["hints"]["hints"] == "ok" and got["both"]["hints"] == "ok"
+    for mode in got:
+        assert got[mode]["gold"] == "blocked" and got[mode]["download"] == "blocked", mode
+        assert got[mode]["run_copy"] == "ok" and got[mode]["state"] == "ok", mode
+
+
+def test_is_protected_semantic(tmp_path):
+    from t2s.runner.guard import is_protected
+
+    approved = tmp_path / "data" / "olist" / "semantic.approved.json"
+    inbox = tmp_path / "var" / "semantic-inbox" / "olist.json"
+    for p in (approved, inbox, tmp_path / "var" / "semantic-inbox"):
+        assert is_protected(tmp_path, p)
+        assert is_protected(tmp_path, p, allow_hints=True)
+        assert not is_protected(tmp_path, p, allow_semantic=True)
+    hints = tmp_path / "data" / "olist" / "hints.public.json"
+    assert is_protected(tmp_path, hints, allow_semantic=True)
+    assert is_protected(tmp_path, tmp_path / "gold" / "a", allow_hints=True, allow_semantic=True)
+    assert is_protected(tmp_path, tmp_path / "data" / "x" / "download" / "f", allow_semantic=True)
+    assert not is_protected(tmp_path, tmp_path / "var" / "state.json")
+    assert not is_protected(tmp_path, tmp_path / "var" / "semantic-inbox-old.json")
+    assert not is_protected(tmp_path, tmp_path / "data" / "olist" / "semantic.approved.json.bak")

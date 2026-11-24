@@ -22,6 +22,9 @@ PROTECTED_DIRS = ("gold",)
 PROTECTED_GLOBS = ("data/*/download",)  # 받은 zip에도 정답이 들어 있다
 # 공개 힌트 파일. 힌트를 주는 run을 시작하는 프로세스만 allow_hints=True로 연다(cli/run_cmds.py 한 곳).
 HINT_GLOBS = ("data/*/hints.public.json",)
+# 받아들인 지표 정의 파일과 받기 자리. 정의를 읽는 네 프로세스(semantic-check, semantic-import,
+# semantic used인 ask, semantic used run을 시작하는 프로세스)만 allow_semantic=True로 연다. allow_hints와 서로 독립이다.
+SEMANTIC_GLOBS = ("data/*/semantic.approved.json", "var/semantic-inbox")
 
 _installed_root: str | None = None
 
@@ -48,14 +51,18 @@ def _inside(path: str, base: str) -> bool:
     return path == base or path.startswith(base + os.sep)
 
 
-def _check(root: str, path: str, allow_hints: bool = False) -> bool:
+def _check(root: str, path: str, allow_hints: bool = False, allow_semantic: bool = False) -> bool:
     real = os.path.realpath(path)
     for prefix in _protected_prefixes(root):
         if _inside(real, prefix):
             return True
     if _inside(real, root):
         rel = os.path.relpath(real, root).split(os.sep)
-        globs = PROTECTED_GLOBS if allow_hints else PROTECTED_GLOBS + HINT_GLOBS
+        globs = PROTECTED_GLOBS
+        if not allow_hints:
+            globs += HINT_GLOBS
+        if not allow_semantic:
+            globs += SEMANTIC_GLOBS
         for pattern in globs:
             parts = pattern.split("/")
             if len(rel) >= len(parts) and all(fnmatch.fnmatchcase(r, p) for r, p in zip(rel, parts)):
@@ -63,11 +70,13 @@ def _check(root: str, path: str, allow_hints: bool = False) -> bool:
     return False
 
 
-def is_protected(root: Path, target: str | bytes | os.PathLike, *, allow_hints: bool = False) -> bool:
+def is_protected(
+    root: Path, target: str | bytes | os.PathLike, *, allow_hints: bool = False, allow_semantic: bool = False
+) -> bool:
     p = _as_path(target)
     if p is None:
         return False
-    return _check(os.path.realpath(root), p, allow_hints)
+    return _check(os.path.realpath(root), p, allow_hints, allow_semantic)
 
 
 def _sqlite_target(arg: object) -> str | None:
@@ -81,10 +90,11 @@ def _sqlite_target(arg: object) -> str | None:
     return p
 
 
-def install_guard(root: Path, allow_hints: bool = False) -> None:
+def install_guard(root: Path, allow_hints: bool = False, allow_semantic: bool = False) -> None:
     """한 프로세스에서 한 번. 두 번째 호출은 아무것도 하지 않는다.
 
     allow_hints=False(기본)면 공개 힌트 파일(HINT_GLOBS)도 막는다. True는 힌트를 주는 run을 시작하는 프로세스만 쓴다.
+    allow_semantic=False(기본)면 지표 정의 파일과 받기 자리(SEMANTIC_GLOBS)도 막는다. True는 정의를 읽는 네 프로세스만 쓴다.
     """
     global _installed_root
     if _installed_root is not None:
@@ -96,12 +106,12 @@ def install_guard(root: Path, allow_hints: bool = False) -> None:
         if event == "open":
             target = args[0] if args else None
             p = _as_path(target) if target is not None else None
-            if p is not None and _check(real_root, p, allow_hints):
+            if p is not None and _check(real_root, p, allow_hints, allow_semantic):
                 raise GoldAccessBlocked(f"보호된 경로를 열 수 없습니다: {p}")
         elif event == "sqlite3.connect":
             target = args[0] if args else None
             p = _sqlite_target(target) if target is not None else None
-            if p is not None and _check(real_root, p, allow_hints):
+            if p is not None and _check(real_root, p, allow_hints, allow_semantic):
                 raise GoldAccessBlocked(f"보호된 경로를 열 수 없습니다: {p}")
 
     sys.addaudithook(hook)
