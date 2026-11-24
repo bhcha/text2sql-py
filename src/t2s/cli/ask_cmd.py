@@ -210,6 +210,10 @@ def run(args) -> int:
     except ValueError as e:
         err(f"오류: {e}")
         return EXIT_USAGE
+    s_then = (decision.basis or {}).get("semantic") or "not_used"  # 칸이 없는 근거는 not_used
+    smode = "used" if used else "not_used"
+    if decision.source in ("profile", RT.MATCH_SOURCE) and s_then != smode:
+        decision.warnings.append(f"근거 semantic 조건이 다릅니다({s_then} → {smode}). 잠정 경로입니다")
     for line in RT.shown_route_lines(decision):
         out(line)
 

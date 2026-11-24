@@ -288,3 +288,23 @@ def test_guard_blocks_definition_unless_used(imported, tmp_path):
         )
         got[mode] = (p.returncode, p.stdout.strip())
     assert got == {"not_used": (2, "GoldAccessBlocked"), "used": (2, "ok")}
+
+
+def test_route_warning_when_basis_semantic_differs(imported, capsys, monkeypatch):
+    """not_used로 잰 근거(semantic 칸 없음)의 프로필 경로를 ask --semantic used가 따르면 잠정 경로 경고가 붙는다."""
+
+    def decided(**kw):
+        basis = {"route": RT.HARNESS, "evidence": "not_used"}
+        return RT.RouteDecision(RT.HARNESS, RT.HARNESS, "profile", "basis", "p", basis=basis, settings=None)
+
+    monkeypatch.setattr(RT, "resolve_route", decided)
+    warning = "근거 semantic 조건이 다릅니다(not_used → used). 잠정 경로입니다"
+    code, lines, _ = ask(capsys, "--backend", "fake", "--semantic", "used", QUESTION)
+    assert code == 0
+    rec = json.loads((_run_dir(imported, lines) / "ask.json").read_text())
+    assert warning in rec["route"]["warnings"]
+    code, lines, _ = ask(capsys, "--backend", "fake", QUESTION)
+    assert code == 0
+    rec = json.loads((_run_dir(imported, lines) / "ask.json").read_text())
+    assert all("근거 semantic 조건" not in w for w in rec["route"]["warnings"])
+    assert all("근거 semantic 조건" not in line for line in lines)

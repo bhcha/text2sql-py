@@ -20,6 +20,8 @@ run이 끝난 뒤). 채점기가 DB를 일반 연결로 열기 때문에 같은 
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import shutil
 import signal
@@ -726,9 +728,13 @@ def _run_semantic(run: Path, meta: dict) -> str | None:
         return None
     sem = meta["semantic"]
     spath = run / R.SEMANTIC_FILE
-    if not spath.is_file() or R.sha256_file(spath) != sem.get("sha256"):
+    try:
+        raw = spath.read_bytes()  # 한 번 읽은 바이트로 대조하고 같은 바이트를 쓴다
+    except OSError:
+        raw = None
+    if raw is None or hashlib.sha256(raw).hexdigest() != sem.get("sha256"):
         raise _Refused(EXIT_FAIL, "run의 지표 정의 파일(semantic.json)이 run.json의 sha256과 다릅니다")
-    body = R.read_json(spath)
+    body = json.loads(raw)
     text = body.get("text") if isinstance(body, dict) else None
     if (
         not isinstance(text, str)
